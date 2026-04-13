@@ -133,9 +133,19 @@ tbody tr:hover td{background:rgba(255,255,255,0.02)}
 .doc-footer{font-size:11.5px;color:var(--faint);line-height:1.8;border-top:1px solid var(--border);padding-top:20px;margin-top:40px}
 
 /* ── Scrollspy nav ── */
-#topnav{position:sticky;top:0;z-index:100;background:rgba(12,14,22,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px}
+#topnav{position:sticky;top:0;z-index:100;background:rgba(12,14,22,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;align-items:center}
 #topnav a{color:var(--faint);text-decoration:none;padding:3px 8px;border-radius:4px;transition:.15s}
 #topnav a:hover{color:var(--text);background:rgba(255,255,255,0.05)}
+.lang-select{margin-left:auto;position:relative}
+.lang-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.15s}
+.lang-btn:hover{border-color:var(--accent-blue);color:var(--text)}
+.lang-btn .flag{font-size:14px}
+.lang-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;min-width:180px;z-index:200;padding:4px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.lang-menu.open{display:block}
+.lang-opt{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;cursor:pointer;font-size:12.5px;color:var(--muted);transition:.1s;border:none;background:none;width:100%;text-align:left}
+.lang-opt:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.lang-opt.active{color:var(--accent-blue)}
+.lang-opt .flag{font-size:16px}
 </style>
 </head>
 <body>
@@ -149,7 +159,11 @@ tbody tr:hover td{background:rgba(255,255,255,0.02)}
   <a href="#health">Health</a>
   <a href="#verify">Verify</a>
   <a href="#questions">Questions</a>
-  <a href="#check-now" style="color:#4ade80;font-weight:600">Check Air Now ↗</a>
+  <a href="#check-now" style="color:#4ade80;font-weight:600" data-i18n="nav_check">Check Air Now ↗</a>
+  <div class="lang-select">
+    <button class="lang-btn" onclick="toggleLangMenu()" id="langBtn"><span class="flag">🌐</span> <span id="langLabel">English</span> ▾</button>
+    <div class="lang-menu" id="langMenu"></div>
+  </div>
 </nav>
 
 <div class="page">
@@ -737,6 +751,302 @@ new Chart(document.getElementById('chart'), {
     }
   }
 });
+</script>
+
+<!-- ══════════════════════════════════════════════════════════ TRANSLATION SYSTEM -->
+<script>
+const LANGS = {
+  en: {flag:'🇬🇧',name:'English'},
+  id: {flag:'🇮🇩',name:'Bahasa Indonesia'},
+  fr: {flag:'🇫🇷',name:'Français'},
+  de: {flag:'🇩🇪',name:'Deutsch'},
+  zh: {flag:'🇨🇳',name:'中文 (简体)'},
+  ja: {flag:'🇯🇵',name:'日本語'},
+  ko: {flag:'🇰🇷',name:'한국어'},
+  ru: {flag:'🇷🇺',name:'Русский'},
+};
+
+// Each key maps a CSS selector to translations per language.
+// Only elements matched by selector get swapped. Tables, links, and source cards stay in English.
+const T = {
+  // ── Nav ──
+  '#topnav a[href="#summary"]':        {en:'Summary',id:'Ringkasan',fr:'Résumé',de:'Zusammenfassung',zh:'摘要',ja:'概要',ko:'요약',ru:'Обзор'},
+  '#topnav a[href="#regulation"]':     {en:'Regulation',id:'Regulasi',fr:'Réglementation',de:'Verordnung',zh:'法规',ja:'規制',ko:'규정',ru:'Регулирование'},
+  '#topnav a[href="#data"]':           {en:'Data',id:'Data',fr:'Données',de:'Daten',zh:'数据',ja:'データ',ko:'데이터',ru:'Данные'},
+  '#topnav a[href="#chart-section"]':  {en:'Chart',id:'Grafik',fr:'Graphique',de:'Diagramm',zh:'图表',ja:'チャート',ko:'차트',ru:'График'},
+  '#topnav a[href="#monitoring"]':     {en:'Monitoring',id:'Pemantauan',fr:'Surveillance',de:'Überwachung',zh:'监测',ja:'モニタリング',ko:'모니터링',ru:'Мониторинг'},
+  '#topnav a[href="#health"]':         {en:'Health',id:'Kesehatan',fr:'Santé',de:'Gesundheit',zh:'健康',ja:'健康',ko:'건강',ru:'Здоровье'},
+  '#topnav a[href="#verify"]':         {en:'Verify',id:'Verifikasi',fr:'Vérifier',de:'Überprüfen',zh:'验证',ja:'検証',ko:'검증',ru:'Проверить'},
+  '#topnav a[href="#questions"]':      {en:'Questions',id:'Pertanyaan',fr:'Questions',de:'Fragen',zh:'问题',ja:'質問',ko:'질문',ru:'Вопросы'},
+  '[data-i18n="nav_check"]':          {en:'Check Air Now ↗',id:'Cek Udara Sekarang ↗',fr:'Vérifier l\'Air ↗',de:'Luft Prüfen ↗',zh:'查看空气质量 ↗',ja:'今の空気質 ↗',ko:'대기질 확인 ↗',ru:'Воздух Сейчас ↗'},
+
+  // ── Header ──
+  '.eyebrow': {
+    en:'Evidence Brief · Public Health',
+    id:'Ringkasan Bukti · Kesehatan Masyarakat',
+    fr:'Dossier de Preuves · Santé Publique',
+    de:'Beweispapier · Öffentliche Gesundheit',
+    zh:'证据简报 · 公共卫生',
+    ja:'エビデンスブリーフ · 公衆衛生',
+    ko:'증거 브리프 · 공중보건',
+    ru:'Доказательная Справка · Общественное Здоровье'
+  },
+  '.doc-header h1': {
+    en:'Bali\'s Invisible Air Quality Crisis',
+    id:'Krisis Kualitas Udara Bali yang Tak Terlihat',
+    fr:'La Crise Invisible de la Qualité de l\'Air à Bali',
+    de:'Balis unsichtbare Luftqualitätskrise',
+    zh:'巴厘岛隐形的空气质量危机',
+    ja:'バリ島の見えない大気汚染危機',
+    ko:'발리의 보이지 않는 대기질 위기',
+    ru:'Невидимый Кризис Качества Воздуха на Бали'
+  },
+
+  // ── Alert ──
+  '.alert': {
+    en:'<strong>As of April 13, 2026:</strong> There is no independent air quality monitoring covering Ubud, Kerobokan, Canggu, or central Denpasar — the areas most affected by waste burning. Bali\'s 4.4 million residents and millions of annual tourists have no way to know what they are breathing.',
+    id:'<strong>Per 13 April 2026:</strong> Tidak ada pemantauan kualitas udara independen yang mencakup Ubud, Kerobokan, Canggu, atau pusat Denpasar — daerah yang paling terdampak pembakaran sampah. 4,4 juta penduduk Bali dan jutaan wisatawan tahunan tidak memiliki cara untuk mengetahui apa yang mereka hirup.',
+    fr:'<strong>Au 13 avril 2026 :</strong> Il n\'existe aucune surveillance indépendante de la qualité de l\'air couvrant Ubud, Kerobokan, Canggu ou le centre de Denpasar — les zones les plus touchées par la combustion des déchets. Les 4,4 millions d\'habitants de Bali et les millions de touristes annuels n\'ont aucun moyen de savoir ce qu\'ils respirent.',
+    de:'<strong>Stand 13. April 2026:</strong> Es gibt keine unabhängige Luftqualitätsüberwachung für Ubud, Kerobokan, Canggu oder Zentral-Denpasar — die am stärksten von Müllverbrennung betroffenen Gebiete. Die 4,4 Millionen Einwohner Balis und Millionen jährlicher Touristen haben keine Möglichkeit zu erfahren, was sie einatmen.',
+    zh:'<strong>截至2026年4月13日：</strong>乌布、克罗伯坎、仓古和登巴萨市中心——受垃圾焚烧影响最严重的地区——没有任何独立的空气质量监测。巴厘岛440万居民和数百万游客无法了解他们正在呼吸什么。',
+    ja:'<strong>2026年4月13日現在：</strong>ウブド、クロボカン、チャングー、デンパサール中心部には独立した大気質モニタリングがありません。これらは廃棄物焼却の影響を最も受けている地域です。バリ島の440万人の住民と数百万人の観光客は、自分たちが何を吸っているのか知る方法がありません。',
+    ko:'<strong>2026년 4월 13일 현재:</strong> 우붓, 크로보칸, 짱구, 덴파사르 중심부에는 독립적인 대기질 모니터링이 없습니다. 이 지역들은 폐기물 소각의 영향을 가장 많이 받는 곳입니다. 발리의 440만 주민과 수백만 관광객은 자신이 무엇을 호흡하고 있는지 알 방법이 없습니다.',
+    ru:'<strong>По состоянию на 13 апреля 2026 г.:</strong> Нет независимого мониторинга качества воздуха в Убуде, Керобокане, Чангу или центральном Денпасаре — районах, наиболее пострадавших от сжигания отходов. 4,4 миллиона жителей Бали и миллионы туристов не имеют возможности узнать, чем они дышат.'
+  },
+
+  // ── Section Headings ──
+  '#summary h2': {en:'Summary',id:'Ringkasan',fr:'Résumé',de:'Zusammenfassung',zh:'摘要',ja:'概要',ko:'요약',ru:'Обзор'},
+  '#regulation h2': {
+    en:'The Regulation That Backfired',
+    id:'Regulasi yang Berbalik Merugikan',
+    fr:'La Réglementation qui a Échoué',
+    de:'Die Verordnung, die nach hinten losging',
+    zh:'适得其反的法规',
+    ja:'裏目に出た規制',
+    ko:'역효과를 낳은 규정',
+    ru:'Регулирование, Которое Дало Обратный Эффект'
+  },
+  '#data h2': {
+    en:'The Data: What the Sensors Recorded Before Going Dark',
+    id:'Data: Apa yang Dicatat Sensor Sebelum Mati',
+    fr:'Les Données : Ce que les Capteurs ont Enregistré Avant de s\'Éteindre',
+    de:'Die Daten: Was die Sensoren aufzeichneten, bevor sie ausfielen',
+    zh:'数据：传感器停止工作前记录了什么',
+    ja:'データ：センサーが停止する前に記録したもの',
+    ko:'데이터: 센서가 작동을 멈추기 전에 기록한 것',
+    ru:'Данные: Что Зафиксировали Датчики До Отключения'
+  },
+  '#chart-section h2': {
+    en:'16 Months of Data — Visualised',
+    id:'16 Bulan Data — Divisualisasikan',
+    fr:'16 Mois de Données — Visualisées',
+    de:'16 Monate Daten — Visualisiert',
+    zh:'16个月的数据——可视化',
+    ja:'16ヶ月のデータ — 可視化',
+    ko:'16개월의 데이터 — 시각화',
+    ru:'16 Месяцев Данных — Визуализация'
+  },
+  '#monitoring h2': {
+    en:'What Monitoring Exists Today',
+    id:'Pemantauan Apa yang Ada Saat Ini',
+    fr:'Quelle Surveillance Existe Aujourd\'hui',
+    de:'Welche Überwachung Gibt es Heute',
+    zh:'目前存在哪些监测',
+    ja:'現在どのようなモニタリングが存在するか',
+    ko:'현재 어떤 모니터링이 존재하는가',
+    ru:'Какой Мониторинг Существует Сегодня'
+  },
+  '#health h2': {
+    en:'Understanding PM2.5: Why This Matters for Health',
+    id:'Memahami PM2.5: Mengapa Ini Penting untuk Kesehatan',
+    fr:'Comprendre les PM2.5 : Pourquoi C\'est Important pour la Santé',
+    de:'PM2.5 Verstehen: Warum Dies für die Gesundheit Wichtig Ist',
+    zh:'了解PM2.5：为什么这对健康很重要',
+    ja:'PM2.5を理解する：なぜ健康に重要なのか',
+    ko:'PM2.5 이해하기: 건강에 왜 중요한가',
+    ru:'Понимание PM2.5: Почему Это Важно для Здоровья'
+  },
+  '#verify h2': {
+    en:'What Can Be Verified Independently',
+    id:'Apa yang Dapat Diverifikasi Secara Independen',
+    fr:'Ce qui Peut Être Vérifié Indépendamment',
+    de:'Was Unabhängig Überprüft Werden Kann',
+    zh:'可以独立验证的内容',
+    ja:'独立して検証できること',
+    ko:'독립적으로 검증할 수 있는 것',
+    ru:'Что Можно Проверить Независимо'
+  },
+  '#questions h2': {
+    en:'Questions That Need Answers',
+    id:'Pertanyaan yang Membutuhkan Jawaban',
+    fr:'Questions qui Nécessitent des Réponses',
+    de:'Fragen, die Antworten Brauchen',
+    zh:'需要回答的问题',
+    ja:'回答が必要な質問',
+    ko:'답이 필요한 질문들',
+    ru:'Вопросы, Требующие Ответов'
+  },
+  '#check-now h2': {
+    en:'Check Bali\'s Air Quality Right Now',
+    id:'Cek Kualitas Udara Bali Sekarang',
+    fr:'Vérifiez la Qualité de l\'Air à Bali Maintenant',
+    de:'Überprüfen Sie Balis Luftqualität Jetzt',
+    zh:'立即查看巴厘岛空气质量',
+    ja:'バリ島の大気質を今すぐ確認',
+    ko:'지금 발리 대기질 확인하기',
+    ru:'Проверьте Качество Воздуха на Бали Прямо Сейчас'
+  },
+
+  // ── Summary key paragraphs ──
+  '#summary p:first-of-type': {
+    en:'Independent air quality sensor data from Bali shows that residents and tourists have been breathing dangerously polluted air for at least 16 months. On <strong>320 out of 469 recorded days</strong>, fine particulate matter (PM2.5) exceeded the World Health Organization\'s annual guideline. On <strong>107 of those days</strong>, pollution spikes reached levels classified as "Hazardous" by the US EPA — the worst category, where all people are at serious health risk.',
+    id:'Data sensor kualitas udara independen dari Bali menunjukkan bahwa penduduk dan wisatawan telah menghirup udara yang sangat tercemar selama setidaknya 16 bulan. Pada <strong>320 dari 469 hari yang tercatat</strong>, partikel halus (PM2.5) melebihi pedoman tahunan Organisasi Kesehatan Dunia. Pada <strong>107 hari tersebut</strong>, lonjakan polusi mencapai tingkat yang diklasifikasikan sebagai "Berbahaya" oleh US EPA — kategori terburuk.',
+    fr:'Les données de capteurs indépendants à Bali montrent que les résidents et les touristes respirent un air dangereusement pollué depuis au moins 16 mois. Sur <strong>320 des 469 jours enregistrés</strong>, les particules fines (PM2.5) ont dépassé les directives annuelles de l\'OMS. Sur <strong>107 de ces jours</strong>, les pics de pollution ont atteint des niveaux classés « Dangereux » par l\'EPA — la pire catégorie.',
+    de:'Unabhängige Luftqualitätssensordaten aus Bali zeigen, dass Bewohner und Touristen mindestens 16 Monate lang gefährlich verschmutzte Luft eingeatmet haben. An <strong>320 von 469 aufgezeichneten Tagen</strong> überschritt Feinstaub (PM2.5) die Jahresrichtlinie der WHO. An <strong>107 dieser Tage</strong> erreichten Verschmutzungsspitzen die EPA-Kategorie „Gefährlich" — die schlimmste Stufe.',
+    zh:'来自巴厘岛的独立空气质量传感器数据显示，居民和游客至少16个月来一直在呼吸危险的污染空气。在<strong>469个记录日中有320天</strong>，细颗粒物（PM2.5）超过了世界卫生组织的年度指导标准。其中<strong>107天</strong>污染峰值达到美国环保署分类的"危险"级别——最严重的类别。',
+    ja:'バリ島の独立した大気質センサーデータによると、住民と観光客は少なくとも16ヶ月間、危険なレベルの汚染された空気を吸っていました。<strong>記録された469日中320日</strong>で、微小粒子状物質（PM2.5）がWHOの年間ガイドラインを超えました。そのうち<strong>107日</strong>では、汚染のピークが米国EPAの「危険」レベルに達しました。',
+    ko:'발리의 독립적인 대기질 센서 데이터에 따르면 주민과 관광객은 최소 16개월 동안 위험하게 오염된 공기를 호흡해 왔습니다. <strong>기록된 469일 중 320일</strong>에서 미세먼지(PM2.5)가 WHO 연간 기준을 초과했습니다. 그 중 <strong>107일</strong>은 미국 EPA의 "위험" 수준에 도달했습니다.',
+    ru:'Данные независимых датчиков качества воздуха на Бали показывают, что жители и туристы дышали опасно загрязнённым воздухом не менее 16 месяцев. В <strong>320 из 469 зафиксированных дней</strong> мелкодисперсные частицы (PM2.5) превышали годовую норму ВОЗ. В <strong>107 из этих дней</strong> пиковые значения загрязнения достигали категории «Опасный» по шкале EPA.'
+  },
+  '#summary p:nth-of-type(2)': {
+    en:'<strong>Then the sensors went dark.</strong>',
+    id:'<strong>Kemudian sensor mati.</strong>',
+    fr:'<strong>Puis les capteurs se sont éteints.</strong>',
+    de:'<strong>Dann wurden die Sensoren abgeschaltet.</strong>',
+    zh:'<strong>然后传感器停止了工作。</strong>',
+    ja:'<strong>そしてセンサーは停止しました。</strong>',
+    ko:'<strong>그리고 센서는 작동을 멈췄습니다.</strong>',
+    ru:'<strong>А затем датчики замолчали.</strong>'
+  },
+
+  // ── Stat labels ──
+  '#summary .s-red .lbl': {en:'Days exceeding WHO annual guideline (15 µg/m³) — 320 of 469 days',id:'Hari melebihi pedoman tahunan WHO (15 µg/m³) — 320 dari 469 hari',fr:'Jours dépassant la directive annuelle de l\'OMS (15 µg/m³) — 320 sur 469 jours',de:'Tage über WHO-Jahresrichtlinie (15 µg/m³) — 320 von 469 Tagen',zh:'超过WHO年度指导标准(15 µg/m³)的天数——469天中有320天',ja:'WHO年間ガイドライン(15 µg/m³)を超えた日数——469日中320日',ko:'WHO 연간 기준(15 µg/m³) 초과일 — 469일 중 320일',ru:'Дней с превышением годовой нормы ВОЗ (15 мкг/м³) — 320 из 469'},
+  '#summary .s-orange .lbl': {en:'Days with spikes into "Very Unhealthy" range (>150 µg/m³)',id:'Hari dengan lonjakan ke rentang "Sangat Tidak Sehat" (>150 µg/m³)',fr:'Jours avec pics dans la zone « Très malsain » (>150 µg/m³)',de:'Tage mit Spitzen im Bereich „Sehr ungesund" (>150 µg/m³)',zh:'飙升至"非常不健康"范围(>150 µg/m³)的天数',ja:'「非常に不健康」な範囲(>150 µg/m³)に達した日数',ko:'"매우 건강에 해로운" 범위(>150 µg/m³) 급증일',ru:'Дней со скачками в зону «Очень вредно» (>150 мкг/м³)'},
+  '#summary .s-purple .lbl': {en:'Days with spikes into "Hazardous" range (>250 µg/m³)',id:'Hari dengan lonjakan ke rentang "Berbahaya" (>250 µg/m³)',fr:'Jours avec pics dans la zone « Dangereux » (>250 µg/m³)',de:'Tage mit Spitzen im Bereich „Gefährlich" (>250 µg/m³)',zh:'飙升至"危险"范围(>250 µg/m³)的天数',ja:'「危険」な範囲(>250 µg/m³)に達した日数',ko:'"위험" 범위(>250 µg/m³) 급증일',ru:'Дней со скачками в зону «Опасно» (>250 мкг/м³)'},
+  '#summary .s-blue .lbl': {en:'µg/m³ highest single reading — sensor max, 333× the WHO limit',id:'µg/m³ pembacaan tertinggi — maksimum sensor, 333× batas WHO',fr:'µg/m³ lecture la plus élevée — max capteur, 333× la limite OMS',de:'µg/m³ höchster Einzelwert — Sensormaximum, 333× der WHO-Grenzwert',zh:'µg/m³ 最高单次读数——传感器最大值，WHO限值的333倍',ja:'µg/m³ 最高単一測定値——センサー最大値、WHO基準の333倍',ko:'µg/m³ 최고 단일 측정값 — 센서 최대값, WHO 제한의 333배',ru:'мкг/м³ максимальное показание — предел датчика, в 333 раза выше нормы ВОЗ'},
+
+  // ── Verify section intro ──
+  '#verify > p': {
+    en:'All claims in this document can be verified using publicly accessible sources:',
+    id:'Semua klaim dalam dokumen ini dapat diverifikasi menggunakan sumber yang dapat diakses publik:',
+    fr:'Toutes les affirmations de ce document peuvent être vérifiées à l\'aide de sources publiquement accessibles :',
+    de:'Alle Angaben in diesem Dokument können anhand öffentlich zugänglicher Quellen überprüft werden:',
+    zh:'本文件中的所有主张都可以通过公开来源进行验证：',
+    ja:'本文書のすべての主張は、公開されている情報源で検証できます：',
+    ko:'이 문서의 모든 주장은 공개적으로 접근 가능한 출처를 통해 검증할 수 있습니다:',
+    ru:'Все утверждения в этом документе можно проверить из общедоступных источников:'
+  },
+
+  // ── Questions items ──
+  '#questions li:nth-child(1)': {
+    en:'Why has the KLHK Denpasar air quality station been offline for over 8 months, and why has it been <strong>removed from the national station list</strong> rather than marked as under maintenance?',
+    id:'Mengapa stasiun kualitas udara KLHK Denpasar tidak beroperasi selama lebih dari 8 bulan, dan mengapa <strong>dihapus dari daftar stasiun nasional</strong> alih-alih ditandai sebagai dalam pemeliharaan?',
+    fr:'Pourquoi la station KLHK de Denpasar est-elle hors ligne depuis plus de 8 mois, et pourquoi a-t-elle été <strong>retirée de la liste nationale</strong> plutôt que marquée en maintenance ?',
+    de:'Warum ist die KLHK-Station in Denpasar seit über 8 Monaten offline, und warum wurde sie <strong>aus der nationalen Stationsliste entfernt</strong>, anstatt als in Wartung markiert zu werden?',
+    zh:'为什么KLHK登巴萨空气质量站已离线超过8个月，为什么它被<strong>从国家站点列表中删除</strong>而不是标记为维护中？',
+    ja:'なぜKLHKデンパサール大気質観測所は8ヶ月以上オフラインのままで、なぜメンテナンス中と表示される代わりに<strong>国家観測所リストから削除されたのですか</strong>？',
+    ko:'KLHK 덴파사르 대기질 관측소가 8개월 이상 오프라인인 이유는 무엇이며, 왜 유지보수 중으로 표시하지 않고 <strong>국가 관측소 목록에서 삭제</strong>되었습니까?',
+    ru:'Почему станция KLHK в Денпасаре не работает более 8 месяцев и почему она была <strong>удалена из национального списка станций</strong>, а не отмечена как находящаяся на обслуживании?'
+  },
+  '#questions li:nth-child(2)': {
+    en:'Why does the only independent sensor in the Kerobokan/Canggu area stop recording <strong>two weeks before</strong> a regulation that experts warned would increase burning — and who owns and operates this sensor?',
+    id:'Mengapa satu-satunya sensor independen di area Kerobokan/Canggu berhenti merekam <strong>dua minggu sebelum</strong> regulasi yang diperkirakan para ahli akan meningkatkan pembakaran — dan siapa yang memiliki dan mengoperasikan sensor ini?',
+    fr:'Pourquoi le seul capteur indépendant de la zone Kerobokan/Canggu a-t-il cessé d\'enregistrer <strong>deux semaines avant</strong> une réglementation qui augmenterait la combustion — et qui possède ce capteur ?',
+    de:'Warum hörte der einzige unabhängige Sensor im Gebiet Kerobokan/Canggu <strong>zwei Wochen vor</strong> einer Verordnung auf zu zeichnen — und wem gehört dieser Sensor?',
+    zh:'为什么克罗伯坎/仓古地区唯一的独立传感器在专家警告会增加焚烧的法规实施<strong>两周前</strong>停止记录——谁拥有和运营这个传感器？',
+    ja:'なぜケロボカン/チャングー地域唯一の独立センサーが、焼却増加が予想される規制の<strong>2週間前</strong>に記録を停止したのか——このセンサーの所有者と運営者は誰ですか？',
+    ko:'왜 크로보칸/짱구 지역의 유일한 독립 센서가 소각 증가가 예상되는 규정 <strong>2주 전</strong>에 기록을 중단했으며, 이 센서의 소유자와 운영자는 누구입니까?',
+    ru:'Почему единственный независимый датчик в районе Керобокан/Чангу прекратил запись <strong>за две недели до</strong> регулирования, которое, по мнению экспертов, увеличит сжигание — и кому принадлежит этот датчик?'
+  },
+  '#questions li:nth-child(3)': {
+    en:'Who is responsible for maintaining air quality monitoring in Bali, and <strong>what is the budget</strong> for this? What happened to funding?',
+    id:'Siapa yang bertanggung jawab untuk memelihara pemantauan kualitas udara di Bali, dan <strong>berapa anggarannya</strong>? Apa yang terjadi dengan pendanaan?',
+    fr:'Qui est responsable de la surveillance de la qualité de l\'air à Bali, et <strong>quel est le budget</strong> pour cela ?',
+    de:'Wer ist für die Luftqualitätsüberwachung auf Bali verantwortlich, und <strong>wie hoch ist das Budget</strong> dafür?',
+    zh:'谁负责维护巴厘岛的空气质量监测，<strong>预算是多少</strong>？资金怎么了？',
+    ja:'バリ島の大気質モニタリングの維持管理は誰が担当していますか、<strong>予算はいくらですか</strong>？',
+    ko:'발리의 대기질 모니터링 유지 관리는 누가 담당하며, <strong>예산은 얼마</strong>입니까?',
+    ru:'Кто отвечает за мониторинг качества воздуха на Бали и <strong>каков бюджет</strong> на это?'
+  },
+  '#questions li:nth-child(4)': {
+    en:'Given 16 months of data showing dangerous air quality levels, <strong>what health warnings were issued</strong> to residents and tourists during this period?',
+    id:'Mengingat 16 bulan data menunjukkan tingkat kualitas udara yang berbahaya, <strong>peringatan kesehatan apa yang dikeluarkan</strong> kepada penduduk dan wisatawan selama periode ini?',
+    fr:'Compte tenu de 16 mois de données montrant des niveaux dangereux, <strong>quels avertissements sanitaires ont été émis</strong> aux résidents et touristes ?',
+    de:'Angesichts von 16 Monaten Daten mit gefährlichen Werten — <strong>welche Gesundheitswarnungen wurden</strong> an Bewohner und Touristen ausgegeben?',
+    zh:'鉴于16个月的数据显示危险的空气质量水平，在此期间向居民和游客<strong>发布了哪些健康警告</strong>？',
+    ja:'16ヶ月の危険な大気質データがあるにもかかわらず、この期間中に住民と観光客に対して<strong>どのような健康警告が発出されましたか</strong>？',
+    ko:'16개월간의 위험한 대기질 데이터에도 불구하고, 이 기간 동안 주민과 관광객에게 <strong>어떤 건강 경고가 발령</strong>되었습니까?',
+    ru:'Учитывая 16 месяцев данных об опасном уровне загрязнения, <strong>какие предупреждения о здоровье были выданы</strong> жителям и туристам?'
+  },
+  '#questions li:nth-child(5)': {
+    en:'What is the <strong>actual air quality in Bali right now</strong> — particularly in Ubud, Kuta, Denpasar, and Canggu — and why is there no way for the public to know?',
+    id:'Bagaimana <strong>kualitas udara di Bali saat ini sebenarnya</strong> — terutama di Ubud, Kuta, Denpasar, dan Canggu — dan mengapa publik tidak memiliki cara untuk mengetahuinya?',
+    fr:'Quelle est la <strong>qualité réelle de l\'air à Bali actuellement</strong> — en particulier à Ubud, Kuta, Denpasar et Canggu — et pourquoi le public n\'a-t-il aucun moyen de le savoir ?',
+    de:'Wie ist die <strong>tatsächliche Luftqualität auf Bali gerade</strong> — besonders in Ubud, Kuta, Denpasar und Canggu — und warum gibt es keine Möglichkeit für die Öffentlichkeit, dies zu erfahren?',
+    zh:'<strong>巴厘岛目前的实际空气质量</strong>如何——特别是在乌布、库塔、登巴萨和仓古——为什么公众无法了解？',
+    ja:'<strong>バリ島の現在の実際の大気質</strong>はどうなっていますか——特にウブド、クタ、デンパサール、チャングーで——なぜ一般市民が知る方法がないのですか？',
+    ko:'<strong>현재 발리의 실제 대기질</strong>은 어떠합니까 — 특히 우붓, 쿠타, 덴파사르, 짱구 — 그리고 왜 시민들이 알 수 있는 방법이 없습니까?',
+    ru:'Каково <strong>реальное качество воздуха на Бали сейчас</strong> — особенно в Убуде, Куте, Денпасаре и Чангу — и почему общественность не может это узнать?'
+  },
+  '#questions li:nth-child(6)': {
+    en:'What are the <strong>health impacts on Bali\'s approximately 4.4 million residents</strong>, particularly children and elderly people, from prolonged exposure to waste burning smoke?',
+    id:'Apa <strong>dampak kesehatan pada sekitar 4,4 juta penduduk Bali</strong>, terutama anak-anak dan lansia, dari paparan asap pembakaran sampah yang berkepanjangan?',
+    fr:'Quels sont les <strong>impacts sur la santé des 4,4 millions d\'habitants de Bali</strong>, en particulier les enfants et les personnes âgées, d\'une exposition prolongée à la fumée de combustion des déchets ?',
+    de:'Welche <strong>gesundheitlichen Auswirkungen auf die etwa 4,4 Millionen Einwohner Balis</strong> hat die langfristige Belastung durch Müllverbrennungsrauch, besonders für Kinder und ältere Menschen?',
+    zh:'长期暴露在垃圾焚烧烟雾中对<strong>巴厘岛约440万居民的健康影响</strong>是什么，特别是对儿童和老年人？',
+    ja:'廃棄物焼却煙への長期曝露による<strong>バリ島の約440万人の住民への健康影響</strong>は何ですか、特に子供と高齢者への影響は？',
+    ko:'폐기물 소각 연기에 장기간 노출됨으로 인한 <strong>발리의 약 440만 주민에 대한 건강 영향</strong>은 무엇이며, 특히 어린이와 노인에게는 어떤 영향이 있습니까?',
+    ru:'Каковы <strong>последствия для здоровья примерно 4,4 миллиона жителей Бали</strong>, особенно детей и пожилых людей, от длительного воздействия дыма от сжигания отходов?'
+  },
+};
+
+// ── Build language menu ──
+const menuEl = document.getElementById('langMenu');
+Object.entries(LANGS).forEach(([code, {flag, name}]) => {
+  const btn = document.createElement('button');
+  btn.className = 'lang-opt' + (code === 'en' ? ' active' : '');
+  btn.innerHTML = `<span class="flag">${flag}</span> ${name}`;
+  btn.onclick = () => setLang(code);
+  menuEl.appendChild(btn);
+});
+
+function toggleLangMenu() {
+  menuEl.classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.lang-select')) menuEl.classList.remove('open');
+});
+
+// ── Store original English HTML for elements ──
+const originals = {};
+Object.keys(T).forEach(sel => {
+  const el = document.querySelector(sel);
+  if (el) originals[sel] = el.innerHTML;
+});
+
+function setLang(lang) {
+  // Update button
+  document.getElementById('langLabel').textContent = LANGS[lang].name;
+  document.querySelector('#langBtn .flag').textContent = LANGS[lang].flag;
+  document.documentElement.lang = lang;
+
+  // Swap text
+  Object.entries(T).forEach(([sel, texts]) => {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    if (texts[lang]) {
+      el.innerHTML = texts[lang];
+    } else if (originals[sel]) {
+      el.innerHTML = originals[sel];
+    }
+  });
+
+  // Update active state
+  menuEl.querySelectorAll('.lang-opt').forEach((btn, i) => {
+    btn.classList.toggle('active', Object.keys(LANGS)[i] === lang);
+  });
+  menuEl.classList.remove('open');
+}
 </script>
 </body>
 </html>
