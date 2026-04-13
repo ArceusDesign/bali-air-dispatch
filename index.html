@@ -3,73 +3,66 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bali's Invisible Air Quality Crisis — Evidence Brief</title>
+<title>Bali Air Quality — Data, Gaps, and What Needs to Change</title>
+<meta name="description" content="Independent analysis of 469 days of PM2.5 data from Bali, Indonesia. Examines air quality monitoring gaps and the impact of the April 2026 waste regulation change.">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0c0e16;
-  --bg2:#131620;
-  --bg3:#191d2b;
-  --border:#232840;
-  --border2:#2e3450;
-  --text:#e2e6f0;
-  --muted:#8891aa;
-  --faint:#4a5170;
-  --accent-red:#f87171;
-  --accent-orange:#fb923c;
-  --accent-yellow:#fbbf24;
-  --accent-green:#4ade80;
-  --accent-blue:#60a5fa;
-  --accent-purple:#a78bfa;
+  --bg:#0c0e16;--bg2:#131620;--bg3:#191d2b;
+  --border:#232840;--border2:#2e3450;
+  --text:#e2e6f0;--muted:#8891aa;--faint:#4a5170;
+  --red:#f87171;--orange:#fb923c;--yellow:#fbbf24;
+  --green:#4ade80;--blue:#60a5fa;--purple:#a78bfa;
 }
 html{scroll-behavior:smooth}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px}
-
-/* ── Layout ── */
 .page{max-width:900px;margin:0 auto;padding:40px 24px 80px}
 
-/* ── Nav / TOC ── */
-.toc{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px 22px;margin-bottom:40px}
-.toc-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
-.toc ol{padding-left:18px;color:var(--muted);font-size:13px;line-height:2}
-.toc a{color:var(--accent-blue);text-decoration:none}
-.toc a:hover{text-decoration:underline}
+/* Nav */
+#topnav{position:sticky;top:0;z-index:100;background:rgba(12,14,22,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;align-items:center}
+#topnav a{color:var(--faint);text-decoration:none;padding:3px 8px;border-radius:4px;transition:.15s}
+#topnav a:hover{color:var(--text);background:rgba(255,255,255,0.05)}
+.lang-select{margin-left:auto;position:relative}
+.lang-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.15s}
+.lang-btn:hover{border-color:var(--blue);color:var(--text)}
+.lang-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;min-width:180px;z-index:200;padding:4px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.lang-menu.open{display:block}
+.lang-opt{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;cursor:pointer;font-size:12.5px;color:var(--muted);transition:.1s;border:none;background:none;width:100%;text-align:left}
+.lang-opt:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.lang-opt.active{color:var(--blue)}
 
-/* ── Header ── */
+/* Header */
 .doc-header{margin-bottom:36px}
-.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-red);margin-bottom:10px}
-.doc-header h1{font-size:28px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:14px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin-bottom:10px}
+.doc-header h1{font-size:26px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:14px}
 .meta{display:flex;gap:20px;flex-wrap:wrap;font-size:12.5px;color:var(--faint);border-top:1px solid var(--border);padding-top:12px}
 .meta span strong{color:var(--muted)}
 
-/* ── Alert banner ── */
-.alert{background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);border-radius:10px;padding:16px 20px;margin-bottom:32px;font-size:14px;color:#fca5a5;line-height:1.65}
-.alert strong{color:var(--accent-red)}
+/* Alert */
+.alert{background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:16px 20px;margin-bottom:32px;font-size:14px;color:#fde68a;line-height:1.65}
+.alert strong{color:var(--yellow)}
 
-/* ── Section headings ── */
+/* Sections */
 .section{margin-bottom:44px}
 .section-label{font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
 h2{font-size:20px;font-weight:700;color:#fff;margin-bottom:14px;line-height:1.3}
 h3{font-size:15px;font-weight:700;color:var(--text);margin:20px 0 10px}
-
-/* ── Body text ── */
 p{color:var(--muted);margin-bottom:12px;font-size:14px;line-height:1.7}
 p strong{color:var(--text)}
-p em{color:var(--faint);font-style:italic}
 
-/* ── Stat cards ── */
+/* Stats */
 .stats{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap}
 .stat{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:150px}
 .stat .val{font-size:28px;font-weight:800;line-height:1;margin-bottom:5px}
 .stat .lbl{font-size:11.5px;color:var(--faint);line-height:1.45}
-.s-red    .val{color:var(--accent-red)}
-.s-orange .val{color:var(--accent-orange)}
-.s-purple .val{color:var(--accent-purple)}
-.s-blue   .val{color:var(--accent-blue)}
+.s-yellow .val{color:var(--yellow)}
+.s-orange .val{color:var(--orange)}
+.s-blue .val{color:var(--blue)}
+.s-red .val{color:var(--red)}
 
-/* ── Chart card ── */
+/* Chart */
 .chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px 20px 18px;margin:24px 0}
 .chart-hd{font-size:13px;font-weight:600;color:#c0c8e0;margin-bottom:3px}
 .chart-sub{font-size:11px;color:var(--faint);margin-bottom:16px}
@@ -78,13 +71,13 @@ canvas{display:block;width:100%!important}
 .li{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted)}
 .sw{width:24px;height:8px;border-radius:2px;flex-shrink:0}
 .sw.line{height:3px;margin-top:1px}
-.sw.dash{height:0;border-bottom:2px dashed var(--accent-green);background:none;width:22px}
+.sw.dash{height:0;border-bottom:2px dashed var(--green);background:none;width:22px}
 .aqi-zones{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 .zlbl{font-size:10px;color:var(--faint);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-right:4px}
 .zi{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted)}
 .zd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
-/* ── Tables ── */
+/* Tables */
 .tbl-wrap{overflow-x:auto;margin:16px 0}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead th{background:var(--bg3);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border2)}
@@ -94,210 +87,247 @@ tbody td{padding:9px 12px;color:var(--muted);vertical-align:top}
 tbody tr:hover td{background:rgba(255,255,255,0.02)}
 .td-key{font-weight:600;color:var(--text);white-space:nowrap}
 .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.badge-red   {background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.25)}
-.badge-green {background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.2)}
+.badge-red{background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.25)}
+.badge-green{background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.2)}
 .badge-yellow{background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.2)}
 .badge-orange{background:rgba(251,146,60,0.12);color:#fb923c;border:1px solid rgba(251,146,60,0.2)}
 .badge-purple{background:rgba(167,139,250,0.12);color:#a78bfa;border:1px solid rgba(167,139,250,0.2)}
-.badge-gray  {background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border)}
+.badge-gray{background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border)}
 
-/* ── Source cards ── */
+/* Sources */
 .sources{display:flex;flex-direction:column;gap:10px;margin:16px 0}
 .source{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 16px}
 .src-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}
 .src-pub{font-size:11.5px;color:var(--faint);margin-bottom:6px}
-.src-url{font-size:11.5px}
-.src-url a{color:var(--accent-blue);text-decoration:none;word-break:break-all}
+.src-url a{color:var(--blue);text-decoration:none;font-size:11.5px;word-break:break-all}
 .src-url a:hover{text-decoration:underline}
 
-/* ── Verify links ── */
+/* Verify */
 .verify-list{list-style:none;display:flex;flex-direction:column;gap:8px;margin:14px 0}
 .verify-list li{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px 16px;font-size:13px}
 .verify-list li strong{color:var(--text);display:block;margin-bottom:3px}
-.verify-list a{color:var(--accent-blue);text-decoration:none;font-size:12px;word-break:break-all}
+.verify-list a{color:var(--blue);text-decoration:none;font-size:12px;word-break:break-all}
 .verify-list a:hover{text-decoration:underline}
 
-/* ── Questions ── */
+/* Questions */
 .questions{list-style:none;counter-reset:q;display:flex;flex-direction:column;gap:10px;margin:14px 0}
 .questions li{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px 14px 52px;position:relative;font-size:13.5px;color:var(--muted);line-height:1.6}
-.questions li::before{counter-increment:q;content:counter(q);position:absolute;left:14px;top:14px;width:24px;height:24px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);border-radius:50%;color:var(--accent-blue);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;line-height:24px}
+.questions li::before{counter-increment:q;content:counter(q);position:absolute;left:14px;top:14px;width:24px;height:24px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);border-radius:50%;color:var(--blue);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
 
-/* ── Callout box ── */
+/* Callout */
 .callout{background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:16px 20px;margin:16px 0;font-size:13.5px;color:#fde68a;line-height:1.65}
-.callout strong{color:var(--accent-yellow)}
+.callout strong{color:var(--yellow)}
+.callout-blue{background:rgba(96,165,250,0.06);border-color:rgba(96,165,250,0.2);color:#93c5fd}
+.callout-blue strong{color:var(--blue)}
+.callout-green{background:rgba(74,222,128,0.06);border-color:rgba(74,222,128,0.2);color:#86efac}
+.callout-green strong{color:var(--green)}
 
-/* ── Divider ── */
+/* Live snapshot cards */
+.snap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:16px 0}
+.snap-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.snap-loc{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.snap-src{font-size:10px;color:var(--faint);margin-bottom:8px}
+.snap-aqi{font-size:24px;font-weight:800;line-height:1;margin-bottom:2px}
+.snap-cat{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.snap-pm{font-size:11px;color:var(--faint);margin-top:4px}
+.aqi-good .snap-aqi,.aqi-good .snap-cat{color:var(--green)}
+.aqi-mod .snap-aqi,.aqi-mod .snap-cat{color:var(--yellow)}
+.aqi-usg .snap-aqi,.aqi-usg .snap-cat{color:var(--orange)}
+.aqi-unh .snap-aqi,.aqi-unh .snap-cat{color:#f97316}
+
 .divider{border:none;border-top:1px solid var(--border);margin:40px 0}
-
-/* ── Footer ── */
 .doc-footer{font-size:11.5px;color:var(--faint);line-height:1.8;border-top:1px solid var(--border);padding-top:20px;margin-top:40px}
-
-/* ── Scrollspy nav ── */
-#topnav{position:sticky;top:0;z-index:100;background:rgba(12,14,22,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;align-items:center}
-#topnav a{color:var(--faint);text-decoration:none;padding:3px 8px;border-radius:4px;transition:.15s}
-#topnav a:hover{color:var(--text);background:rgba(255,255,255,0.05)}
-.lang-select{margin-left:auto;position:relative}
-.lang-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.15s}
-.lang-btn:hover{border-color:var(--accent-blue);color:var(--text)}
-.lang-btn .flag{font-size:14px}
-.lang-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;min-width:180px;z-index:200;padding:4px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
-.lang-menu.open{display:block}
-.lang-opt{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;cursor:pointer;font-size:12.5px;color:var(--muted);transition:.1s;border:none;background:none;width:100%;text-align:left}
-.lang-opt:hover{background:rgba(255,255,255,0.05);color:var(--text)}
-.lang-opt.active{color:var(--accent-blue)}
-.lang-opt .flag{font-size:16px}
 </style>
 </head>
 <body>
 
 <nav id="topnav">
   <a href="#summary">Summary</a>
-  <a href="#regulation">Regulation</a>
-  <a href="#data">Data</a>
+  <a href="#live">Live Data</a>
+  <a href="#historical">Historical</a>
   <a href="#chart-section">Chart</a>
+  <a href="#regulation">Regulation</a>
   <a href="#monitoring">Monitoring</a>
-  <a href="#health">Health</a>
+  <a href="#action">What's Needed</a>
   <a href="#verify">Verify</a>
-  <a href="#questions">Questions</a>
-  <a href="#check-now" style="color:#4ade80;font-weight:600" data-i18n="nav_check">Check Air Now ↗</a>
+  <a href="#check-now" style="color:#4ade80;font-weight:600">Check Air Now ↗</a>
   <div class="lang-select">
-    <button class="lang-btn" onclick="toggleLangMenu()" id="langBtn"><span class="flag">🌐</span> <span id="langLabel">English</span> ▾</button>
+    <button class="lang-btn" onclick="document.getElementById('langMenu').classList.toggle('open')" id="langBtn"><span class="flag">🌐</span> <span id="langLabel">English</span> ▾</button>
     <div class="lang-menu" id="langMenu"></div>
   </div>
 </nav>
 
 <div class="page">
 
-  <!-- ── HEADER ── -->
+  <!-- HEADER -->
   <div class="doc-header">
-    <div class="eyebrow">Evidence Brief · Public Health</div>
-    <h1>Bali's Invisible Air Quality Crisis</h1>
+    <div class="eyebrow">Data Brief · Air Quality & Public Health · Bali, Indonesia</div>
+    <h1>Bali's Air Quality Monitoring Gap — What the Data Shows and What's Missing</h1>
     <div class="meta">
-      <span><strong>Date:</strong> April 13, 2026</span>
-      <span><strong>Prepared by:</strong> Anonymous concerned resident</span>
-      <span><strong>Purpose:</strong> Evidence for journalists and investigators</span>
+      <span><strong>Last updated:</strong> April 14, 2026</span>
+      <span><strong>Compiled by:</strong> Concerned residents</span>
+      <span><strong>Purpose:</strong> Public awareness and advocacy for better monitoring</span>
     </div>
   </div>
 
-  <!-- ── ALERT ── -->
+  <!-- ALERT -->
   <div class="alert">
-    <strong>As of April 13, 2026:</strong> Bali's only government air quality station (Denpasar) has been offline since August 2025. Limited private monitoring exists (Nafas: 4 stations; IQAir contributors: ~10 sensors; PurpleAir: 1 active), but there are no official government sensors operating in Ubud, Kerobokan, Canggu, or central Denpasar — the areas most affected by recent waste burning concerns.
+    <strong>As of April 14, 2026:</strong> Bali's only government air quality station in Denpasar has been offline since August 2025. One government sensor remains active (Badung Sempidi). Limited private monitoring exists (Nafas: 4 stations, IQAir contributors: ~10 sensors, PurpleAir: 2 sensors), but there are no official government sensors operating in Ubud, Kerobokan, Canggu, or central Denpasar.
   </div>
 
-  <!-- ── SUMMARY ── -->
+  <!-- SUMMARY -->
   <div class="section" id="summary">
     <div class="section-label">Section 1</div>
-    <h2>Summary</h2>
-    <p>Independent air quality sensor data from Bali shows that residents and tourists have been breathing dangerously polluted air for at least 16 months. On <strong>320 out of 469 recorded days</strong>, fine particulate matter (PM2.5) exceeded the World Health Organization's annual guideline. On <strong>107 of those days</strong>, pollution spikes reached levels classified as "Hazardous" by the US EPA — the worst category, where all people are at serious health risk.</p>
-    <p><strong>Then the sensors went dark.</strong></p>
-    <p>The only independent air quality sensor in the Kerobokan/Canggu area stopped recording on <strong>March 15, 2026</strong> — two weeks before a controversial regulation change that has made the burning problem even worse. The Indonesian government's own air quality station in Denpasar went offline eight months earlier in August 2025 and has been quietly removed from the national monitoring portal.</p>
+    <h2>Summary: What We Know</h2>
+    <p>Analysis of 469 days of PM2.5 sensor data from the Kerobokan/Canggu area of Bali (November 2024 – March 2026) shows air quality that <strong>regularly exceeds World Health Organization guidelines</strong>. The typical daily median PM2.5 was 21.9 µg/m³ — 1.5 times the WHO annual guideline of 15 µg/m³. The data also shows periodic pollution spikes consistent with burning events.</p>
+    <p>The data comes from a single community sensor location, so these readings may not be representative of all of Bali. However, live readings from other sources (verified April 13, 2026) show similar <strong>Moderate-level air quality across the Denpasar–Ubud–Seminyak corridor</strong>, while coastal stations like Jimbaran show clean air. This suggests the issue may vary significantly by location.</p>
+    <p><strong>The core problem is that we don't have enough monitoring to know.</strong> Bali — home to 4.4 million people and one of the world's most visited islands — has just one active government air quality sensor for the entire island. The main Denpasar government station has been offline for over 8 months. On April 1, 2026, a waste regulation change raised concerns about increased burning, but there is insufficient monitoring to measure the impact.</p>
 
     <div class="stats">
-      <div class="stat s-red"><div class="val">68%</div><div class="lbl">Days exceeding WHO annual guideline (15 µg/m³) — 320 of 469 days</div></div>
-      <div class="stat s-orange"><div class="val">54%</div><div class="lbl">Days with spikes into "Very Unhealthy" range (&gt;150 µg/m³)</div></div>
-      <div class="stat s-purple"><div class="val">23%</div><div class="lbl">Days with spikes into "Hazardous" range (&gt;250 µg/m³)</div></div>
-      <div class="stat s-blue"><div class="val">4,999</div><div class="lbl">µg/m³ highest single reading — sensor max, 333× the WHO limit</div></div>
+      <div class="stat s-yellow"><div class="val">44%</div><div class="lbl">Days where median PM2.5 exceeded the WHO 24-hour guideline (25 µg/m³) — 207 of 469 days recorded</div></div>
+      <div class="stat s-orange"><div class="val">21.9</div><div class="lbl">µg/m³ — average daily median PM2.5 across the full recording period. 1.5× the WHO annual guideline</div></div>
+      <div class="stat s-blue"><div class="val">1</div><div class="lbl">Active government air quality station for all of Bali (4.4 million residents)</div></div>
+      <div class="stat s-red"><div class="val">8+ mo</div><div class="lbl">Duration the Denpasar government station has been offline — with no public repair timeline</div></div>
     </div>
   </div>
 
   <hr class="divider">
 
-  <!-- ── REGULATION ── -->
-  <div class="section" id="regulation">
+  <!-- LIVE DATA SNAPSHOT -->
+  <div class="section" id="live">
     <div class="section-label">Section 2</div>
-    <h2>The Regulation That Backfired</h2>
-    <p>On <strong>April 1, 2026</strong>, Denpasar authorities banned organic waste from the Suwung landfill — Bali's largest and only major waste processing site — as part of a plan to close it by August 2026. The stated goal was to push households toward waste separation.</p>
+    <h2>Live Data Snapshot — What Bali's Air Looks Like Right Now</h2>
+    <p>The following readings were verified on <strong>April 13, 2026</strong> from multiple independent sources. These are point-in-time readings — air quality varies by hour, weather, and proximity to pollution sources.</p>
+
+    <h3>Current Readings Across Bali</h3>
+    <div class="snap-grid">
+      <div class="snap-card aqi-mod">
+        <div class="snap-loc">Denpasar (Dajan Tangluk)</div>
+        <div class="snap-src">IQAir · Private sensor</div>
+        <div class="snap-aqi">AQI 26</div>
+        <div class="snap-cat">Moderate</div>
+        <div class="snap-pm">PM2.5 dominant</div>
+      </div>
+      <div class="snap-card aqi-mod">
+        <div class="snap-loc">Ubud</div>
+        <div class="snap-src">IQAir · Private sensor</div>
+        <div class="snap-aqi">AQI 28</div>
+        <div class="snap-cat">Moderate</div>
+        <div class="snap-pm">PM2.5 dominant</div>
+      </div>
+      <div class="snap-card aqi-mod">
+        <div class="snap-loc">Seminyak</div>
+        <div class="snap-src">IQAir · Private sensor</div>
+        <div class="snap-aqi">AQI 26</div>
+        <div class="snap-cat">Moderate</div>
+        <div class="snap-pm">PM2.5 dominant</div>
+      </div>
+      <div class="snap-card aqi-mod">
+        <div class="snap-loc">Badung Sempidi</div>
+        <div class="snap-src">AQICN · KLHK Government</div>
+        <div class="snap-aqi">AQI 44</div>
+        <div class="snap-cat">Moderate</div>
+        <div class="snap-pm">PM2.5: 29 µg/m³ · O3: 44</div>
+      </div>
+      <div class="snap-card aqi-good">
+        <div class="snap-loc">Jimbaran (South Bali)</div>
+        <div class="snap-src">PurpleAir · Community</div>
+        <div class="snap-aqi">AQI 3</div>
+        <div class="snap-cat">Good</div>
+        <div class="snap-pm">PM2.5: ~0.6 µg/m³ · 7-day avg: 0.9</div>
+      </div>
+      <div class="snap-card aqi-mod">
+        <div class="snap-loc">Klungkung (East Bali)</div>
+        <div class="snap-src">PurpleAir · Community</div>
+        <div class="snap-aqi">AQI 72</div>
+        <div class="snap-cat">Moderate</div>
+        <div class="snap-pm">PM2.5: ~22 µg/m³ · 7-day avg: 25.7</div>
+      </div>
+    </div>
+
+    <div class="callout-blue callout">
+      <strong>Key observation:</strong> The government's own active sensor at Badung Sempidi is currently reading PM2.5 of 29 µg/m³ — above the WHO 24-hour guideline of 25 µg/m³. IQAir private sensors across the Denpasar–Ubud corridor confirm AQI readings in the Moderate range. Meanwhile, coastal Jimbaran shows clean air, demonstrating that air quality varies significantly across the island. This reinforces the need for more localised monitoring.
+    </div>
+
+    <h3>PurpleAir 7-Day Trend — Klungkung (East Bali)</h3>
+    <p>The Klungkung sensor — located in East Bali, away from the main waste-affected areas — shows a consistent pattern of moderate baseline pollution with daily spikes reaching the "Unhealthy for Sensitive Groups" range. This pattern is similar to what the historical Kerobokan sensor recorded.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Daily Avg PM2.5</th><th>Daily Max</th><th>Daily Min</th><th>EPA Category</th></tr></thead>
+        <tbody>
+          <tr><td>Apr 7</td><td>22.3 µg/m³</td><td>64.8</td><td>5.0</td><td><span class="badge badge-yellow">Moderate</span></td></tr>
+          <tr><td>Apr 8</td><td>30.1 µg/m³</td><td>87.1</td><td>10.1</td><td><span class="badge badge-yellow">Moderate</span></td></tr>
+          <tr><td>Apr 9</td><td>33.1 µg/m³</td><td>84.7</td><td>7.6</td><td><span class="badge badge-yellow">Moderate</span></td></tr>
+          <tr><td>Apr 10</td><td>19.7 µg/m³</td><td>53.2</td><td>11.6</td><td><span class="badge badge-yellow">Moderate</span></td></tr>
+          <tr><td>Apr 11</td><td>25.1 µg/m³</td><td>51.9</td><td>13.4</td><td><span class="badge badge-yellow">Moderate</span></td></tr>
+          <tr><td>Apr 12</td><td>27.8 µg/m³</td><td>93.5</td><td>7.3</td><td><span class="badge badge-yellow">Moderate</span></td></tr>
+          <tr><td>Apr 13</td><td>21.9 µg/m³</td><td>56.8</td><td>8.1</td><td><span class="badge badge-yellow">Moderate</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><em>Note: Daily max spikes of 50–93 µg/m³ enter the "Unhealthy for Sensitive Groups" range and suggest intermittent pollution events even in areas away from the Denpasar waste corridor. Without more sensors, it is not possible to determine how widespread these events are.</em></p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- HISTORICAL DATA -->
+  <div class="section" id="historical">
+    <div class="section-label">Section 3</div>
+    <h2>Historical Data: 469 Days of Kerobokan PM2.5 Readings</h2>
+
+    <p>A GAIA community sensor in Kerobokan (near Canggu) recorded PM2.5 continuously from November 1, 2024 through March 15, 2026. The sensor used a GAIA A12 unit with three redundant dust sensors and automatic cross-validation, recording 900–1,200+ readings per day.</p>
+
+    <h3>Monthly Median Averages</h3>
+    <p>The monthly data shows variation across the recording period. Some months were within WHO guidelines; others were significantly above. This may reflect seasonal patterns — dry season (Apr–Oct) tends to show higher readings — but with data from only one location, we cannot determine this conclusively.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Month</th><th>Avg Daily Median</th><th>vs WHO Annual (15)</th><th>Category</th></tr></thead>
+        <tbody>
+          <tr><td>Nov 2024</td><td>32.7 µg/m³</td><td>2.2× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
+          <tr><td>Dec 2024</td><td>12.2 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
+          <tr><td>Jan 2025</td><td>17.4 µg/m³</td><td>1.2× above</td><td><span class="badge badge-yellow">Above WHO</span></td></tr>
+          <tr><td>Feb 2025</td><td>31.3 µg/m³</td><td>2.1× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
+          <tr><td>Mar 2025</td><td>24.3 µg/m³</td><td>1.6× above</td><td><span class="badge badge-yellow">Above WHO</span></td></tr>
+          <tr><td>Apr 2025</td><td>24.5 µg/m³</td><td>1.6× above</td><td><span class="badge badge-yellow">Above WHO</span></td></tr>
+          <tr><td>May 2025</td><td>31.9 µg/m³</td><td>2.1× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
+          <tr><td>Jun 2025</td><td>26.2 µg/m³</td><td>1.7× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
+          <tr><td>Jul 2025</td><td>25.3 µg/m³</td><td>1.7× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
+          <tr><td>Aug 2025</td><td>31.3 µg/m³</td><td>2.1× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
+          <tr><td>Sep 2025</td><td>25.1 µg/m³</td><td>1.7× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
+          <tr><td>Oct 2025</td><td>22.2 µg/m³</td><td>1.5× above</td><td><span class="badge badge-yellow">Above WHO</span></td></tr>
+          <tr><td>Nov 2025</td><td>9.3 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
+          <tr><td>Dec 2025</td><td>12.1 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
+          <tr><td>Jan 2026</td><td>14.0 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
+          <tr><td>Feb 2026</td><td>7.1 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
+          <tr><td>Mar 2026</td><td>10.1 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Denpasar Government Station — Comparison</h3>
+    <p>The Denpasar KLHK station recorded 548 days of data (September 2023 – August 2025) before going offline. Its readings were generally <strong>lower than Kerobokan</strong>, with an average daily median of 15.1 µg/m³ — right at the WHO annual guideline. Only 8.2% of days exceeded the WHO 24-hour guideline (25 µg/m³). The highest daily maximum was 89.2 µg/m³.</p>
+    <p>This suggests that central Denpasar experienced better air quality than Kerobokan during the overlapping period. However, the Denpasar station has been offline since August 2025 — meaning there is <strong>no government data for the most recent 8 months</strong>, including the period after the April 1 waste regulation change.</p>
 
     <div class="callout">
-      <strong>The reality:</strong> Without adequate composting infrastructure or collection alternatives, residents turned to burning waste and dumping it in rivers. Denpasar cleanup crews now remove approximately <strong>7 tons of waste from rivers daily</strong>, according to the city's Public Works and Spatial Planning Office (PUPR).
+      <strong>Why does this matter?</strong> The Denpasar station went offline while its last readings showed PM2.5 in the 60–89 µg/m³ range (classified "Unhealthy" by the US EPA). We cannot know whether conditions have improved or worsened since then, because there is no data.
     </div>
 
-    <p>Waste burning — especially of mixed waste containing plastics — releases toxic particulate matter, dioxins, furans, and other carcinogens into the air. Standard PM2.5 sensors only capture one dimension of this health risk; the actual exposure is likely worse than the numbers suggest.</p>
-
-    <div class="sources">
-      <div class="source">
-        <div class="src-title">Bali's Organic Waste Ban Backfires: Trash Burning Rises, Rivers Fill With 7 Tons of Daily Waste</div>
-        <div class="src-pub">Hey Bali News</div>
-        <div class="src-url"><a href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" target="_blank">heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/</a></div>
-      </div>
-      <div class="source">
-        <div class="src-title">No Sorting, No Collection: How Bali's Waste Collection Rules Changed From 1 April</div>
-        <div class="src-pub">Bali.live</div>
-        <div class="src-url"><a href="https://bali.live/p/no-sorting-no-collection-how-balis-waste-collection-rules-changed-from-1-april" target="_blank">bali.live/p/no-sorting-no-collection-how-balis-waste-collection-rules-changed-from-1-april</a></div>
-      </div>
-    </div>
+    <h3>About the Spike Readings</h3>
+    <p>The Kerobokan sensor occasionally recorded extreme maximum readings — up to the sensor's saturation limit of 4,999 µg/m³. These represent <strong>brief, intense events</strong> (likely nearby burning) within otherwise moderate days. On the day of the highest spike (March 1, 2026), the daily median was only 11.7 µg/m³. While these spikes pose real health risks to anyone nearby during the event, they are not representative of sustained daily exposure. Without additional sensors nearby, it is not possible to determine how far these plumes travel.</p>
   </div>
 
   <hr class="divider">
 
-  <!-- ── DATA ── -->
-  <div class="section" id="data">
-    <div class="section-label">Section 3</div>
-    <h2>The Data: What the Sensors Recorded Before Going Dark</h2>
-
-    <h3>Sensor 1: Kerobokan/Canggu Independent Sensor (GAIA Network)</h3>
-    <p>An independent community air quality sensor operated by the GAIA real-time air quality monitoring network was installed in Kerobokan (near Canggu), North Kuta, Badung Regency. It recorded continuously from <strong>November 1, 2024 through March 15, 2026</strong> — 469 days of data. The station page currently shows "no recent data."</p>
-
-    <div class="sources">
-      <div class="source">
-        <div class="src-title">Kerobokan-Umalas-Fusion Station (currently offline)</div>
-        <div class="src-pub">AQICN · GAIA Network</div>
-        <div class="src-url"><a href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank">aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/</a></div>
-      </div>
-    </div>
-
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Metric</th><th>Value</th><th>Context</th></tr></thead>
-        <tbody>
-          <tr><td class="td-key">Days exceeding WHO annual guideline (15 µg/m³)</td><td><span class="badge badge-red">320 / 469 (68%)</span></td><td>WHO guideline represents the level above which long-term health effects increase significantly</td></tr>
-          <tr><td class="td-key">Days with spikes into "Very Unhealthy" range (&gt;150 µg/m³)</td><td><span class="badge badge-orange">251 / 469 (54%)</span></td><td>US EPA category where everyone may experience health effects</td></tr>
-          <tr><td class="td-key">Days with spikes into "Hazardous" range (&gt;250 µg/m³)</td><td><span class="badge badge-purple">107 / 469 (23%)</span></td><td>Worst US EPA category — health warnings of emergency conditions</td></tr>
-          <tr><td class="td-key">Highest single reading</td><td><span class="badge badge-red">4,999 µg/m³</span></td><td>Sensor maximum — over 300× the WHO guideline. Actual value may have been higher</td></tr>
-          <tr><td class="td-key">Average daily median PM2.5</td><td>21.9 µg/m³</td><td>1.5× the WHO annual guideline of 15 µg/m³</td></tr>
-          <tr><td class="td-key">Last recording date</td><td><span class="badge badge-yellow">March 15, 2026</span></td><td>Two weeks before the April 1 regulation change</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <p><em>Data reliability note: This was not a malfunctioning sensor. It recorded 900–1,200+ valid readings per day with coherent statistical patterns. The spike pattern — low minimums between events, extreme maximums during events — is consistent with intermittent burning producing brief but severe pollution peaks. The GAIA A12 sensor uses three redundant dust sensors with automatic cross-validation.</em></p>
-
-    <h3>Sensor 2: Denpasar Government Station (KLHK / Ministry of Environment)</h3>
-    <p>The Indonesian Ministry of Environment and Forestry (KLHK) operated an official air quality monitoring station at Graha Sewaka Dharma, Lumintang, Denpasar. It recorded from September 2023 through <strong>August 9, 2025</strong> — then stopped.</p>
-
-    <div class="sources">
-      <div class="source">
-        <div class="src-title">Denpasar Lumintang Station (currently offline)</div>
-        <div class="src-pub">AQICN · KLHK / Indonesian Ministry of Environment</div>
-        <div class="src-url"><a href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" target="_blank">aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/</a></div>
-      </div>
-    </div>
-
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Finding</th><th>Detail</th></tr></thead>
-        <tbody>
-          <tr><td class="td-key">Recording period</td><td>September 2023 – August 9, 2025</td></tr>
-          <tr><td class="td-key">Final readings</td><td>PM2.5 of 60–89 µg/m³ — classified "Unhealthy" by US EPA</td></tr>
-          <tr><td class="td-key">Status on KLHK portal</td><td>Shows "Sedang dalam perawatan" (under maintenance)</td></tr>
-          <tr><td class="td-key">Station list status</td><td><span class="badge badge-red">REMOVED</span> — no longer appears in KLHK station list at ispu.menlhk.go.id</td></tr>
-          <tr><td class="td-key">Offline duration</td><td>Over 8 months with no public timeline for restoration</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <hr class="divider">
-
-  <!-- ── CHART ── -->
+  <!-- CHART -->
   <div class="section" id="chart-section">
     <div class="section-label">Section 4</div>
-    <h2>16 Months of Data — Visualised</h2>
-    <p>The chart below shows every day of recorded data from the Kerobokan sensor. The colored background bands show US EPA air quality categories. The blue line is the daily median reading; the red line shows the daily maximum spike. Hover for exact values.</p>
+    <h2>469 Days of Data — Visualised</h2>
+    <p>The chart below shows every day of recorded data from the Kerobokan sensor. The blue line shows the daily median; the red line shows the daily maximum spike. Hover for exact values. Background colour bands show US EPA air quality categories.</p>
 
     <div class="chart-card">
-      <div class="chart-hd">Daily PM2.5 Concentration — Kerobokan Sensor (GAIA Network), North Kuta, Badung, Bali</div>
-      <div class="chart-sub">Hover for exact readings · Y-axis capped at 350 µg/m³; actual maximum spikes reached 4,999 µg/m³ (sensor maximum)</div>
+      <div class="chart-hd">Daily PM2.5 — Kerobokan Sensor (GAIA Network), North Kuta, Badung, Bali</div>
+      <div class="chart-sub">Hover for readings · Y-axis capped at 350 µg/m³; actual max spikes reached sensor saturation (4,999 µg/m³)</div>
       <canvas id="chart" height="380"></canvas>
       <div class="chart-leg">
         <div class="li"><div class="sw line" style="background:#60a5fa"></div>Daily median PM2.5</div>
@@ -319,732 +349,245 @@ tbody tr:hover td{background:rgba(255,255,255,0.02)}
 
   <hr class="divider">
 
-  <!-- ── MONITORING ── -->
-  <div class="section" id="monitoring">
+  <!-- REGULATION -->
+  <div class="section" id="regulation">
     <div class="section-label">Section 5</div>
-    <h2>What Monitoring Exists Today</h2>
-    <p>As of April 13, 2026, a comprehensive audit of all publicly accessible air quality monitoring platforms reveals severe gaps across Bali:</p>
-
-    <div class="callout">
-      <strong>Ubud</strong> — a town of approximately 75,000 residents and a major international tourist destination — has <strong>exactly one air quality sensor</strong>, operated by the private company Nafas. There is no government monitoring, no independent monitoring, and no redundancy.<br><br>
-      <strong>Kuta, Denpasar, and Canggu</strong> — Bali's most densely populated areas and the areas most affected by waste burning — have <strong>no functioning independent air quality sensors</strong>.
-    </div>
-
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Source</th><th>Stations in Bali</th><th>Ubud coverage</th><th>Type</th></tr></thead>
-        <tbody>
-          <tr>
-            <td class="td-key"><a href="https://nafas.id" target="_blank" style="color:var(--accent-blue)">Nafas</a></td>
-            <td>4</td>
-            <td><span class="badge badge-yellow">1 near Ubud</span></td>
-            <td>Private — sensors planted by Nafas and DBS Indonesia Bank</td>
-          </tr>
-          <tr>
-            <td class="td-key"><a href="https://www.iqair.com/indonesia/bali" target="_blank" style="color:var(--accent-blue)">IQAir</a></td>
-            <td>~10</td>
-            <td><span class="badge badge-red">None</span></td>
-            <td>Private citizens and businesses with personal sensors</td>
-          </tr>
-          <tr>
-            <td class="td-key"><a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank" style="color:var(--accent-blue)">PurpleAir</a></td>
-            <td>2</td>
-            <td><span class="badge badge-red">None</span></td>
-            <td>1 active (Klungkung), 1 inactive (Jimbaran)</td>
-          </tr>
-          <tr>
-            <td class="td-key"><a href="https://aqicn.org" target="_blank" style="color:var(--accent-blue)">AQICN / GAIA</a></td>
-            <td>1 active</td>
-            <td><span class="badge badge-red">None</span></td>
-            <td>Badung Sempidi active (AQI 44); Kerobokan and Denpasar both <span class="badge badge-red">OFFLINE</span></td>
-          </tr>
-          <tr>
-            <td class="td-key"><a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank" style="color:var(--accent-blue)">KLHK (Government)</a></td>
-            <td>1 listed</td>
-            <td><span class="badge badge-red">None</span></td>
-            <td>Kabupaten Badung listed; Denpasar station <span class="badge badge-red">REMOVED</span> from portal</td>
-          </tr>
-          <tr>
-            <td class="td-key"><a href="https://sensor.community" target="_blank" style="color:var(--accent-blue)">Sensor.Community</a></td>
-            <td>0</td>
-            <td><span class="badge badge-red">None</span></td>
-            <td>No coverage in Bali</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Known Stations — Full Registry</h3>
-    <p>All known IQAir contributor stations currently active in Bali:</p>
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Station</th><th>Location</th><th>Operator</th><th>Link</th></tr></thead>
-        <tbody>
-          <tr><td>Villa Solaris</td><td>Nusa Dua</td><td>Private citizen</td><td><a href="https://www.iqair.com/indonesia/bali/nusa-dua/villa-solaris" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>Jimbaran S</td><td>Jimbaran</td><td>Private citizen</td><td><a href="https://www.iqair.com/indonesia/bali/jimbaran/jimbaran-s" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>Sidakarya</td><td>Denpasar</td><td>Private citizen</td><td><a href="https://www.iqair.com/indonesia/bali/denpasar/sidakarya" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>Imbo Inda Regency</td><td>Badung</td><td>Private citizen</td><td><a href="https://www.iqair.com/indonesia/bali/badung/imbo-inda-regency" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>Lycée Français de Bali</td><td>Badung</td><td>French school</td><td><a href="https://www.iqair.com/indonesia/bali/badung/lycee-francais-de-bali" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>Rock n Love 3</td><td>Badung</td><td>Private citizen</td><td><a href="https://www.iqair.com/indonesia/bali/badung/rock-n-love-3" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>Bali Umalas Villa Fusion</td><td>Denpasar</td><td>Intalenta.id</td><td><a href="https://www.iqair.com/indonesia/bali/denpasar/bali-umalas-villa-fusion" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>Kabupaten Badung Sempidi</td><td>Badung</td><td>KLHK Government</td><td><a href="https://www.iqair.com/indonesia/bali/badung/kabupaten-badung-sempidi" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>GG Merdeka</td><td>Sukasada (North Bali)</td><td>Private citizen</td><td><a href="https://www.iqair.com/indonesia/bali/sukasada/gg-merdeka" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-          <tr><td>Plataran Menjangan Resort</td><td>Buleleng (NW Bali)</td><td>Resort</td><td><a href="https://www.iqair.com/indonesia/bali/buleleng/plataran-menjangan-resort-spa" target="_blank" style="color:var(--accent-blue)">IQAir</a></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <hr class="divider">
-
-  <!-- ── SYSTEMIC PROBLEM ── -->
-  <div class="section">
-    <div class="section-label">Section 6</div>
-    <h2>The Systemic Problem: Indonesia's Neglected Monitoring Infrastructure</h2>
-    <p>This is not only a Bali problem. In August 2024, Riau Online reported that air quality monitoring equipment in Pekanbaru, Riau Province, had been broken for years — with equipment failing progressively since 2016 and only one of three stations still operational.</p>
-    <p>Indonesia's national AQMS network has historically struggled with maintenance and calibration across its roughly 39 stations. The result is that when environmental crises occur, the infrastructure to measure their impact often does not exist.</p>
+    <h2>The April 1 Regulation Change</h2>
+    <p>On April 1, 2026, Denpasar authorities banned organic waste from the Suwung landfill — Bali's largest waste processing site — as part of a plan to close it by August 2026. The regulation's <strong>stated goal is a legitimate environmental objective</strong>: pushing households toward waste separation and reducing landfill dependency.</p>
+    <p>However, reports indicate that implementation has outpaced infrastructure. Without adequate composting facilities or collection alternatives in place, some residents have reportedly turned to burning waste or dumping it in waterways. Denpasar cleanup crews were reportedly removing approximately 7 tons of waste from rivers daily, according to the city's Public Works office (PUPR).</p>
+    <p>Waste burning — especially of mixed waste containing plastics — releases fine particulate matter, dioxins, furans, and other harmful compounds. <strong>The concern is not the regulation's intent, but whether adequate monitoring and infrastructure exist to manage the transition safely.</strong></p>
 
     <div class="sources">
       <div class="source">
-        <div class="src-title">Alat Pengukur Kualitas Udara di Kota Pekanbaru Rusak Bertahun-tahun (Air quality measurement equipment in Pekanbaru broken for years)</div>
-        <div class="src-pub">Riau Online · August 5, 2024</div>
-        <div class="src-url"><a href="https://www.riauonline.co.id/riau/read/2024/08/05/alat-pengukur-kualitas-udara-di-kota-pekanbaru-rusak-bertahun-tahun" target="_blank">riauonline.co.id/riau/read/2024/08/05/alat-pengukur-kualitas-udara-di-kota-pekanbaru-rusak-bertahun-tahun</a></div>
+        <div class="src-title">Bali's Organic Waste Ban Backfires: Trash Burning Rises, Rivers Fill With 7 Tons of Daily Waste</div>
+        <div class="src-pub">Hey Bali News</div>
+        <div class="src-url"><a href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" target="_blank">heybali.info →</a></div>
+      </div>
+      <div class="source">
+        <div class="src-title">No Sorting, No Collection: How Bali's Waste Collection Rules Changed From 1 April</div>
+        <div class="src-pub">Bali.live</div>
+        <div class="src-url"><a href="https://bali.live/p/no-sorting-no-collection-how-balis-waste-collection-rules-changed-from-1-april" target="_blank">bali.live →</a></div>
       </div>
     </div>
   </div>
 
   <hr class="divider">
 
-  <!-- ── HEALTH ── -->
-  <div class="section" id="health">
-    <div class="section-label">Section 7</div>
-    <h2>Understanding PM2.5: Why This Matters for Health</h2>
-    <p>PM2.5 refers to fine particulate matter smaller than 2.5 micrometers — small enough to penetrate deep into the lungs and enter the bloodstream. Long-term exposure is linked to respiratory disease, cardiovascular disease, lung cancer, and premature death. Short-term exposure to high concentrations causes immediate respiratory distress, especially in children, elderly people, and those with pre-existing conditions.</p>
-    <p><strong>When waste containing plastics is burned, the smoke contains not just PM2.5 but also dioxins, furans, hydrogen chloride, and other toxic compounds that standard PM sensors do not measure. The actual health risk from waste burning smoke is likely higher than PM2.5 numbers alone suggest.</strong></p>
+  <!-- MONITORING -->
+  <div class="section" id="monitoring">
+    <div class="section-label">Section 6</div>
+    <h2>Bali's Monitoring Infrastructure</h2>
+    <p>An audit of all publicly accessible air quality platforms (conducted April 13, 2026) reveals significant monitoring gaps:</p>
 
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Standard</th><th>PM2.5 Level</th><th>Classification</th></tr></thead>
+        <thead><tr><th>Source</th><th>Bali Stations</th><th>Type</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td class="td-key">WHO Annual Guideline</td><td>15 µg/m³</td><td>Level for long-term health protection</td></tr>
-          <tr><td class="td-key">WHO 24-hour Guideline</td><td>25 µg/m³</td><td>Safe daily exposure limit</td></tr>
-          <tr><td class="td-key">US EPA "Good"</td><td>0–12 µg/m³</td><td><span class="badge badge-green">Good</span> Satisfactory air quality</td></tr>
-          <tr><td class="td-key">US EPA "Moderate"</td><td>12.1–35.4 µg/m³</td><td><span class="badge badge-yellow">Moderate</span> Acceptable; moderate concern for sensitive people</td></tr>
-          <tr><td class="td-key">US EPA "Unhealthy for Sensitive Groups"</td><td>35.5–55.4 µg/m³</td><td><span class="badge badge-orange">USG</span> Children, elderly, and people with respiratory conditions at risk</td></tr>
-          <tr><td class="td-key">US EPA "Unhealthy"</td><td>55.5–150.4 µg/m³</td><td><span class="badge badge-orange">Unhealthy</span> Everyone may begin to experience health effects</td></tr>
-          <tr><td class="td-key">US EPA "Very Unhealthy"</td><td>150.5–250.4 µg/m³</td><td><span class="badge badge-red">Very Unhealthy</span> Health alert — everyone at serious risk</td></tr>
-          <tr><td class="td-key">US EPA "Hazardous"</td><td>250.5+ µg/m³</td><td><span class="badge badge-purple">Hazardous</span> Health warning of emergency conditions</td></tr>
+          <tr><td class="td-key"><a href="https://ispu.menlhk.go.id/webv5/#/" target="_blank" style="color:var(--blue)">KLHK (Gov)</a></td><td>1 listed (Badung Sempidi)</td><td>Government</td><td><span class="badge badge-yellow">Active — O3 only listed</span></td></tr>
+          <tr><td class="td-key"><a href="https://nafas.com/id-en" target="_blank" style="color:var(--blue)">Nafas</a></td><td>4 (Ubud, Denpasar, Sanur, Pemogan)</td><td>Private (DBS Indonesia)</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td class="td-key"><a href="https://www.iqair.com/id/air-quality-map" target="_blank" style="color:var(--blue)">IQAir</a></td><td>~10 private contributors</td><td>Private citizens/businesses</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td class="td-key"><a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank" style="color:var(--blue)">PurpleAir</a></td><td>2 (Jimbaran, Klungkung)</td><td>Community sensors</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td class="td-key"><a href="https://aqicn.org/map/indonesia/bali/" target="_blank" style="color:var(--blue)">AQICN/GAIA</a></td><td>1 active (Sempidi)</td><td>Government + community</td><td>Kerobokan: <span class="badge badge-red">Offline Mar 15</span><br>Denpasar: <span class="badge badge-red">Offline Aug 2025</span></td></tr>
+          <tr><td class="td-key"><a href="https://sensor.community" target="_blank" style="color:var(--blue)">Sensor.Community</a></td><td>0</td><td>Open source community</td><td><span class="badge badge-gray">No coverage</span></td></tr>
         </tbody>
       </table>
     </div>
+
+    <div class="callout-green callout">
+      <strong>What IS working:</strong> Nafas provides Bali's best current coverage with 4 active stations including one near Ubud. The mobile app offers push notifications for air quality alerts. IQAir aggregates multiple private sensors. Both Nafas and IQAir data confirm that current readings are in the Moderate range for populated areas. The Badung Sempidi government station continues to report data.
+    </div>
+
+    <h3>What's Missing</h3>
+    <p>The Denpasar government station (KLHK, located at Graha Sewaka Dharma, Lumintang) went offline on <strong>August 9, 2025</strong>. It is listed on the KLHK portal as "Sedang dalam perawatan" (under maintenance). However, a search of the KLHK station list at <a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank" style="color:var(--blue)">ispu.menlhk.go.id</a> returns no results for "Denpasar," "Bali," or "Gianyar" — only Kabupaten Badung is listed. This was independently verified on April 13, 2026.</p>
+    <p>The Kerobokan community sensor (GAIA network) stopped recording on March 15, 2026. As a privately owned community device, it may have simply failed or been taken offline by its operator. The reason for the outage is unknown.</p>
   </div>
 
   <hr class="divider">
 
-  <!-- ── VERIFY ── -->
-  <div class="section" id="verify">
-    <div class="section-label">Section 8</div>
-    <h2>What Can Be Verified Independently</h2>
-    <p>All claims in this document can be verified using publicly accessible sources:</p>
+  <!-- WHAT'S NEEDED -->
+  <div class="section" id="action">
+    <div class="section-label">Section 7</div>
+    <h2>What's Needed: A Case for Better Monitoring</h2>
+    <p>This is not a document claiming a cover-up. Sensor failures can be mundane — equipment breaks, maintenance budgets run out, private operators move on. The systemic issue is that <strong>Bali does not have adequate air quality monitoring infrastructure</strong> for an island of its size and importance.</p>
 
-    <ul class="verify-list">
-      <li>
-        <strong>Kerobokan sensor historical data</strong>
-        Download raw data directly from the station page (data download tool available)<br>
-        <a href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank">aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/</a>
-      </li>
-      <li>
-        <strong>Denpasar government sensor historical data</strong>
-        Download raw data directly from the station page<br>
-        <a href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" target="_blank">aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/</a>
-      </li>
-      <li>
-        <strong>KLHK station list (Denpasar absent)</strong>
-        Visit and note that only Kabupaten Badung is listed for the Bali region — Denpasar is gone<br>
-        <a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank">ispu.menlhk.go.id/webv5/#/stasiun</a>
-      </li>
-      <li>
-        <strong>IQAir Ubud (0 stations confirmed)</strong>
-        Search confirms no IQAir-connected sensors in Ubud<br>
-        <a href="https://www.iqair.com/indonesia/bali/ubud" target="_blank">iqair.com/indonesia/bali/ubud</a>
-      </li>
-      <li>
-        <strong>PurpleAir Bali map</strong>
-        Shows only 2 sensors in all of Bali<br>
-        <a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank">map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali</a>
-      </li>
-      <li>
-        <strong>Nafas Bali coverage</strong>
-        4 stations: Ubud, Living World Denpasar, Sanur, Pemogan<br>
-        <a href="https://nafas.id" target="_blank">nafas.id</a>
-      </li>
-      <li>
-        <strong>Waste regulation news — Hey Bali News</strong>
-        Reports 7 tons of daily waste in rivers after ban<br>
-        <a href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" target="_blank">heybali.info/news/balis-organic-waste-ban-backfires…</a>
-      </li>
-      <li>
-        <strong>Waste regulation news — Bali.live</strong>
-        Details the April 1 collection rule changes<br>
-        <a href="https://bali.live/p/no-sorting-no-collection-how-balis-waste-collection-rules-changed-from-1-april" target="_blank">bali.live/p/no-sorting-no-collection…</a>
-      </li>
-      <li>
-        <strong>Pekanbaru monitoring neglect (Indonesia-wide pattern)</strong>
-        Documents systemic monitoring infrastructure failure<br>
-        <a href="https://www.riauonline.co.id/riau/read/2024/08/05/alat-pengukur-kualitas-udara-di-kota-pekanbaru-rusak-bertahun-tahun" target="_blank">riauonline.co.id/riau/read/2024/08/05/alat-pengukur…</a>
-      </li>
-    </ul>
-  </div>
+    <h3>The Gap in Context</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Comparison</th><th>Government AQ Stations</th><th>Population</th><th>Stations per million</th></tr></thead>
+        <tbody>
+          <tr><td class="td-key">Bali (current)</td><td>1</td><td>4.4 million</td><td>0.2</td></tr>
+          <tr><td class="td-key">Singapore</td><td>18</td><td>5.9 million</td><td>3.1</td></tr>
+          <tr><td class="td-key">Bangkok (Thailand)</td><td>~70</td><td>10.7 million</td><td>6.5</td></tr>
+          <tr><td class="td-key">London (UK)</td><td>100+</td><td>9.0 million</td><td>11+</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-  <hr class="divider">
-
-  <!-- ── QUESTIONS ── -->
-  <div class="section" id="questions">
-    <div class="section-label">Section 9</div>
-    <h2>Questions That Need Answers</h2>
-
+    <h3>What Would Help</h3>
     <ol class="questions">
-      <li>Why has the KLHK Denpasar air quality station been offline for over 8 months, and why has it been <strong>removed from the national station list</strong> rather than marked as under maintenance?</li>
-      <li>Why does the only independent sensor in the Kerobokan/Canggu area stop recording <strong>two weeks before</strong> a regulation that experts warned would increase burning — and who owns and operates this sensor?</li>
-      <li>Who is responsible for maintaining air quality monitoring in Bali, and <strong>what is the budget</strong> for this? What happened to funding?</li>
-      <li>Given 16 months of data showing dangerous air quality levels, <strong>what health warnings were issued</strong> to residents and tourists during this period?</li>
-      <li>What is the <strong>actual air quality in Bali right now</strong> — particularly in Ubud, Kuta, Denpasar, and Canggu — and why is there no way for the public to know?</li>
-      <li>What are the <strong>health impacts on Bali's approximately 4.4 million residents</strong>, particularly children and elderly people, from prolonged exposure to waste burning smoke?</li>
+      <li><strong>Restore the Denpasar government station</strong> — it recorded valuable data for nearly two years before going offline. Repairing or replacing one air quality sensor is not a major infrastructure investment.</li>
+      <li><strong>Deploy community sensors in monitoring gaps</strong> — open-source sensors like AirGradient ($195) or PurpleAir ($229) can fill gaps immediately. A network of 5–10 sensors across Bali's populated areas would transform visibility.</li>
+      <li><strong>Publish data openly</strong> — whatever monitoring exists should feed into open platforms (AQICN, OpenAQ, PurpleAir) where the public and researchers can access it.</li>
+      <li><strong>Monitor the waste regulation transition</strong> — as Bali moves away from the Suwung landfill, real-time air quality data is essential to identify and respond to burning hotspots.</li>
     </ol>
   </div>
 
   <hr class="divider">
 
-  <!-- ── CHECK AIR NOW ── -->
+  <!-- HEALTH STANDARDS -->
+  <div class="section" id="health">
+    <div class="section-label">Section 8</div>
+    <h2>Understanding PM2.5</h2>
+    <p>PM2.5 refers to fine particulate matter smaller than 2.5 micrometers — small enough to penetrate deep into the lungs and enter the bloodstream. Long-term exposure is linked to respiratory and cardiovascular disease. When waste containing plastics is burned, the smoke contains additional toxic compounds (dioxins, furans) that standard PM sensors do not measure.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Standard</th><th>PM2.5 Level</th><th>Classification</th></tr></thead>
+        <tbody>
+          <tr><td class="td-key">WHO Annual Guideline</td><td>15 µg/m³</td><td><span class="badge badge-green">Long-term target</span></td></tr>
+          <tr><td class="td-key">WHO 24-hour Guideline</td><td>25 µg/m³</td><td><span class="badge badge-green">Safe daily limit</span></td></tr>
+          <tr><td class="td-key">US EPA "Good"</td><td>0–12 µg/m³</td><td><span class="badge badge-green">Satisfactory</span></td></tr>
+          <tr><td class="td-key">US EPA "Moderate"</td><td>12.1–35.4 µg/m³</td><td><span class="badge badge-yellow">Acceptable; concern for sensitive groups</span></td></tr>
+          <tr><td class="td-key">US EPA "Unhealthy Sensitive"</td><td>35.5–55.4 µg/m³</td><td><span class="badge badge-orange">At-risk groups affected</span></td></tr>
+          <tr><td class="td-key">US EPA "Unhealthy"</td><td>55.5–150.4 µg/m³</td><td><span class="badge badge-orange">Everyone may be affected</span></td></tr>
+          <tr><td class="td-key">US EPA "Very Unhealthy"</td><td>150.5–250.4 µg/m³</td><td><span class="badge badge-red">Health alert</span></td></tr>
+          <tr><td class="td-key">US EPA "Hazardous"</td><td>250.5+ µg/m³</td><td><span class="badge badge-purple">Emergency conditions</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- VERIFY -->
+  <div class="section" id="verify">
+    <div class="section-label">Section 9</div>
+    <h2>Verify Everything Independently</h2>
+    <p>All data in this document comes from publicly accessible sources. We encourage independent verification:</p>
+
+    <ul class="verify-list">
+      <li><strong>Kerobokan sensor historical data (download raw CSV)</strong><br><a href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank">aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/</a></li>
+      <li><strong>Denpasar government sensor historical data</strong><br><a href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" target="_blank">aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/</a></li>
+      <li><strong>KLHK station list (search for Bali/Denpasar)</strong><br><a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank">ispu.menlhk.go.id/webv5/#/stasiun</a></li>
+      <li><strong>IQAir live readings — Bali</strong><br><a href="https://www.iqair.com/id/air-quality-map" target="_blank">iqair.com/id/air-quality-map</a></li>
+      <li><strong>PurpleAir Bali sensors (live map)</strong><br><a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank">map.purpleair.com — Bali</a></li>
+      <li><strong>Nafas Indonesia (mobile app recommended)</strong><br><a href="https://nafas.com/id-en" target="_blank">nafas.com/id-en</a></li>
+      <li><strong>Waste regulation reporting — Hey Bali News</strong><br><a href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" target="_blank">heybali.info →</a></li>
+    </ul>
+  </div>
+
+  <hr class="divider">
+
+  <!-- CHECK AIR NOW -->
   <div class="section" id="check-now">
     <div class="section-label">Section 10</div>
-    <h2>Check Bali's Air Quality Right Now</h2>
-    <p>Despite the gaps, some monitoring data is still available. Here are the best live sources, ranked by usefulness for Bali residents:</p>
+    <h2>Check Bali's Air Quality Now</h2>
 
     <div style="display:flex;flex-direction:column;gap:14px;margin:20px 0">
-
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative">
         <div style="position:absolute;top:14px;right:16px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.25);padding:2px 8px;border-radius:10px">Recommended</div>
         <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">1. IQAir — Global Air Quality Map</div>
         <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Most comprehensive global view · ~10 Bali stations · Real-time + forecast</div>
-        <p style="font-size:13px;margin-bottom:10px">The most complete overview available. Shows real-time readings from government stations, IQAir-connected private sensors, and validated data from other networks. Includes AQI forecast and health recommendations.</p>
-        <a href="https://www.iqair.com/id/air-quality-map" target="_blank" style="color:var(--accent-blue);font-size:13px;font-weight:600;text-decoration:none">→ iqair.com/id/air-quality-map</a>
+        <a href="https://www.iqair.com/id/air-quality-map" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ iqair.com/id/air-quality-map</a>
       </div>
-
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px">
         <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">2. Nafas — Indonesia Air Quality App</div>
         <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Best Indonesia-specific data · 4 Bali stations including Ubud · Mobile app recommended</div>
-        <p style="font-size:13px;margin-bottom:10px">Indonesian-focused platform with the best local sensor network. The <strong style="color:var(--text)">mobile app</strong> is significantly better than the website — includes push notifications for air quality alerts, hourly data, and health guidance in Bahasa and English. Has the only sensor near Ubud.</p>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <a href="https://nafas.com/id-en" target="_blank" style="color:var(--accent-blue);font-size:13px;font-weight:600;text-decoration:none">→ nafas.com/id-en (website)</a>
-          <a href="https://apps.apple.com/app/nafas-indonesia/id1573622997" target="_blank" style="color:var(--accent-green);font-size:13px;font-weight:600;text-decoration:none">→ iOS App</a>
-          <a href="https://play.google.com/store/apps/details?id=com.nafas" target="_blank" style="color:var(--accent-green);font-size:13px;font-weight:600;text-decoration:none">→ Android App</a>
+          <a href="https://nafas.com/id-en" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ Website</a>
+          <a href="https://apps.apple.com/app/nafas-indonesia/id1573622997" target="_blank" style="color:var(--green);font-size:13px;font-weight:600;text-decoration:none">→ iOS App</a>
+          <a href="https://play.google.com/store/apps/details?id=com.nafas" target="_blank" style="color:var(--green);font-size:13px;font-weight:600;text-decoration:none">→ Android App</a>
         </div>
       </div>
-
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px">
-        <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">3. AQICN / GAIA Network</div>
-        <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Historical data available · Currently limited active coverage in Bali</div>
-        <p style="font-size:13px;margin-bottom:10px">Global network that provided the historical data in this report. Badung Sempidi station is still active. Kerobokan and Denpasar stations are offline. Valuable for downloading historical CSV data where available.</p>
-        <a href="https://aqicn.org/map/indonesia/bali/" target="_blank" style="color:var(--accent-blue);font-size:13px;font-weight:600;text-decoration:none">→ aqicn.org/map/indonesia/bali/</a>
+        <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">3. PurpleAir · AQICN · KLHK</div>
+        <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Community sensors, global network, and Indonesian government data</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ PurpleAir Bali</a>
+          <a href="https://aqicn.org/map/indonesia/bali/" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ AQICN Bali</a>
+          <a href="https://ispu.menlhk.go.id/webv5/#/" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ KLHK ISPU</a>
+        </div>
       </div>
-
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px">
-        <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">4. PurpleAir — Community Sensor Map</div>
-        <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Best hardware/UI ecosystem · Only 2 sensors in Bali currently</div>
-        <p style="font-size:13px;margin-bottom:10px">Industry-leading sensor hardware and beautiful real-time map interface. Open API and data. Currently minimal Bali coverage (1 active in Klungkung, 1 inactive in Jimbaran) — but this is the platform to watch if community sensors are deployed.</p>
-        <a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank" style="color:var(--accent-blue);font-size:13px;font-weight:600;text-decoration:none">→ map.purpleair.com — Bali</a>
-      </div>
-
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px">
-        <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">5. KLHK ISPU — Indonesian Government Portal</div>
-        <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Official government data · No historical data available · Limited Bali coverage</div>
-        <p style="font-size:13px;margin-bottom:10px">Indonesia's official Air Quality Index (ISPU) portal operated by the Ministry of Environment and Forestry. Shows current readings from government stations. No historical data export. Note: the Denpasar station has been removed from this portal.</p>
-        <a href="https://ispu.menlhk.go.id/webv5/#/" target="_blank" style="color:var(--accent-blue);font-size:13px;font-weight:600;text-decoration:none">→ ispu.menlhk.go.id</a>
-      </div>
-
     </div>
 
-    <div class="callout" style="background:rgba(96,165,250,0.06);border-color:rgba(96,165,250,0.2);color:#93c5fd">
-      <strong style="color:var(--accent-blue)">Protect yourself now:</strong> Download the <strong>Nafas app</strong> for push alerts. If you see PM2.5 above 35 µg/m³, keep windows closed and run an air purifier if you have one. Above 55 µg/m³, avoid outdoor exercise. Above 150 µg/m³, stay indoors. Children and elderly should take extra precautions at all levels above 35.
+    <div class="callout-blue callout">
+      <strong>Protect yourself:</strong> Download the <strong>Nafas app</strong> for push alerts. Above 35 µg/m³, keep windows closed and use a purifier if available. Above 55 µg/m³, avoid outdoor exercise. Children, elderly, and people with respiratory conditions should take extra precautions.
     </div>
   </div>
 
-  <!-- ── FOOTER ── -->
+  <!-- FOOTER -->
   <div class="doc-footer">
-    This brief was compiled from publicly available data sources by a concerned Bali resident. All claims can be independently verified using the links provided. Raw sensor data files are available on request for independent analysis.
+    This brief was compiled from publicly available data by concerned Bali residents advocating for better air quality monitoring. All claims can be independently verified using the links provided.
     <br><br>
-    <strong style="color:var(--muted)">Data source:</strong> GAIA A12 sensor, AQICN network · Station: Kerobokan-Umalas-Fusion, North Kuta, Badung Regency, Bali · 469 days · 900–1,200+ readings/day
-    <br><strong style="color:var(--muted)">Prepared:</strong> April 13, 2026
+    <strong style="color:var(--muted)">Data sources:</strong> AQICN/GAIA network, PurpleAir API, IQAir, KLHK ISPU portal · Historical sensor: Kerobokan-Umalas-Fusion, North Kuta, Badung Regency · 469 days, 900–1,200+ readings/day
+    <br><strong style="color:var(--muted)">Live snapshot verified:</strong> April 13, 2026 from publicly accessible platforms
+    <br><strong style="color:var(--muted)">Last updated:</strong> April 14, 2026
     <br><br>
-    <em>If you are a journalist investigating air quality in Southeast Asia, waste management policy failures, or public health monitoring gaps — this document and its underlying data are freely available for reporting purposes.</em>
+    <em>This page contains no tracking, no cookies, and no analytics. It is a static document hosted for public information purposes.</em>
   </div>
 
-</div><!-- end .page -->
+</div>
 
-<!-- ══════════════════════════════════════════════════════════ CHART JS -->
+<!-- CHART JS -->
 <script>
-const CAP = 350;
-const RAW = [{"t": "2024-11-01", "min": 4.55, "max": 66.2, "med": 25.85, "q1": 18.44, "q3": 36.68}, {"t": "2024-11-02", "min": 4.28, "max": 59.95, "med": 30.97, "q1": 20.51, "q3": 39.18}, {"t": "2024-11-03", "min": 3.13, "max": 76.54, "med": 27.29, "q1": 17.07, "q3": 34.28}, {"t": "2024-11-04", "min": 3.56, "max": 43.03, "med": 16.69, "q1": 8.28, "q3": 24.69}, {"t": "2024-11-05", "min": 4.51, "max": 52.15, "med": 17.55, "q1": 9.65, "q3": 29.67}, {"t": "2024-11-06", "min": 5.95, "max": 72.97, "med": 17.48, "q1": 10.68, "q3": 29.87}, {"t": "2024-11-07", "min": 9.64, "max": 73.84, "med": 32.44, "q1": 19.59, "q3": 41.86}, {"t": "2024-11-08", "min": 9.21, "max": 83.9, "med": 30.97, "q1": 23.05, "q3": 43.1}, {"t": "2024-11-09", "min": 20.85, "max": 115.38, "med": 38.85, "q1": 33.79, "q3": 42.0}, {"t": "2024-11-10", "min": 25.9, "max": 113.46, "med": 45.42, "q1": 41.79, "q3": 50.64}, {"t": "2024-11-11", "min": 10.97, "max": 65.73, "med": 32.45, "q1": 23.24, "q3": 41.0}, {"t": "2024-11-12", "min": 21.18, "max": 113.82, "med": 47.59, "q1": 39.72, "q3": 56.95}, {"t": "2024-11-13", "min": 5.59, "max": 85.08, "med": 28.33, "q1": 22.28, "q3": 42.64}, {"t": "2024-11-14", "min": 10.51, "max": 61.1, "med": 23.36, "q1": 20.27, "q3": 30.14}, {"t": "2024-11-15", "min": 19.18, "max": 75.18, "med": 40.44, "q1": 31.74, "q3": 47.15}, {"t": "2024-11-16", "min": 20.32, "max": 94.28, "med": 42.08, "q1": 38.61, "q3": 48.51}, {"t": "2024-11-17", "min": 3.46, "max": 69.33, "med": 33.67, "q1": 26.45, "q3": 42.73}, {"t": "2024-11-18", "min": 0.48, "max": 163.49, "med": 29.29, "q1": 16.89, "q3": 39.0}, {"t": "2024-11-19", "min": 0.67, "max": 110.72, "med": 29.87, "q1": 22.03, "q3": 44.1}, {"t": "2024-11-20", "min": 13.92, "max": 138.28, "med": 38.22, "q1": 32.97, "q3": 49.26}, {"t": "2024-11-21", "min": 27.46, "max": 88.23, "med": 42.15, "q1": 37.67, "q3": 47.92}, {"t": "2024-11-22", "min": 34.74, "max": 238.9, "med": 51.45, "q1": 45.13, "q3": 60.17}, {"t": "2024-11-23", "min": 3.97, "max": 88.54, "med": 35.13, "q1": 22.6, "q3": 44.03}, {"t": "2024-11-24", "min": 18.48, "max": 253.67, "med": 53.35, "q1": 46.21, "q3": 68.41}, {"t": "2024-11-25", "min": 43.49, "max": 285.77, "med": 57.69, "q1": 51.28, "q3": 70.97}, {"t": "2024-11-26", "min": 39.28, "max": 232.72, "med": 52.92, "q1": 50.03, "q3": 59.92}, {"t": "2024-11-27", "min": 8.97, "max": 269.54, "med": 29.64, "q1": 23.36, "q3": 37.18}, {"t": "2024-11-28", "min": 5.38, "max": 202.59, "med": 27.87, "q1": 21.13, "q3": 32.95}, {"t": "2024-11-29", "min": 0.0, "max": 143.72, "med": 1.22, "q1": 0.0, "q3": 4.46}, {"t": "2024-11-30", "min": 0.0, "max": 148.66, "med": 0.0, "q1": 0.0, "q3": 1.3}, {"t": "2024-12-01", "min": 0.0, "max": 102.41, "med": 12.9, "q1": 2.67, "q3": 33.38}, {"t": "2024-12-02", "min": 0.0, "max": 127.44, "med": 9.78, "q1": 4.46, "q3": 22.5}, {"t": "2024-12-03", "min": 0.0, "max": 255.95, "med": 15.7, "q1": 5.03, "q3": 26.09}, {"t": "2024-12-04", "min": 0.0, "max": 78.79, "med": 13.59, "q1": 3.92, "q3": 30.72}, {"t": "2024-12-05", "min": 0.0, "max": 372.0, "med": 32.58, "q1": 13.14, "q3": 45.72}, {"t": "2024-12-06", "min": 0.0, "max": 292.69, "med": 24.13, "q1": 13.31, "q3": 36.59}, {"t": "2024-12-07", "min": 0.0, "max": 140.46, "med": 3.82, "q1": 1.0, "q3": 13.97}, {"t": "2024-12-08", "min": 0.0, "max": 261.0, "med": 3.05, "q1": 1.35, "q3": 5.23}, {"t": "2024-12-09", "min": 0.0, "max": 287.14, "med": 1.0, "q1": 0.0, "q3": 4.05}, {"t": "2024-12-10", "min": 0.0, "max": 242.54, "med": 1.76, "q1": 0.0, "q3": 7.72}, {"t": "2024-12-11", "min": 0.0, "max": 182.97, "med": 4.93, "q1": 1.56, "q3": 16.02}, {"t": "2024-12-12", "min": 0.0, "max": 77.44, "med": 4.87, "q1": 1.0, "q3": 15.49}, {"t": "2024-12-13", "min": 0.0, "max": 300.05, "med": 36.9, "q1": 27.04, "q3": 48.82}, {"t": "2024-12-14", "min": 5.13, "max": 365.97, "med": 25.59, "q1": 17.59, "q3": 32.33}, {"t": "2024-12-15", "min": 0.0, "max": 147.79, "med": 16.41, "q1": 2.92, "q3": 27.6}, {"t": "2024-12-16", "min": 0.0, "max": 271.82, "med": 21.9, "q1": 3.74, "q3": 30.79}, {"t": "2024-12-17", "min": 0.0, "max": 142.1, "med": 19.55, "q1": 7.72, "q3": 30.44}, {"t": "2024-12-18", "min": 0.0, "max": 221.74, "med": 8.69, "q1": 0.93, "q3": 27.64}, {"t": "2024-12-19", "min": 0.0, "max": 220.38, "med": 5.74, "q1": 0.5, "q3": 21.0}, {"t": "2024-12-20", "min": 0.0, "max": 314.26, "med": 0.25, "q1": 0.0, "q3": 4.67}, {"t": "2024-12-21", "min": 0.0, "max": 137.31, "med": 2.72, "q1": 0.0, "q3": 15.94}, {"t": "2024-12-22", "min": 0.0, "max": 145.36, "med": 14.94, "q1": 2.59, "q3": 30.87}, {"t": "2024-12-23", "min": 0.0, "max": 109.82, "med": 3.28, "q1": 0.0, "q3": 15.56}, {"t": "2024-12-24", "min": 0.0, "max": 89.82, "med": 1.28, "q1": 0.0, "q3": 6.08}, {"t": "2024-12-25", "min": 0.0, "max": 219.9, "med": 9.44, "q1": 1.23, "q3": 23.51}, {"t": "2024-12-26", "min": 0.0, "max": 253.03, "med": 2.97, "q1": 0.0, "q3": 20.0}, {"t": "2024-12-27", "min": 0.0, "max": 661.72, "med": 6.85, "q1": 2.06, "q3": 19.07}, {"t": "2024-12-28", "min": 0.0, "max": 239.03, "med": 8.21, "q1": 1.57, "q3": 18.79}, {"t": "2024-12-29", "min": 0.0, "max": 80.18, "med": 0.86, "q1": 0.0, "q3": 6.14}, {"t": "2024-12-30", "min": 0.0, "max": 125.9, "med": 34.31, "q1": 21.85, "q3": 42.91}, {"t": "2024-12-31", "min": 10.23, "max": 391.08, "med": 29.38, "q1": 21.82, "q3": 49.85}, {"t": "2025-01-01", "min": 0.0, "max": 651.95, "med": 28.44, "q1": 4.41, "q3": 46.21}, {"t": "2025-01-02", "min": 0.0, "max": 278.27, "med": 20.67, "q1": 7.15, "q3": 38.06}, {"t": "2025-01-03", "min": 0.0, "max": 175.36, "med": 4.84, "q1": 0.56, "q3": 17.64}, {"t": "2025-01-04", "min": 0.0, "max": 284.72, "med": 7.87, "q1": 2.24, "q3": 20.28}, {"t": "2025-01-05", "min": 0.0, "max": 106.05, "med": 8.38, "q1": 4.08, "q3": 22.95}, {"t": "2025-01-06", "min": 0.0, "max": 483.74, "med": 33.01, "q1": 16.26, "q3": 44.77}, {"t": "2025-01-07", "min": 12.72, "max": 135.15, "med": 34.44, "q1": 27.46, "q3": 39.54}, {"t": "2025-01-08", "min": 0.0, "max": 295.14, "med": 29.44, "q1": 9.72, "q3": 49.1}, {"t": "2025-01-09", "min": 0.0, "max": 282.77, "med": 19.89, "q1": 10.0, "q3": 28.05}, {"t": "2025-01-10", "min": 0.0, "max": 169.33, "med": 18.91, "q1": 4.44, "q3": 29.14}, {"t": "2025-01-11", "min": 0.0, "max": 207.85, "med": 12.28, "q1": 0.53, "q3": 28.92}, {"t": "2025-01-12", "min": 0.0, "max": 389.08, "med": 1.18, "q1": 0.0, "q3": 13.49}, {"t": "2025-01-13", "min": 0.0, "max": 251.18, "med": 6.05, "q1": 0.56, "q3": 16.96}, {"t": "2025-01-14", "min": 0.0, "max": 84.9, "med": 6.03, "q1": 3.23, "q3": 8.51}, {"t": "2025-01-15", "min": 0.0, "max": 158.38, "med": 15.5, "q1": 4.59, "q3": 36.72}, {"t": "2025-01-16", "min": 2.74, "max": 41.95, "med": 14.15, "q1": 9.64, "q3": 17.98}, {"t": "2025-01-20", "min": 0.0, "max": 60.23, "med": 3.41, "q1": 1.0, "q3": 12.77}, {"t": "2025-01-21", "min": 0.0, "max": 124.77, "med": 11.58, "q1": 2.69, "q3": 36.64}, {"t": "2025-01-22", "min": 0.0, "max": 243.46, "med": 17.23, "q1": 4.46, "q3": 41.64}, {"t": "2025-01-23", "min": 0.0, "max": 84.72, "med": 10.13, "q1": 2.02, "q3": 23.95}, {"t": "2025-01-24", "min": 0.0, "max": 368.23, "med": 8.36, "q1": 3.62, "q3": 24.4}, {"t": "2025-01-25", "min": 0.0, "max": 84.49, "med": 5.23, "q1": 1.67, "q3": 15.03}, {"t": "2025-01-26", "min": 0.0, "max": 187.08, "med": 2.04, "q1": 0.0, "q3": 10.02}, {"t": "2025-01-27", "min": 0.0, "max": 463.69, "med": 20.5, "q1": 9.51, "q3": 34.92}, {"t": "2025-01-28", "min": 0.0, "max": 113.85, "med": 33.94, "q1": 19.43, "q3": 43.72}, {"t": "2025-01-29", "min": 3.79, "max": 158.15, "med": 21.27, "q1": 16.32, "q3": 27.9}, {"t": "2025-01-30", "min": 3.92, "max": 114.77, "med": 37.51, "q1": 31.82, "q3": 44.36}, {"t": "2025-01-31", "min": 7.72, "max": 413.28, "med": 53.64, "q1": 41.87, "q3": 73.14}, {"t": "2025-02-01", "min": 0.71, "max": 235.15, "med": 43.54, "q1": 31.62, "q3": 49.82}, {"t": "2025-02-02", "min": 25.05, "max": 181.03, "med": 40.77, "q1": 33.9, "q3": 47.08}, {"t": "2025-02-03", "min": 27.74, "max": 151.21, "med": 47.62, "q1": 42.35, "q3": 54.19}, {"t": "2025-02-04", "min": 30.41, "max": 185.15, "med": 46.22, "q1": 40.1, "q3": 53.62}, {"t": "2025-02-05", "min": 23.79, "max": 272.36, "med": 36.64, "q1": 31.79, "q3": 45.74}, {"t": "2025-02-06", "min": 5.28, "max": 156.13, "med": 33.4, "q1": 27.79, "q3": 40.46}, {"t": "2025-02-07", "min": 2.79, "max": 164.26, "med": 21.18, "q1": 17.82, "q3": 27.56}, {"t": "2025-02-08", "min": 3.49, "max": 100.46, "med": 15.9, "q1": 6.85, "q3": 26.33}, {"t": "2025-02-09", "min": 0.0, "max": 237.0, "med": 7.56, "q1": 5.18, "q3": 20.23}, {"t": "2025-02-10", "min": 0.42, "max": 419.69, "med": 9.18, "q1": 6.13, "q3": 23.38}, {"t": "2025-02-11", "min": 0.0, "max": 495.67, "med": 19.82, "q1": 8.74, "q3": 38.36}, {"t": "2025-02-12", "min": 0.0, "max": 824.87, "med": 11.15, "q1": 3.69, "q3": 33.04}, {"t": "2025-02-13", "min": 0.0, "max": 352.59, "med": 27.54, "q1": 17.35, "q3": 39.51}, {"t": "2025-02-14", "min": 4.74, "max": 215.79, "med": 44.47, "q1": 32.72, "q3": 54.0}, {"t": "2025-02-15", "min": 7.87, "max": 191.38, "med": 34.15, "q1": 18.38, "q3": 41.85}, {"t": "2025-02-16", "min": 8.61, "max": 162.33, "med": 43.49, "q1": 38.38, "q3": 49.08}, {"t": "2025-02-17", "min": 1.12, "max": 169.33, "med": 33.97, "q1": 25.38, "q3": 44.87}, {"t": "2025-02-18", "min": 19.02, "max": 167.72, "med": 43.67, "q1": 38.18, "q3": 51.59}, {"t": "2025-02-19", "min": 3.67, "max": 123.46, "med": 39.44, "q1": 28.33, "q3": 49.49}, {"t": "2025-02-20", "min": 3.36, "max": 207.97, "med": 25.12, "q1": 14.33, "q3": 36.03}, {"t": "2025-02-21", "min": 0.03, "max": 47.18, "med": 14.72, "q1": 6.4, "q3": 23.67}, {"t": "2025-02-22", "min": 0.0, "max": 148.41, "med": 43.31, "q1": 17.82, "q3": 57.5}, {"t": "2025-02-24", "min": 22.74, "max": 321.95, "med": 45.9, "q1": 33.29, "q3": 75.0}, {"t": "2025-02-25", "min": 2.31, "max": 153.91, "med": 34.04, "q1": 21.36, "q3": 54.99}, {"t": "2025-02-26", "min": 0.0, "max": 200.92, "med": 39.65, "q1": 27.18, "q3": 49.05}, {"t": "2025-02-27", "min": 0.0, "max": 112.62, "med": 31.05, "q1": 13.94, "q3": 51.29}, {"t": "2025-02-28", "min": 0.0, "max": 571.59, "med": 11.67, "q1": 3.32, "q3": 30.26}, {"t": "2025-03-01", "min": 0.56, "max": 60.92, "med": 24.59, "q1": 15.63, "q3": 34.88}, {"t": "2025-03-02", "min": 0.0, "max": 117.95, "med": 25.9, "q1": 6.64, "q3": 33.18}, {"t": "2025-03-03", "min": 1.41, "max": 389.41, "med": 28.22, "q1": 14.67, "q3": 38.56}, {"t": "2025-03-04", "min": 0.0, "max": 136.49, "med": 39.7, "q1": 30.72, "q3": 48.51}, {"t": "2025-03-05", "min": 0.0, "max": 147.62, "med": 19.41, "q1": 5.77, "q3": 32.96}, {"t": "2025-03-06", "min": 0.0, "max": 74.69, "med": 16.36, "q1": 7.6, "q3": 27.72}, {"t": "2025-03-07", "min": 0.54, "max": 197.74, "med": 34.04, "q1": 24.86, "q3": 49.42}, {"t": "2025-03-08", "min": 5.09, "max": 305.56, "med": 43.51, "q1": 34.13, "q3": 56.96}, {"t": "2025-03-09", "min": 0.33, "max": 169.18, "med": 40.17, "q1": 24.18, "q3": 48.77}, {"t": "2025-03-10", "min": 3.41, "max": 132.38, "med": 26.03, "q1": 17.79, "q3": 40.9}, {"t": "2025-03-11", "min": 3.56, "max": 121.26, "med": 34.1, "q1": 23.46, "q3": 43.21}, {"t": "2025-03-12", "min": 6.87, "max": 113.15, "med": 31.95, "q1": 23.7, "q3": 40.54}, {"t": "2025-03-13", "min": 10.51, "max": 241.05, "med": 38.61, "q1": 29.54, "q3": 46.64}, {"t": "2025-03-14", "min": 2.04, "max": 223.44, "med": 43.47, "q1": 32.74, "q3": 57.4}, {"t": "2025-03-15", "min": 0.0, "max": 183.03, "med": 24.54, "q1": 11.59, "q3": 37.44}, {"t": "2025-03-16", "min": 0.0, "max": 94.95, "med": 24.53, "q1": 19.13, "q3": 35.09}, {"t": "2025-03-17", "min": 0.0, "max": 404.62, "med": 35.21, "q1": 8.36, "q3": 46.03}, {"t": "2025-03-18", "min": 0.0, "max": 155.15, "med": 15.82, "q1": 8.82, "q3": 22.51}, {"t": "2025-03-19", "min": 0.0, "max": 668.05, "med": 9.0, "q1": 3.46, "q3": 32.4}, {"t": "2025-03-20", "min": 0.0, "max": 499.59, "med": 7.44, "q1": 1.36, "q3": 24.46}, {"t": "2025-03-21", "min": 1.15, "max": 444.82, "med": 27.15, "q1": 19.28, "q3": 41.56}, {"t": "2025-03-22", "min": 0.0, "max": 371.85, "med": 5.15, "q1": 0.37, "q3": 37.1}, {"t": "2025-03-23", "min": 0.0, "max": 258.77, "med": 22.23, "q1": 4.87, "q3": 33.1}, {"t": "2025-03-24", "min": 1.74, "max": 162.87, "med": 22.06, "q1": 12.49, "q3": 34.15}, {"t": "2025-03-25", "min": 1.82, "max": 404.51, "med": 29.18, "q1": 14.74, "q3": 40.28}, {"t": "2025-03-26", "min": 4.63, "max": 303.02, "med": 40.58, "q1": 16.01, "q3": 49.56}, {"t": "2025-03-27", "min": 4.21, "max": 182.05, "med": 31.03, "q1": 23.31, "q3": 35.74}, {"t": "2025-03-28", "min": 0.0, "max": 57.85, "med": 11.51, "q1": 3.9, "q3": 31.26}, {"t": "2025-03-29", "min": 0.0, "max": 42.79, "med": 0.0, "q1": 0.0, "q3": 0.0}, {"t": "2025-03-30", "min": 0.0, "max": 60.69, "med": 1.02, "q1": 0.0, "q3": 7.59}, {"t": "2025-03-31", "min": 0.0, "max": 57.0, "med": 2.23, "q1": 0.0, "q3": 8.8}, {"t": "2025-04-01", "min": 0.0, "max": 98.0, "med": 12.0, "q1": 0.0, "q3": 20.27}, {"t": "2025-04-02", "min": 0.0, "max": 81.81, "med": 19.86, "q1": 1.71, "q3": 29.0}, {"t": "2025-04-03", "min": 0.0, "max": 286.18, "med": 15.85, "q1": 4.71, "q3": 23.59}, {"t": "2025-04-04", "min": 0.0, "max": 465.0, "med": 17.14, "q1": 4.0, "q3": 37.15}, {"t": "2025-04-05", "min": 1.14, "max": 84.59, "med": 29.08, "q1": 18.28, "q3": 39.42}, {"t": "2025-04-06", "min": 0.0, "max": 74.48, "med": 17.61, "q1": 4.87, "q3": 32.08}, {"t": "2025-04-07", "min": 0.0, "max": 312.14, "med": 7.23, "q1": 2.74, "q3": 18.73}, {"t": "2025-04-08", "min": 2.0, "max": 64.36, "med": 11.69, "q1": 8.26, "q3": 18.72}, {"t": "2025-04-09", "min": 0.0, "max": 62.74, "med": 24.26, "q1": 10.23, "q3": 31.9}, {"t": "2025-04-10", "min": 0.0, "max": 76.48, "med": 34.9, "q1": 13.92, "q3": 45.13}, {"t": "2025-04-11", "min": 0.0, "max": 96.21, "med": 18.44, "q1": 6.58, "q3": 25.04}, {"t": "2025-04-12", "min": 2.9, "max": 218.46, "med": 25.95, "q1": 18.52, "q3": 34.78}, {"t": "2025-04-13", "min": 0.38, "max": 236.21, "med": 25.69, "q1": 17.72, "q3": 36.96}, {"t": "2025-04-14", "min": 0.0, "max": 158.91, "med": 31.27, "q1": 17.73, "q3": 36.27}, {"t": "2025-04-15", "min": 0.0, "max": 184.79, "med": 24.77, "q1": 17.02, "q3": 40.15}, {"t": "2025-04-16", "min": 0.0, "max": 344.85, "med": 21.72, "q1": 5.77, "q3": 38.11}, {"t": "2025-04-17", "min": 0.0, "max": 351.03, "med": 36.26, "q1": 23.53, "q3": 41.31}, {"t": "2025-04-18", "min": 0.33, "max": 347.82, "med": 22.33, "q1": 17.32, "q3": 32.95}, {"t": "2025-04-19", "min": 0.0, "max": 190.64, "med": 26.0, "q1": 14.26, "q3": 32.36}, {"t": "2025-04-20", "min": 0.0, "max": 312.49, "med": 18.77, "q1": 8.21, "q3": 33.15}, {"t": "2025-04-21", "min": 0.0, "max": 163.92, "med": 34.36, "q1": 23.79, "q3": 48.36}, {"t": "2025-04-22", "min": 0.0, "max": 763.0, "med": 34.86, "q1": 11.92, "q3": 56.0}, {"t": "2025-04-23", "min": 0.0, "max": 636.9, "med": 23.54, "q1": 4.44, "q3": 42.54}, {"t": "2025-04-24", "min": 0.0, "max": 173.13, "med": 27.77, "q1": 8.44, "q3": 42.72}, {"t": "2025-04-25", "min": 0.61, "max": 177.13, "med": 27.36, "q1": 19.61, "q3": 35.08}, {"t": "2025-04-26", "min": 0.0, "max": 260.92, "med": 25.38, "q1": 10.05, "q3": 37.04}, {"t": "2025-04-27", "min": 0.41, "max": 308.08, "med": 31.33, "q1": 17.2, "q3": 46.9}, {"t": "2025-04-28", "min": 2.08, "max": 468.44, "med": 31.82, "q1": 13.77, "q3": 48.31}, {"t": "2025-04-29", "min": 0.0, "max": 518.85, "med": 27.31, "q1": 14.13, "q3": 39.49}, {"t": "2025-04-30", "min": 2.02, "max": 161.08, "med": 31.1, "q1": 19.48, "q3": 46.03}, {"t": "2025-05-01", "min": 1.0, "max": 223.56, "med": 39.85, "q1": 18.96, "q3": 51.96}, {"t": "2025-05-02", "min": 22.38, "max": 85.23, "med": 39.1, "q1": 33.31, "q3": 47.33}, {"t": "2025-05-03", "min": 19.64, "max": 120.87, "med": 38.13, "q1": 30.74, "q3": 46.55}, {"t": "2025-05-04", "min": 2.31, "max": 186.51, "med": 26.42, "q1": 13.32, "q3": 38.77}, {"t": "2025-05-05", "min": 0.0, "max": 122.36, "med": 19.78, "q1": 8.26, "q3": 31.05}, {"t": "2025-05-06", "min": 0.0, "max": 245.33, "med": 13.28, "q1": 5.09, "q3": 25.21}, {"t": "2025-05-07", "min": 0.0, "max": 196.95, "med": 25.9, "q1": 8.92, "q3": 41.72}, {"t": "2025-05-08", "min": 8.78, "max": 401.44, "med": 42.85, "q1": 31.62, "q3": 55.92}, {"t": "2025-05-09", "min": 0.0, "max": 170.62, "med": 31.92, "q1": 11.15, "q3": 52.72}, {"t": "2025-05-10", "min": 1.18, "max": 481.56, "med": 38.03, "q1": 29.85, "q3": 50.06}, {"t": "2025-05-11", "min": 15.97, "max": 275.08, "med": 37.45, "q1": 28.01, "q3": 66.23}, {"t": "2025-05-12", "min": 1.0, "max": 214.26, "med": 29.23, "q1": 17.59, "q3": 45.36}, {"t": "2025-05-13", "min": 6.23, "max": 190.77, "med": 35.59, "q1": 25.92, "q3": 45.28}, {"t": "2025-05-14", "min": 4.95, "max": 319.41, "med": 38.11, "q1": 24.69, "q3": 49.41}, {"t": "2025-05-15", "min": 5.0, "max": 334.15, "med": 37.79, "q1": 26.55, "q3": 50.42}, {"t": "2025-05-16", "min": 3.79, "max": 189.82, "med": 20.9, "q1": 15.05, "q3": 34.04}, {"t": "2025-05-17", "min": 6.0, "max": 205.08, "med": 33.54, "q1": 26.97, "q3": 43.69}, {"t": "2025-05-18", "min": 8.56, "max": 260.61, "med": 24.44, "q1": 19.92, "q3": 32.04}, {"t": "2025-05-19", "min": 10.67, "max": 89.51, "med": 32.61, "q1": 21.74, "q3": 41.23}, {"t": "2025-05-20", "min": 8.15, "max": 171.44, "med": 25.51, "q1": 18.29, "q3": 37.64}, {"t": "2025-05-21", "min": 10.59, "max": 171.49, "med": 27.0, "q1": 21.0, "q3": 34.24}, {"t": "2025-05-22", "min": 22.77, "max": 345.56, "med": 37.32, "q1": 32.13, "q3": 44.88}, {"t": "2025-05-23", "min": 22.46, "max": 109.56, "med": 40.79, "q1": 31.67, "q3": 47.21}, {"t": "2025-05-25", "min": 2.0, "max": 163.49, "med": 33.77, "q1": 27.59, "q3": 47.74}, {"t": "2025-05-26", "min": 3.62, "max": 223.33, "med": 38.28, "q1": 20.35, "q3": 49.51}, {"t": "2025-05-27", "min": 1.38, "max": 193.59, "med": 46.85, "q1": 32.86, "q3": 60.77}, {"t": "2025-05-28", "min": 2.97, "max": 171.54, "med": 37.26, "q1": 27.95, "q3": 50.59}, {"t": "2025-05-29", "min": 0.0, "max": 180.38, "med": 29.56, "q1": 17.07, "q3": 36.28}, {"t": "2025-05-30", "min": 0.44, "max": 149.74, "med": 17.07, "q1": 6.31, "q3": 35.18}, {"t": "2025-05-31", "min": 0.0, "max": 140.77, "med": 18.62, "q1": 3.97, "q3": 33.64}, {"t": "2025-06-01", "min": 0.55, "max": 194.05, "med": 27.23, "q1": 18.02, "q3": 37.4}, {"t": "2025-06-02", "min": 0.37, "max": 311.72, "med": 33.4, "q1": 16.41, "q3": 41.79}, {"t": "2025-06-03", "min": 0.36, "max": 394.51, "med": 32.14, "q1": 18.41, "q3": 49.31}, {"t": "2025-06-04", "min": 0.71, "max": 162.13, "med": 23.29, "q1": 11.36, "q3": 36.74}, {"t": "2025-06-05", "min": 0.0, "max": 156.1, "med": 24.79, "q1": 11.38, "q3": 39.96}, {"t": "2025-06-06", "min": 0.0, "max": 267.45, "med": 17.32, "q1": 5.44, "q3": 36.0}, {"t": "2025-06-07", "min": 4.63, "max": 263.92, "med": 21.05, "q1": 16.92, "q3": 32.46}, {"t": "2025-06-08", "min": 18.07, "max": 206.9, "med": 36.97, "q1": 31.51, "q3": 41.59}, {"t": "2025-06-09", "min": 7.1, "max": 312.23, "med": 24.62, "q1": 17.97, "q3": 36.61}, {"t": "2025-06-10", "min": 1.28, "max": 112.69, "med": 17.67, "q1": 8.55, "q3": 28.18}, {"t": "2025-06-11", "min": 0.0, "max": 106.28, "med": 19.51, "q1": 8.77, "q3": 33.69}, {"t": "2025-06-12", "min": 4.28, "max": 123.54, "med": 19.61, "q1": 10.33, "q3": 32.92}, {"t": "2025-06-13", "min": 5.0, "max": 122.64, "med": 32.04, "q1": 20.41, "q3": 41.46}, {"t": "2025-06-14", "min": 5.21, "max": 247.56, "med": 42.13, "q1": 27.69, "q3": 53.37}, {"t": "2025-06-15", "min": 15.38, "max": 197.79, "med": 41.21, "q1": 35.78, "q3": 45.64}, {"t": "2025-06-16", "min": 5.31, "max": 298.2, "med": 30.77, "q1": 18.35, "q3": 39.97}, {"t": "2025-06-17", "min": 0.0, "max": 261.79, "med": 20.79, "q1": 6.49, "q3": 36.64}, {"t": "2025-06-18", "min": 0.36, "max": 145.05, "med": 37.64, "q1": 18.87, "q3": 51.67}, {"t": "2025-06-19", "min": 21.72, "max": 167.28, "med": 42.86, "q1": 30.26, "q3": 54.9}, {"t": "2025-06-21", "min": 14.74, "max": 181.13, "med": 28.1, "q1": 23.35, "q3": 34.0}, {"t": "2025-06-22", "min": 2.31, "max": 203.72, "med": 24.42, "q1": 17.6, "q3": 36.97}, {"t": "2025-06-23", "min": 6.54, "max": 137.63, "med": 26.26, "q1": 20.28, "q3": 36.04}, {"t": "2025-06-24", "min": 5.95, "max": 180.49, "med": 16.14, "q1": 10.19, "q3": 28.62}, {"t": "2025-06-25", "min": 2.9, "max": 363.31, "med": 24.46, "q1": 14.24, "q3": 38.24}, {"t": "2025-06-26", "min": 3.44, "max": 212.72, "med": 21.88, "q1": 16.14, "q3": 30.24}, {"t": "2025-06-27", "min": 4.49, "max": 125.59, "med": 23.49, "q1": 18.02, "q3": 35.03}, {"t": "2025-06-28", "min": 2.92, "max": 215.92, "med": 22.36, "q1": 15.82, "q3": 36.13}, {"t": "2025-06-29", "min": 1.14, "max": 323.14, "med": 10.05, "q1": 5.0, "q3": 30.56}, {"t": "2025-06-30", "min": 0.15, "max": 216.23, "med": 17.48, "q1": 6.19, "q3": 26.18}, {"t": "2025-07-01", "min": 4.18, "max": 182.79, "med": 28.95, "q1": 16.05, "q3": 42.45}, {"t": "2025-07-02", "min": 3.13, "max": 161.54, "med": 15.51, "q1": 8.41, "q3": 36.86}, {"t": "2025-07-03", "min": 0.0, "max": 159.15, "med": 10.6, "q1": 3.72, "q3": 24.54}, {"t": "2025-07-04", "min": 0.41, "max": 207.21, "med": 10.56, "q1": 5.62, "q3": 30.31}, {"t": "2025-07-05", "min": 2.1, "max": 357.26, "med": 19.82, "q1": 14.67, "q3": 33.36}, {"t": "2025-07-06", "min": 0.0, "max": 375.77, "med": 19.72, "q1": 7.24, "q3": 32.4}, {"t": "2025-07-07", "min": 17.55, "max": 271.45, "med": 34.49, "q1": 30.18, "q3": 46.69}, {"t": "2025-07-08", "min": 12.72, "max": 211.15, "med": 29.79, "q1": 24.36, "q3": 39.0}, {"t": "2025-07-09", "min": 4.08, "max": 168.46, "med": 18.2, "q1": 13.14, "q3": 27.69}, {"t": "2025-07-10", "min": 1.31, "max": 150.72, "med": 8.91, "q1": 5.13, "q3": 25.97}, {"t": "2025-07-11", "min": 5.54, "max": 194.38, "med": 37.63, "q1": 22.01, "q3": 53.17}, {"t": "2025-07-12", "min": 11.13, "max": 209.38, "med": 41.77, "q1": 26.45, "q3": 60.78}, {"t": "2025-07-13", "min": 20.69, "max": 276.27, "med": 36.81, "q1": 26.86, "q3": 50.47}, {"t": "2025-07-14", "min": 16.55, "max": 1222.64, "med": 33.82, "q1": 25.69, "q3": 47.97}, {"t": "2025-07-15", "min": 2.56, "max": 170.92, "med": 21.03, "q1": 9.27, "q3": 40.54}, {"t": "2025-07-16", "min": 4.3, "max": 195.9, "med": 27.58, "q1": 19.67, "q3": 40.49}, {"t": "2025-07-17", "min": 2.33, "max": 229.03, "med": 31.51, "q1": 16.18, "q3": 42.05}, {"t": "2025-07-18", "min": 0.68, "max": 281.05, "med": 33.59, "q1": 19.73, "q3": 46.85}, {"t": "2025-07-19", "min": 1.41, "max": 155.59, "med": 29.15, "q1": 18.2, "q3": 39.36}, {"t": "2025-07-20", "min": 2.13, "max": 299.49, "med": 34.51, "q1": 25.74, "q3": 51.5}, {"t": "2025-07-21", "min": 8.56, "max": 215.97, "med": 54.28, "q1": 35.44, "q3": 94.05}, {"t": "2025-07-22", "min": 10.97, "max": 122.36, "med": 35.09, "q1": 24.76, "q3": 43.28}, {"t": "2025-07-23", "min": 15.05, "max": 165.36, "med": 42.85, "q1": 30.92, "q3": 47.92}, {"t": "2025-07-24", "min": 14.82, "max": 223.62, "med": 26.56, "q1": 23.23, "q3": 33.67}, {"t": "2025-07-25", "min": 7.18, "max": 141.38, "med": 19.05, "q1": 13.17, "q3": 31.26}, {"t": "2025-07-26", "min": 12.13, "max": 236.08, "med": 31.36, "q1": 20.41, "q3": 38.76}, {"t": "2025-07-27", "min": 8.64, "max": 220.03, "med": 29.85, "q1": 23.46, "q3": 40.56}, {"t": "2025-07-28", "min": 0.0, "max": 142.41, "med": 7.76, "q1": 1.15, "q3": 28.31}, {"t": "2025-07-29", "min": 0.0, "max": 162.62, "med": 4.18, "q1": 1.29, "q3": 20.56}, {"t": "2025-07-30", "min": 0.0, "max": 93.97, "med": 3.72, "q1": 1.07, "q3": 19.3}, {"t": "2025-07-31", "min": 0.0, "max": 79.77, "med": 4.18, "q1": 1.2, "q3": 19.2}, {"t": "2025-08-01", "min": 0.0, "max": 205.82, "med": 28.97, "q1": 6.97, "q3": 45.13}, {"t": "2025-08-02", "min": 3.38, "max": 266.1, "med": 41.05, "q1": 28.19, "q3": 49.46}, {"t": "2025-08-03", "min": 17.97, "max": 211.15, "med": 35.42, "q1": 28.49, "q3": 45.23}, {"t": "2025-08-04", "min": 11.79, "max": 213.59, "med": 29.36, "q1": 22.01, "q3": 43.22}, {"t": "2025-08-05", "min": 5.31, "max": 256.87, "med": 27.08, "q1": 19.07, "q3": 40.15}, {"t": "2025-08-06", "min": 3.56, "max": 377.05, "med": 36.15, "q1": 22.97, "q3": 46.37}, {"t": "2025-08-07", "min": 5.72, "max": 289.1, "med": 31.82, "q1": 20.97, "q3": 44.17}, {"t": "2025-08-08", "min": 18.46, "max": 218.51, "med": 36.78, "q1": 27.38, "q3": 49.64}, {"t": "2025-08-09", "min": 21.46, "max": 229.03, "med": 37.6, "q1": 30.82, "q3": 51.41}, {"t": "2025-08-10", "min": 19.14, "max": 371.44, "med": 33.13, "q1": 27.94, "q3": 43.22}, {"t": "2025-08-11", "min": 7.44, "max": 261.67, "med": 24.85, "q1": 20.51, "q3": 31.95}, {"t": "2025-08-12", "min": 10.59, "max": 147.31, "med": 26.1, "q1": 19.8, "q3": 35.06}, {"t": "2025-08-13", "min": 6.44, "max": 205.54, "med": 24.94, "q1": 16.54, "q3": 38.49}, {"t": "2025-08-14", "min": 2.87, "max": 126.13, "med": 17.67, "q1": 9.58, "q3": 27.33}, {"t": "2025-08-15", "min": 7.87, "max": 232.15, "med": 30.18, "q1": 18.2, "q3": 47.15}, {"t": "2025-08-16", "min": 8.33, "max": 2286.71, "med": 32.82, "q1": 19.87, "q3": 42.21}, {"t": "2025-08-17", "min": 13.08, "max": 106.41, "med": 36.08, "q1": 29.45, "q3": 46.15}, {"t": "2025-08-18", "min": 9.26, "max": 215.79, "med": 40.2, "q1": 20.44, "q3": 47.74}, {"t": "2025-08-19", "min": 15.33, "max": 103.18, "med": 33.28, "q1": 24.28, "q3": 43.63}, {"t": "2025-08-20", "min": 18.89, "max": 291.36, "med": 32.82, "q1": 27.74, "q3": 43.35}, {"t": "2025-08-21", "min": 21.05, "max": 151.62, "med": 40.28, "q1": 33.58, "q3": 53.37}, {"t": "2025-08-22", "min": 20.1, "max": 180.74, "med": 44.54, "q1": 31.53, "q3": 55.38}, {"t": "2025-08-23", "min": 27.87, "max": 179.08, "med": 47.23, "q1": 37.92, "q3": 52.44}, {"t": "2025-08-24", "min": 27.87, "max": 215.85, "med": 43.94, "q1": 37.46, "q3": 50.67}, {"t": "2025-08-25", "min": 21.79, "max": 228.44, "med": 31.67, "q1": 27.36, "q3": 37.69}, {"t": "2025-08-26", "min": 14.41, "max": 183.05, "med": 28.58, "q1": 23.41, "q3": 34.04}, {"t": "2025-08-27", "min": 0.0, "max": 314.58, "med": 2.38, "q1": 0.92, "q3": 11.12}, {"t": "2025-08-28", "min": 0.0, "max": 159.36, "med": 7.21, "q1": 1.41, "q3": 26.87}, {"t": "2025-08-29", "min": 0.0, "max": 236.95, "med": 18.48, "q1": 6.62, "q3": 32.85}, {"t": "2025-08-30", "min": 0.41, "max": 203.05, "med": 30.69, "q1": 13.64, "q3": 39.72}, {"t": "2025-08-31", "min": 11.95, "max": 397.62, "med": 39.33, "q1": 31.31, "q3": 46.85}, {"t": "2025-09-01", "min": 11.97, "max": 357.77, "med": 33.54, "q1": 26.51, "q3": 43.38}, {"t": "2025-09-02", "min": 19.41, "max": 396.59, "med": 35.4, "q1": 27.67, "q3": 48.41}, {"t": "2025-09-03", "min": 17.97, "max": 203.49, "med": 27.82, "q1": 23.08, "q3": 40.74}, {"t": "2025-09-04", "min": 18.07, "max": 161.13, "med": 33.08, "q1": 26.67, "q3": 43.44}, {"t": "2025-09-05", "min": 11.72, "max": 128.74, "med": 31.77, "q1": 23.51, "q3": 38.64}, {"t": "2025-09-06", "min": 6.26, "max": 164.15, "med": 29.77, "q1": 18.2, "q3": 44.77}, {"t": "2025-09-07", "min": 5.49, "max": 125.26, "med": 18.43, "q1": 11.67, "q3": 29.54}, {"t": "2025-09-08", "min": 0.15, "max": 79.64, "med": 15.97, "q1": 6.23, "q3": 22.65}, {"t": "2025-09-09", "min": 0.0, "max": 112.1, "med": 5.97, "q1": 3.26, "q3": 18.54}, {"t": "2025-09-10", "min": 0.44, "max": 126.95, "med": 21.56, "q1": 6.92, "q3": 37.56}, {"t": "2025-09-11", "min": 1.0, "max": 151.33, "med": 15.94, "q1": 6.74, "q3": 28.77}, {"t": "2025-09-12", "min": 2.04, "max": 231.21, "med": 27.26, "q1": 19.36, "q3": 39.4}, {"t": "2025-09-13", "min": 3.1, "max": 244.44, "med": 19.14, "q1": 9.44, "q3": 31.51}, {"t": "2025-09-14", "min": 1.69, "max": 119.05, "med": 12.49, "q1": 8.26, "q3": 22.41}, {"t": "2025-09-15", "min": 4.97, "max": 185.62, "med": 21.46, "q1": 16.48, "q3": 28.77}, {"t": "2025-09-16", "min": 5.26, "max": 222.74, "med": 18.37, "q1": 9.97, "q3": 32.53}, {"t": "2025-09-17", "min": 4.23, "max": 252.21, "med": 19.14, "q1": 10.85, "q3": 29.33}, {"t": "2025-09-18", "min": 0.63, "max": 216.33, "med": 24.33, "q1": 11.51, "q3": 42.08}, {"t": "2025-09-19", "min": 4.3, "max": 219.79, "med": 22.08, "q1": 11.56, "q3": 38.67}, {"t": "2025-09-20", "min": 5.72, "max": 201.67, "med": 21.85, "q1": 16.0, "q3": 32.09}, {"t": "2025-09-21", "min": 2.67, "max": 161.33, "med": 17.82, "q1": 9.53, "q3": 32.6}, {"t": "2025-09-22", "min": 1.67, "max": 497.72, "med": 39.0, "q1": 23.12, "q3": 50.56}, {"t": "2025-09-23", "min": 4.84, "max": 218.67, "med": 42.9, "q1": 20.2, "q3": 51.14}, {"t": "2025-09-24", "min": 10.9, "max": 315.13, "med": 32.46, "q1": 25.97, "q3": 46.11}, {"t": "2025-09-25", "min": 8.41, "max": 162.38, "med": 35.77, "q1": 23.41, "q3": 43.38}, {"t": "2025-09-26", "min": 6.85, "max": 112.18, "med": 28.47, "q1": 19.94, "q3": 37.9}, {"t": "2025-09-27", "min": 6.33, "max": 222.36, "med": 23.42, "q1": 16.0, "q3": 35.2}, {"t": "2025-09-28", "min": 9.53, "max": 1374.28, "med": 23.49, "q1": 17.64, "q3": 47.28}, {"t": "2025-09-29", "min": 2.38, "max": 125.18, "med": 21.95, "q1": 18.3, "q3": 28.83}, {"t": "2025-09-30", "min": 5.31, "max": 341.87, "med": 31.79, "q1": 19.97, "q3": 39.69}, {"t": "2025-10-01", "min": 10.69, "max": 106.77, "med": 29.09, "q1": 23.69, "q3": 39.97}, {"t": "2025-10-02", "min": 0.38, "max": 246.18, "med": 32.69, "q1": 18.38, "q3": 40.18}, {"t": "2025-10-03", "min": 1.72, "max": 86.82, "med": 21.08, "q1": 8.28, "q3": 32.13}, {"t": "2025-10-04", "min": 4.23, "max": 431.41, "med": 26.46, "q1": 17.69, "q3": 37.15}, {"t": "2025-10-05", "min": 13.03, "max": 340.33, "med": 32.08, "q1": 23.97, "q3": 43.0}, {"t": "2025-10-06", "min": 10.49, "max": 253.13, "med": 32.74, "q1": 22.0, "q3": 47.85}, {"t": "2025-10-07", "min": 1.72, "max": 149.9, "med": 24.79, "q1": 9.36, "q3": 38.59}, {"t": "2025-10-08", "min": 0.0, "max": 210.74, "med": 20.3, "q1": 4.96, "q3": 32.47}, {"t": "2025-10-09", "min": 0.0, "max": 158.38, "med": 8.36, "q1": 3.51, "q3": 21.23}, {"t": "2025-10-10", "min": 0.0, "max": 100.56, "med": 7.33, "q1": 4.15, "q3": 20.36}, {"t": "2025-10-11", "min": 4.43, "max": 196.62, "med": 18.73, "q1": 11.36, "q3": 34.78}, {"t": "2025-10-12", "min": 2.27, "max": 384.79, "med": 15.91, "q1": 9.49, "q3": 22.49}, {"t": "2025-10-13", "min": 1.08, "max": 163.38, "med": 10.53, "q1": 5.59, "q3": 32.38}, {"t": "2025-10-14", "min": 3.28, "max": 130.38, "med": 17.43, "q1": 8.63, "q3": 24.83}, {"t": "2025-10-15", "min": 3.21, "max": 73.69, "med": 11.1, "q1": 7.08, "q3": 20.92}, {"t": "2025-10-17", "min": 3.72, "max": 58.05, "med": 8.31, "q1": 6.83, "q3": 16.52}, {"t": "2025-10-18", "min": 3.1, "max": 46.85, "med": 18.1, "q1": 10.67, "q3": 25.77}, {"t": "2025-10-19", "min": 0.0, "max": 48.46, "med": 18.23, "q1": 4.62, "q3": 31.92}, {"t": "2025-10-20", "min": 6.44, "max": 49.51, "med": 25.03, "q1": 16.89, "q3": 33.59}, {"t": "2025-10-21", "min": 5.23, "max": 54.0, "med": 29.88, "q1": 24.74, "q3": 36.21}, {"t": "2025-10-22", "min": 14.9, "max": 69.2, "med": 33.21, "q1": 28.26, "q3": 42.92}, {"t": "2025-10-23", "min": 7.05, "max": 87.74, "med": 34.83, "q1": 30.14, "q3": 47.58}, {"t": "2025-10-24", "min": 11.54, "max": 66.45, "med": 24.79, "q1": 20.14, "q3": 33.64}, {"t": "2025-10-25", "min": 9.64, "max": 57.77, "med": 29.72, "q1": 24.64, "q3": 34.38}, {"t": "2025-10-26", "min": 7.26, "max": 84.82, "med": 27.15, "q1": 17.69, "q3": 36.72}, {"t": "2025-10-27", "min": 18.14, "max": 59.54, "med": 33.31, "q1": 27.04, "q3": 39.42}, {"t": "2025-10-28", "min": 15.31, "max": 42.36, "med": 25.9, "q1": 22.23, "q3": 31.29}, {"t": "2025-10-29", "min": 3.03, "max": 48.38, "med": 27.92, "q1": 16.26, "q3": 32.14}, {"t": "2025-10-30", "min": 0.54, "max": 31.21, "med": 8.85, "q1": 6.05, "q3": 14.0}, {"t": "2025-10-31", "min": 1.82, "max": 188.62, "med": 13.56, "q1": 8.31, "q3": 20.05}, {"t": "2025-11-01", "min": 5.97, "max": 58.69, "med": 21.13, "q1": 13.59, "q3": 27.63}, {"t": "2025-11-02", "min": 2.46, "max": 84.79, "med": 31.54, "q1": 18.51, "q3": 44.67}, {"t": "2025-11-03", "min": 3.82, "max": 43.56, "med": 20.82, "q1": 12.41, "q3": 26.79}, {"t": "2025-11-09", "min": 0.0, "max": 44.1, "med": 19.32, "q1": 7.29, "q3": 30.37}, {"t": "2025-11-10", "min": 3.54, "max": 87.74, "med": 16.54, "q1": 10.67, "q3": 28.38}, {"t": "2025-11-12", "min": 0.69, "max": 28.23, "med": 9.47, "q1": 6.56, "q3": 16.68}, {"t": "2025-11-13", "min": 0.0, "max": 17.43, "med": 0.0, "q1": 0.0, "q3": 0.73}, {"t": "2025-11-14", "min": 0.0, "max": 21.41, "med": 0.0, "q1": 0.0, "q3": 0.56}, {"t": "2025-11-15", "min": 0.0, "max": 97.08, "med": 4.26, "q1": 0.68, "q3": 12.97}, {"t": "2025-11-16", "min": 0.0, "max": 36.11, "med": 0.0, "q1": 0.0, "q3": 3.79}, {"t": "2025-11-17", "min": 0.0, "max": 24.95, "med": 1.0, "q1": 0.0, "q3": 2.82}, {"t": "2025-11-18", "min": 0.0, "max": 324.69, "med": 1.23, "q1": 0.0, "q3": 5.85}, {"t": "2025-11-19", "min": 0.0, "max": 45.41, "med": 4.21, "q1": 0.93, "q3": 11.54}, {"t": "2025-11-20", "min": 0.0, "max": 60.23, "med": 19.2, "q1": 4.55, "q3": 27.49}, {"t": "2025-11-21", "min": 0.0, "max": 62.62, "med": 23.32, "q1": 16.54, "q3": 37.31}, {"t": "2025-11-22", "min": 12.36, "max": 152.9, "med": 28.99, "q1": 24.51, "q3": 33.72}, {"t": "2025-11-24", "min": 0.0, "max": 21.77, "med": 6.41, "q1": 2.49, "q3": 11.18}, {"t": "2025-11-25", "min": 0.0, "max": 29.31, "med": 0.5, "q1": 0.0, "q3": 3.33}, {"t": "2025-11-26", "min": 0.0, "max": 42.95, "med": 0.83, "q1": 0.0, "q3": 4.54}, {"t": "2025-11-27", "min": 0.0, "max": 37.18, "med": 0.52, "q1": 0.0, "q3": 1.82}, {"t": "2025-11-28", "min": 0.0, "max": 32.31, "med": 0.0, "q1": 0.0, "q3": 0.37}, {"t": "2025-11-29", "min": 0.0, "max": 30.08, "med": 0.0, "q1": 0.0, "q3": 1.21}, {"t": "2025-11-30", "min": 0.0, "max": 64.64, "med": 4.95, "q1": 1.79, "q3": 7.62}, {"t": "2025-12-01", "min": 0.0, "max": 36.51, "med": 1.29, "q1": 0.0, "q3": 3.6}, {"t": "2025-12-02", "min": 0.0, "max": 159.26, "med": 9.5, "q1": 2.5, "q3": 18.67}, {"t": "2025-12-03", "min": 0.0, "max": 46.44, "med": 8.69, "q1": 4.46, "q3": 16.72}, {"t": "2025-12-04", "min": 0.0, "max": 27.13, "med": 5.14, "q1": 2.4, "q3": 8.88}, {"t": "2025-12-05", "min": 0.0, "max": 49.56, "med": 16.92, "q1": 6.69, "q3": 29.08}, {"t": "2025-12-06", "min": 0.0, "max": 40.77, "med": 15.59, "q1": 5.64, "q3": 21.97}, {"t": "2025-12-07", "min": 0.0, "max": 31.9, "med": 1.56, "q1": 0.47, "q3": 3.49}, {"t": "2025-12-08", "min": 0.0, "max": 29.79, "med": 0.23, "q1": 0.0, "q3": 2.1}, {"t": "2025-12-09", "min": 0.0, "max": 39.03, "med": 4.18, "q1": 2.13, "q3": 7.67}, {"t": "2025-12-10", "min": 0.0, "max": 50.46, "med": 3.01, "q1": 1.0, "q3": 5.77}, {"t": "2025-12-11", "min": 0.0, "max": 17.3, "med": 2.21, "q1": 0.64, "q3": 4.51}, {"t": "2025-12-12", "min": 0.0, "max": 8.97, "med": 3.04, "q1": 1.77, "q3": 4.46}, {"t": "2025-12-13", "min": 2.97, "max": 12836.1, "med": 13.13, "q1": 7.1, "q3": 20.43}, {"t": "2025-12-14", "min": 5.36, "max": 151.54, "med": 25.68, "q1": 20.29, "q3": 30.59}, {"t": "2025-12-15", "min": 0.0, "max": 140.44, "med": 6.05, "q1": 3.69, "q3": 11.54}, {"t": "2025-12-16", "min": 0.0, "max": 66.03, "med": 5.41, "q1": 2.18, "q3": 17.82}, {"t": "2025-12-17", "min": 0.0, "max": 126.0, "med": 7.64, "q1": 1.85, "q3": 32.36}, {"t": "2025-12-18", "min": 23.95, "max": 95.72, "med": 39.26, "q1": 32.04, "q3": 45.87}, {"t": "2025-12-19", "min": 9.33, "max": 117.77, "med": 37.36, "q1": 30.41, "q3": 52.38}, {"t": "2025-12-20", "min": 6.87, "max": 50.56, "med": 35.78, "q1": 25.53, "q3": 43.01}, {"t": "2025-12-21", "min": 3.79, "max": 43.46, "med": 12.83, "q1": 8.0, "q3": 22.74}, {"t": "2026-01-02", "min": 2.77, "max": 38.03, "med": 9.26, "q1": 6.85, "q3": 18.13}, {"t": "2026-01-03", "min": 0.0, "max": 52.59, "med": 8.03, "q1": 1.0, "q3": 28.69}, {"t": "2026-01-04", "min": 0.0, "max": 239.14, "med": 1.17, "q1": 0.0, "q3": 12.92}, {"t": "2026-01-05", "min": 0.0, "max": 285.49, "med": 0.61, "q1": 0.0, "q3": 1.93}, {"t": "2026-01-06", "min": 0.0, "max": 18.05, "med": 0.5, "q1": 0.0, "q3": 3.36}, {"t": "2026-01-07", "min": 0.0, "max": 50.18, "med": 1.51, "q1": 0.53, "q3": 4.21}, {"t": "2026-01-08", "min": 0.0, "max": 31.9, "med": 5.65, "q1": 0.08, "q3": 16.72}, {"t": "2026-01-09", "min": 0.0, "max": 33.74, "med": 2.36, "q1": 0.71, "q3": 4.87}, {"t": "2026-01-10", "min": 0.0, "max": 42.92, "med": 2.86, "q1": 1.31, "q3": 4.99}, {"t": "2026-01-11", "min": 0.0, "max": 47.08, "med": 17.92, "q1": 4.92, "q3": 26.97}, {"t": "2026-01-12", "min": 7.18, "max": 66.61, "med": 25.05, "q1": 19.82, "q3": 38.0}, {"t": "2026-01-13", "min": 4.43, "max": 93.77, "med": 25.36, "q1": 16.82, "q3": 30.29}, {"t": "2026-01-14", "min": 1.23, "max": 43.79, "med": 18.64, "q1": 11.32, "q3": 23.62}, {"t": "2026-01-15", "min": 0.0, "max": 50.0, "med": 11.87, "q1": 6.62, "q3": 21.49}, {"t": "2026-01-16", "min": 0.0, "max": 46.28, "med": 18.51, "q1": 13.31, "q3": 27.24}, {"t": "2026-01-17", "min": 0.0, "max": 58.64, "med": 17.78, "q1": 5.09, "q3": 25.18}, {"t": "2026-01-18", "min": 0.5, "max": 52.44, "med": 10.44, "q1": 6.59, "q3": 18.73}, {"t": "2026-01-19", "min": 0.0, "max": 25.87, "med": 0.0, "q1": 0.0, "q3": 2.37}, {"t": "2026-01-20", "min": 0.0, "max": 28.72, "med": 2.49, "q1": 0.0, "q3": 8.05}, {"t": "2026-01-21", "min": 0.0, "max": 43.69, "med": 1.12, "q1": 0.0, "q3": 2.67}, {"t": "2026-01-22", "min": 0.0, "max": 47.89, "med": 7.38, "q1": 1.45, "q3": 20.19}, {"t": "2026-01-23", "min": 6.59, "max": 191.9, "med": 21.82, "q1": 18.55, "q3": 25.62}, {"t": "2026-01-24", "min": 10.15, "max": 54.79, "med": 36.61, "q1": 25.31, "q3": 45.14}, {"t": "2026-01-25", "min": 24.28, "max": 112.59, "med": 40.03, "q1": 31.17, "q3": 48.04}, {"t": "2026-01-26", "min": 4.03, "max": 77.31, "med": 18.86, "q1": 9.41, "q3": 35.21}, {"t": "2026-01-27", "min": 7.26, "max": 70.38, "med": 32.29, "q1": 26.77, "q3": 43.28}, {"t": "2026-01-28", "min": 2.38, "max": 55.64, "med": 13.74, "q1": 9.58, "q3": 20.77}, {"t": "2026-01-29", "min": 15.05, "max": 74.73, "med": 40.69, "q1": 29.95, "q3": 49.32}, {"t": "2026-01-30", "min": 0.0, "max": 859.69, "med": 22.15, "q1": 4.54, "q3": 31.12}, {"t": "2026-01-31", "min": 0.0, "max": 25.67, "med": 4.41, "q1": 2.33, "q3": 7.41}, {"t": "2026-02-01", "min": 0.0, "max": 8.13, "med": 0.0, "q1": 0.0, "q3": 1.0}, {"t": "2026-02-03", "min": 0.0, "max": 235.21, "med": 0.0, "q1": 0.0, "q3": 1.41}, {"t": "2026-02-04", "min": 0.0, "max": 3312.49, "med": 0.0, "q1": 0.0, "q3": 1.36}, {"t": "2026-02-05", "min": 0.0, "max": 17.77, "med": 1.33, "q1": 0.0, "q3": 3.41}, {"t": "2026-02-06", "min": 0.0, "max": 47.0, "med": 1.95, "q1": 0.0, "q3": 4.92}, {"t": "2026-02-07", "min": 2.59, "max": 43.21, "med": 13.99, "q1": 8.74, "q3": 22.59}, {"t": "2026-02-08", "min": 20.74, "max": 37.38, "med": 27.38, "q1": 24.64, "q3": 30.1}, {"t": "2026-02-10", "min": 0.0, "max": 28.82, "med": 0.0, "q1": 0.0, "q3": 0.28}, {"t": "2026-02-11", "min": 0.0, "max": 43.72, "med": 4.43, "q1": 0.0, "q3": 8.59}, {"t": "2026-02-14", "min": 0.0, "max": 36.59, "med": 0.83, "q1": 0.0, "q3": 2.92}, {"t": "2026-02-15", "min": 0.0, "max": 56.97, "med": 1.73, "q1": 0.0, "q3": 4.46}, {"t": "2026-02-16", "min": 0.0, "max": 33.26, "med": 1.43, "q1": 0.0, "q3": 3.1}, {"t": "2026-02-17", "min": 5.59, "max": 118.33, "med": 19.77, "q1": 15.0, "q3": 33.15}, {"t": "2026-02-18", "min": 0.92, "max": 187.85, "med": 20.18, "q1": 8.46, "q3": 24.54}, {"t": "2026-02-19", "min": 0.0, "max": 47.31, "med": 4.36, "q1": 2.46, "q3": 10.74}, {"t": "2026-02-20", "min": 21.67, "max": 68.05, "med": 31.42, "q1": 28.64, "q3": 35.4}, {"t": "2026-02-21", "min": 0.0, "max": 158.74, "med": 5.7, "q1": 2.79, "q3": 12.23}, {"t": "2026-02-22", "min": 0.0, "max": 47.54, "med": 3.38, "q1": 0.31, "q3": 10.53}, {"t": "2026-02-23", "min": 0.0, "max": 30.15, "med": 1.33, "q1": 0.21, "q3": 3.21}, {"t": "2026-02-24", "min": 0.0, "max": 9.56, "med": 0.9, "q1": 0.0, "q3": 2.35}, {"t": "2026-02-25", "min": 0.0, "max": 33.69, "med": 0.64, "q1": 0.0, "q3": 2.62}, {"t": "2026-02-27", "min": 1.56, "max": 4999.0, "med": 14.57, "q1": 10.62, "q3": 4999.0}, {"t": "2026-03-01", "min": 0.0, "max": 4999.0, "med": 11.68, "q1": 6.15, "q3": 26.94}, {"t": "2026-03-02", "min": 0.0, "max": 25.95, "med": 7.81, "q1": 3.68, "q3": 16.38}, {"t": "2026-03-03", "min": 0.0, "max": 110.54, "med": 10.08, "q1": 5.5, "q3": 25.33}, {"t": "2026-03-04", "min": 0.0, "max": 75.64, "med": 16.76, "q1": 9.46, "q3": 24.41}, {"t": "2026-03-05", "min": 0.0, "max": 34.56, "med": 1.92, "q1": 1.0, "q3": 9.02}, {"t": "2026-03-06", "min": 0.64, "max": 42.82, "med": 12.1, "q1": 6.87, "q3": 21.11}, {"t": "2026-03-07", "min": 0.49, "max": 58.33, "med": 13.49, "q1": 6.18, "q3": 25.08}, {"t": "2026-03-08", "min": 3.18, "max": 187.56, "med": 10.92, "q1": 6.72, "q3": 19.28}, {"t": "2026-03-09", "min": 6.79, "max": 42.56, "med": 12.72, "q1": 10.4, "q3": 16.6}, {"t": "2026-03-10", "min": 0.13, "max": 25.28, "med": 7.9, "q1": 3.79, "q3": 10.18}, {"t": "2026-03-11", "min": 0.0, "max": 25.62, "med": 0.81, "q1": 0.0, "q3": 2.09}, {"t": "2026-03-12", "min": 0.0, "max": 49.33, "med": 0.45, "q1": 0.0, "q3": 1.97}, {"t": "2026-03-13", "min": 0.0, "max": 22.28, "med": 3.0, "q1": 1.59, "q3": 4.67}, {"t": "2026-03-14", "min": 1.31, "max": 78.77, "med": 22.23, "q1": 4.15, "q3": 33.58}, {"t": "2026-03-15", "min": 11.49, "max": 43.49, "med": 20.1, "q1": 18.89, "q3": 25.67}];
+const CAP=350;
+const RAW=[{"t": "2024-11-01", "min": 4.55, "max": 66.2, "med": 25.85, "q1": 18.44, "q3": 36.68}, {"t": "2024-11-02", "min": 4.28, "max": 59.95, "med": 30.97, "q1": 20.51, "q3": 39.18}, {"t": "2024-11-03", "min": 3.13, "max": 76.54, "med": 27.29, "q1": 17.07, "q3": 34.28}, {"t": "2024-11-04", "min": 3.56, "max": 43.03, "med": 16.69, "q1": 8.28, "q3": 24.69}, {"t": "2024-11-05", "min": 4.51, "max": 52.15, "med": 17.55, "q1": 9.65, "q3": 29.67}, {"t": "2024-11-06", "min": 5.95, "max": 72.97, "med": 17.48, "q1": 10.68, "q3": 29.87}, {"t": "2024-11-07", "min": 9.64, "max": 73.84, "med": 32.44, "q1": 19.59, "q3": 41.86}, {"t": "2024-11-08", "min": 9.21, "max": 83.9, "med": 30.97, "q1": 23.05, "q3": 43.1}, {"t": "2024-11-09", "min": 20.85, "max": 115.38, "med": 38.85, "q1": 33.79, "q3": 42.0}, {"t": "2024-11-10", "min": 25.9, "max": 113.46, "med": 45.42, "q1": 41.79, "q3": 50.64}, {"t": "2024-11-11", "min": 10.97, "max": 65.73, "med": 32.45, "q1": 23.24, "q3": 41.0}, {"t": "2024-11-12", "min": 21.18, "max": 113.82, "med": 47.59, "q1": 39.72, "q3": 56.95}, {"t": "2024-11-13", "min": 5.59, "max": 85.08, "med": 28.33, "q1": 22.28, "q3": 42.64}, {"t": "2024-11-14", "min": 10.51, "max": 61.1, "med": 23.36, "q1": 20.27, "q3": 30.14}, {"t": "2024-11-15", "min": 19.18, "max": 75.18, "med": 40.44, "q1": 31.74, "q3": 47.15}, {"t": "2024-11-16", "min": 20.32, "max": 94.28, "med": 42.08, "q1": 38.61, "q3": 48.51}, {"t": "2024-11-17", "min": 3.46, "max": 69.33, "med": 33.67, "q1": 26.45, "q3": 42.73}, {"t": "2024-11-18", "min": 0.48, "max": 163.49, "med": 29.29, "q1": 16.89, "q3": 39.0}, {"t": "2024-11-19", "min": 0.67, "max": 110.72, "med": 29.87, "q1": 22.03, "q3": 44.1}, {"t": "2024-11-20", "min": 13.92, "max": 138.28, "med": 38.22, "q1": 32.97, "q3": 49.26}, {"t": "2024-11-21", "min": 27.46, "max": 88.23, "med": 42.15, "q1": 37.67, "q3": 47.92}, {"t": "2024-11-22", "min": 34.74, "max": 238.9, "med": 51.45, "q1": 45.13, "q3": 60.17}, {"t": "2024-11-23", "min": 3.97, "max": 88.54, "med": 35.13, "q1": 22.6, "q3": 44.03}, {"t": "2024-11-24", "min": 18.48, "max": 253.67, "med": 53.35, "q1": 46.21, "q3": 68.41}, {"t": "2024-11-25", "min": 43.49, "max": 285.77, "med": 57.69, "q1": 51.28, "q3": 70.97}, {"t": "2024-11-26", "min": 39.28, "max": 232.72, "med": 52.92, "q1": 50.03, "q3": 59.92}, {"t": "2024-11-27", "min": 8.97, "max": 269.54, "med": 29.64, "q1": 23.36, "q3": 37.18}, {"t": "2024-11-28", "min": 5.38, "max": 202.59, "med": 27.87, "q1": 21.13, "q3": 32.95}, {"t": "2024-11-29", "min": 0.0, "max": 143.72, "med": 1.22, "q1": 0.0, "q3": 4.46}, {"t": "2024-11-30", "min": 0.0, "max": 148.66, "med": 0.0, "q1": 0.0, "q3": 1.3}, {"t": "2024-12-01", "min": 0.0, "max": 102.41, "med": 12.9, "q1": 2.67, "q3": 33.38}, {"t": "2024-12-02", "min": 0.0, "max": 127.44, "med": 9.78, "q1": 4.46, "q3": 22.5}, {"t": "2024-12-03", "min": 0.0, "max": 255.95, "med": 15.7, "q1": 5.03, "q3": 26.09}, {"t": "2024-12-04", "min": 0.0, "max": 78.79, "med": 13.59, "q1": 3.92, "q3": 30.72}, {"t": "2024-12-05", "min": 0.0, "max": 372.0, "med": 32.58, "q1": 13.14, "q3": 45.72}, {"t": "2024-12-06", "min": 0.0, "max": 292.69, "med": 24.13, "q1": 13.31, "q3": 36.59}, {"t": "2024-12-07", "min": 0.0, "max": 140.46, "med": 3.82, "q1": 1.0, "q3": 13.97}, {"t": "2024-12-08", "min": 0.0, "max": 261.0, "med": 3.05, "q1": 1.35, "q3": 5.23}, {"t": "2024-12-09", "min": 0.0, "max": 287.14, "med": 1.0, "q1": 0.0, "q3": 4.05}, {"t": "2024-12-10", "min": 0.0, "max": 242.54, "med": 1.76, "q1": 0.0, "q3": 7.72}, {"t": "2024-12-11", "min": 0.0, "max": 182.97, "med": 4.93, "q1": 1.56, "q3": 16.02}, {"t": "2024-12-12", "min": 0.0, "max": 77.44, "med": 4.87, "q1": 1.0, "q3": 15.49}, {"t": "2024-12-13", "min": 0.0, "max": 300.05, "med": 36.9, "q1": 27.04, "q3": 48.82}, {"t": "2024-12-14", "min": 5.13, "max": 365.97, "med": 25.59, "q1": 17.59, "q3": 32.33}, {"t": "2024-12-15", "min": 0.0, "max": 147.79, "med": 16.41, "q1": 2.92, "q3": 27.6}, {"t": "2024-12-16", "min": 0.0, "max": 271.82, "med": 21.9, "q1": 3.74, "q3": 30.79}, {"t": "2024-12-17", "min": 0.0, "max": 142.1, "med": 19.55, "q1": 7.72, "q3": 30.44}, {"t": "2024-12-18", "min": 0.0, "max": 221.74, "med": 8.69, "q1": 0.93, "q3": 27.64}, {"t": "2024-12-19", "min": 0.0, "max": 220.38, "med": 5.74, "q1": 0.5, "q3": 21.0}, {"t": "2024-12-20", "min": 0.0, "max": 314.26, "med": 0.25, "q1": 0.0, "q3": 4.67}, {"t": "2024-12-21", "min": 0.0, "max": 137.31, "med": 2.72, "q1": 0.0, "q3": 15.94}, {"t": "2024-12-22", "min": 0.0, "max": 145.36, "med": 14.94, "q1": 2.59, "q3": 30.87}, {"t": "2024-12-23", "min": 0.0, "max": 109.82, "med": 3.28, "q1": 0.0, "q3": 15.56}, {"t": "2024-12-24", "min": 0.0, "max": 89.82, "med": 1.28, "q1": 0.0, "q3": 6.08}, {"t": "2024-12-25", "min": 0.0, "max": 219.9, "med": 9.44, "q1": 1.23, "q3": 23.51}, {"t": "2024-12-26", "min": 0.0, "max": 253.03, "med": 2.97, "q1": 0.0, "q3": 20.0}, {"t": "2024-12-27", "min": 0.0, "max": 661.72, "med": 6.85, "q1": 2.06, "q3": 19.07}, {"t": "2024-12-28", "min": 0.0, "max": 239.03, "med": 8.21, "q1": 1.57, "q3": 18.79}, {"t": "2024-12-29", "min": 0.0, "max": 80.18, "med": 0.86, "q1": 0.0, "q3": 6.14}, {"t": "2024-12-30", "min": 0.0, "max": 125.9, "med": 34.31, "q1": 21.85, "q3": 42.91}, {"t": "2024-12-31", "min": 10.23, "max": 391.08, "med": 29.38, "q1": 21.82, "q3": 49.85}, {"t": "2025-01-01", "min": 0.0, "max": 651.95, "med": 28.44, "q1": 4.41, "q3": 46.21}, {"t": "2025-01-02", "min": 0.0, "max": 278.27, "med": 20.67, "q1": 7.15, "q3": 38.06}, {"t": "2025-01-03", "min": 0.0, "max": 175.36, "med": 4.84, "q1": 0.56, "q3": 17.64}, {"t": "2025-01-04", "min": 0.0, "max": 284.72, "med": 7.87, "q1": 2.24, "q3": 20.28}, {"t": "2025-01-05", "min": 0.0, "max": 106.05, "med": 8.38, "q1": 4.08, "q3": 22.95}, {"t": "2025-01-06", "min": 0.0, "max": 483.74, "med": 33.01, "q1": 16.26, "q3": 44.77}, {"t": "2025-01-07", "min": 12.72, "max": 135.15, "med": 34.44, "q1": 27.46, "q3": 39.54}, {"t": "2025-01-08", "min": 0.0, "max": 295.14, "med": 29.44, "q1": 9.72, "q3": 49.1}, {"t": "2025-01-09", "min": 0.0, "max": 282.77, "med": 19.89, "q1": 10.0, "q3": 28.05}, {"t": "2025-01-10", "min": 0.0, "max": 169.33, "med": 18.91, "q1": 4.44, "q3": 29.14}, {"t": "2025-01-11", "min": 0.0, "max": 207.85, "med": 12.28, "q1": 0.53, "q3": 28.92}, {"t": "2025-01-12", "min": 0.0, "max": 389.08, "med": 1.18, "q1": 0.0, "q3": 13.49}, {"t": "2025-01-13", "min": 0.0, "max": 251.18, "med": 6.05, "q1": 0.56, "q3": 16.96}, {"t": "2025-01-14", "min": 0.0, "max": 84.9, "med": 6.03, "q1": 3.23, "q3": 8.51}, {"t": "2025-01-15", "min": 0.0, "max": 158.38, "med": 15.5, "q1": 4.59, "q3": 36.72}, {"t": "2025-01-16", "min": 2.74, "max": 41.95, "med": 14.15, "q1": 9.64, "q3": 17.98}, {"t": "2025-01-20", "min": 0.0, "max": 60.23, "med": 3.41, "q1": 1.0, "q3": 12.77}, {"t": "2025-01-21", "min": 0.0, "max": 124.77, "med": 11.58, "q1": 2.69, "q3": 36.64}, {"t": "2025-01-22", "min": 0.0, "max": 243.46, "med": 17.23, "q1": 4.46, "q3": 41.64}, {"t": "2025-01-23", "min": 0.0, "max": 84.72, "med": 10.13, "q1": 2.02, "q3": 23.95}, {"t": "2025-01-24", "min": 0.0, "max": 368.23, "med": 8.36, "q1": 3.62, "q3": 24.4}, {"t": "2025-01-25", "min": 0.0, "max": 84.49, "med": 5.23, "q1": 1.67, "q3": 15.03}, {"t": "2025-01-26", "min": 0.0, "max": 187.08, "med": 2.04, "q1": 0.0, "q3": 10.02}, {"t": "2025-01-27", "min": 0.0, "max": 463.69, "med": 20.5, "q1": 9.51, "q3": 34.92}, {"t": "2025-01-28", "min": 0.0, "max": 113.85, "med": 33.94, "q1": 19.43, "q3": 43.72}, {"t": "2025-01-29", "min": 3.79, "max": 158.15, "med": 21.27, "q1": 16.32, "q3": 27.9}, {"t": "2025-01-30", "min": 3.92, "max": 114.77, "med": 37.51, "q1": 31.82, "q3": 44.36}, {"t": "2025-01-31", "min": 7.72, "max": 413.28, "med": 53.64, "q1": 41.87, "q3": 73.14}, {"t": "2025-02-01", "min": 0.71, "max": 235.15, "med": 43.54, "q1": 31.62, "q3": 49.82}, {"t": "2025-02-02", "min": 25.05, "max": 181.03, "med": 40.77, "q1": 33.9, "q3": 47.08}, {"t": "2025-02-03", "min": 27.74, "max": 151.21, "med": 47.62, "q1": 42.35, "q3": 54.19}, {"t": "2025-02-04", "min": 30.41, "max": 185.15, "med": 46.22, "q1": 40.1, "q3": 53.62}, {"t": "2025-02-05", "min": 23.79, "max": 272.36, "med": 36.64, "q1": 31.79, "q3": 45.74}, {"t": "2025-02-06", "min": 5.28, "max": 156.13, "med": 33.4, "q1": 27.79, "q3": 40.46}, {"t": "2025-02-07", "min": 2.79, "max": 164.26, "med": 21.18, "q1": 17.82, "q3": 27.56}, {"t": "2025-02-08", "min": 3.49, "max": 100.46, "med": 15.9, "q1": 6.85, "q3": 26.33}, {"t": "2025-02-09", "min": 0.0, "max": 237.0, "med": 7.56, "q1": 5.18, "q3": 20.23}, {"t": "2025-02-10", "min": 0.42, "max": 419.69, "med": 9.18, "q1": 6.13, "q3": 23.38}, {"t": "2025-02-11", "min": 0.0, "max": 495.67, "med": 19.82, "q1": 8.74, "q3": 38.36}, {"t": "2025-02-12", "min": 0.0, "max": 824.87, "med": 11.15, "q1": 3.69, "q3": 33.04}, {"t": "2025-02-13", "min": 0.0, "max": 352.59, "med": 27.54, "q1": 17.35, "q3": 39.51}, {"t": "2025-02-14", "min": 4.74, "max": 215.79, "med": 44.47, "q1": 32.72, "q3": 54.0}, {"t": "2025-02-15", "min": 7.87, "max": 191.38, "med": 34.15, "q1": 18.38, "q3": 41.85}, {"t": "2025-02-16", "min": 8.61, "max": 162.33, "med": 43.49, "q1": 38.38, "q3": 49.08}, {"t": "2025-02-17", "min": 1.12, "max": 169.33, "med": 33.97, "q1": 25.38, "q3": 44.87}, {"t": "2025-02-18", "min": 19.02, "max": 167.72, "med": 43.67, "q1": 38.18, "q3": 51.59}, {"t": "2025-02-19", "min": 3.67, "max": 123.46, "med": 39.44, "q1": 28.33, "q3": 49.49}, {"t": "2025-02-20", "min": 3.36, "max": 207.97, "med": 25.12, "q1": 14.33, "q3": 36.03}, {"t": "2025-02-21", "min": 0.03, "max": 47.18, "med": 14.72, "q1": 6.4, "q3": 23.67}, {"t": "2025-02-22", "min": 0.0, "max": 148.41, "med": 43.31, "q1": 17.82, "q3": 57.5}, {"t": "2025-02-24", "min": 22.74, "max": 321.95, "med": 45.9, "q1": 33.29, "q3": 75.0}, {"t": "2025-02-25", "min": 2.31, "max": 153.91, "med": 34.04, "q1": 21.36, "q3": 54.99}, {"t": "2025-02-26", "min": 0.0, "max": 200.92, "med": 39.65, "q1": 27.18, "q3": 49.05}, {"t": "2025-02-27", "min": 0.0, "max": 112.62, "med": 31.05, "q1": 13.94, "q3": 51.29}, {"t": "2025-02-28", "min": 0.0, "max": 571.59, "med": 11.67, "q1": 3.32, "q3": 30.26}, {"t": "2025-03-01", "min": 0.56, "max": 60.92, "med": 24.59, "q1": 15.63, "q3": 34.88}, {"t": "2025-03-02", "min": 0.0, "max": 117.95, "med": 25.9, "q1": 6.64, "q3": 33.18}, {"t": "2025-03-03", "min": 1.41, "max": 389.41, "med": 28.22, "q1": 14.67, "q3": 38.56}, {"t": "2025-03-04", "min": 0.0, "max": 136.49, "med": 39.7, "q1": 30.72, "q3": 48.51}, {"t": "2025-03-05", "min": 0.0, "max": 147.62, "med": 19.41, "q1": 5.77, "q3": 32.96}, {"t": "2025-03-06", "min": 0.0, "max": 74.69, "med": 16.36, "q1": 7.6, "q3": 27.72}, {"t": "2025-03-07", "min": 0.54, "max": 197.74, "med": 34.04, "q1": 24.86, "q3": 49.42}, {"t": "2025-03-08", "min": 5.09, "max": 305.56, "med": 43.51, "q1": 34.13, "q3": 56.96}, {"t": "2025-03-09", "min": 0.33, "max": 169.18, "med": 40.17, "q1": 24.18, "q3": 48.77}, {"t": "2025-03-10", "min": 3.41, "max": 132.38, "med": 26.03, "q1": 17.79, "q3": 40.9}, {"t": "2025-03-11", "min": 3.56, "max": 121.26, "med": 34.1, "q1": 23.46, "q3": 43.21}, {"t": "2025-03-12", "min": 6.87, "max": 113.15, "med": 31.95, "q1": 23.7, "q3": 40.54}, {"t": "2025-03-13", "min": 10.51, "max": 241.05, "med": 38.61, "q1": 29.54, "q3": 46.64}, {"t": "2025-03-14", "min": 2.04, "max": 223.44, "med": 43.47, "q1": 32.74, "q3": 57.4}, {"t": "2025-03-15", "min": 0.0, "max": 183.03, "med": 24.54, "q1": 11.59, "q3": 37.44}, {"t": "2025-03-16", "min": 0.0, "max": 94.95, "med": 24.53, "q1": 19.13, "q3": 35.09}, {"t": "2025-03-17", "min": 0.0, "max": 404.62, "med": 35.21, "q1": 8.36, "q3": 46.03}, {"t": "2025-03-18", "min": 0.0, "max": 155.15, "med": 15.82, "q1": 8.82, "q3": 22.51}, {"t": "2025-03-19", "min": 0.0, "max": 668.05, "med": 9.0, "q1": 3.46, "q3": 32.4}, {"t": "2025-03-20", "min": 0.0, "max": 499.59, "med": 7.44, "q1": 1.36, "q3": 24.46}, {"t": "2025-03-21", "min": 1.15, "max": 444.82, "med": 27.15, "q1": 19.28, "q3": 41.56}, {"t": "2025-03-22", "min": 0.0, "max": 371.85, "med": 5.15, "q1": 0.37, "q3": 37.1}, {"t": "2025-03-23", "min": 0.0, "max": 258.77, "med": 22.23, "q1": 4.87, "q3": 33.1}, {"t": "2025-03-24", "min": 1.74, "max": 162.87, "med": 22.06, "q1": 12.49, "q3": 34.15}, {"t": "2025-03-25", "min": 1.82, "max": 404.51, "med": 29.18, "q1": 14.74, "q3": 40.28}, {"t": "2025-03-26", "min": 4.63, "max": 303.02, "med": 40.58, "q1": 16.01, "q3": 49.56}, {"t": "2025-03-27", "min": 4.21, "max": 182.05, "med": 31.03, "q1": 23.31, "q3": 35.74}, {"t": "2025-03-28", "min": 0.0, "max": 57.85, "med": 11.51, "q1": 3.9, "q3": 31.26}, {"t": "2025-03-29", "min": 0.0, "max": 42.79, "med": 0.0, "q1": 0.0, "q3": 0.0}, {"t": "2025-03-30", "min": 0.0, "max": 60.69, "med": 1.02, "q1": 0.0, "q3": 7.59}, {"t": "2025-03-31", "min": 0.0, "max": 57.0, "med": 2.23, "q1": 0.0, "q3": 8.8}, {"t": "2025-04-01", "min": 0.0, "max": 98.0, "med": 12.0, "q1": 0.0, "q3": 20.27}, {"t": "2025-04-02", "min": 0.0, "max": 81.81, "med": 19.86, "q1": 1.71, "q3": 29.0}, {"t": "2025-04-03", "min": 0.0, "max": 286.18, "med": 15.85, "q1": 4.71, "q3": 23.59}, {"t": "2025-04-04", "min": 0.0, "max": 465.0, "med": 17.14, "q1": 4.0, "q3": 37.15}, {"t": "2025-04-05", "min": 1.14, "max": 84.59, "med": 29.08, "q1": 18.28, "q3": 39.42}, {"t": "2025-04-06", "min": 0.0, "max": 74.48, "med": 17.61, "q1": 4.87, "q3": 32.08}, {"t": "2025-04-07", "min": 0.0, "max": 312.14, "med": 7.23, "q1": 2.74, "q3": 18.73}, {"t": "2025-04-08", "min": 2.0, "max": 64.36, "med": 11.69, "q1": 8.26, "q3": 18.72}, {"t": "2025-04-09", "min": 0.0, "max": 62.74, "med": 24.26, "q1": 10.23, "q3": 31.9}, {"t": "2025-04-10", "min": 0.0, "max": 76.48, "med": 34.9, "q1": 13.92, "q3": 45.13}, {"t": "2025-04-11", "min": 0.0, "max": 96.21, "med": 18.44, "q1": 6.58, "q3": 25.04}, {"t": "2025-04-12", "min": 2.9, "max": 218.46, "med": 25.95, "q1": 18.52, "q3": 34.78}, {"t": "2025-04-13", "min": 0.38, "max": 236.21, "med": 25.69, "q1": 17.72, "q3": 36.96}, {"t": "2025-04-14", "min": 0.0, "max": 158.91, "med": 31.27, "q1": 17.73, "q3": 36.27}, {"t": "2025-04-15", "min": 0.0, "max": 184.79, "med": 24.77, "q1": 17.02, "q3": 40.15}, {"t": "2025-04-16", "min": 0.0, "max": 344.85, "med": 21.72, "q1": 5.77, "q3": 38.11}, {"t": "2025-04-17", "min": 0.0, "max": 351.03, "med": 36.26, "q1": 23.53, "q3": 41.31}, {"t": "2025-04-18", "min": 0.33, "max": 347.82, "med": 22.33, "q1": 17.32, "q3": 32.95}, {"t": "2025-04-19", "min": 0.0, "max": 190.64, "med": 26.0, "q1": 14.26, "q3": 32.36}, {"t": "2025-04-20", "min": 0.0, "max": 312.49, "med": 18.77, "q1": 8.21, "q3": 33.15}, {"t": "2025-04-21", "min": 0.0, "max": 163.92, "med": 34.36, "q1": 23.79, "q3": 48.36}, {"t": "2025-04-22", "min": 0.0, "max": 763.0, "med": 34.86, "q1": 11.92, "q3": 56.0}, {"t": "2025-04-23", "min": 0.0, "max": 636.9, "med": 23.54, "q1": 4.44, "q3": 42.54}, {"t": "2025-04-24", "min": 0.0, "max": 173.13, "med": 27.77, "q1": 8.44, "q3": 42.72}, {"t": "2025-04-25", "min": 0.61, "max": 177.13, "med": 27.36, "q1": 19.61, "q3": 35.08}, {"t": "2025-04-26", "min": 0.0, "max": 260.92, "med": 25.38, "q1": 10.05, "q3": 37.04}, {"t": "2025-04-27", "min": 0.41, "max": 308.08, "med": 31.33, "q1": 17.2, "q3": 46.9}, {"t": "2025-04-28", "min": 2.08, "max": 468.44, "med": 31.82, "q1": 13.77, "q3": 48.31}, {"t": "2025-04-29", "min": 0.0, "max": 518.85, "med": 27.31, "q1": 14.13, "q3": 39.49}, {"t": "2025-04-30", "min": 2.02, "max": 161.08, "med": 31.1, "q1": 19.48, "q3": 46.03}, {"t": "2025-05-01", "min": 1.0, "max": 223.56, "med": 39.85, "q1": 18.96, "q3": 51.96}, {"t": "2025-05-02", "min": 22.38, "max": 85.23, "med": 39.1, "q1": 33.31, "q3": 47.33}, {"t": "2025-05-03", "min": 19.64, "max": 120.87, "med": 38.13, "q1": 30.74, "q3": 46.55}, {"t": "2025-05-04", "min": 2.31, "max": 186.51, "med": 26.42, "q1": 13.32, "q3": 38.77}, {"t": "2025-05-05", "min": 0.0, "max": 122.36, "med": 19.78, "q1": 8.26, "q3": 31.05}, {"t": "2025-05-06", "min": 0.0, "max": 245.33, "med": 13.28, "q1": 5.09, "q3": 25.21}, {"t": "2025-05-07", "min": 0.0, "max": 196.95, "med": 25.9, "q1": 8.92, "q3": 41.72}, {"t": "2025-05-08", "min": 8.78, "max": 401.44, "med": 42.85, "q1": 31.62, "q3": 55.92}, {"t": "2025-05-09", "min": 0.0, "max": 170.62, "med": 31.92, "q1": 11.15, "q3": 52.72}, {"t": "2025-05-10", "min": 1.18, "max": 481.56, "med": 38.03, "q1": 29.85, "q3": 50.06}, {"t": "2025-05-11", "min": 15.97, "max": 275.08, "med": 37.45, "q1": 28.01, "q3": 66.23}, {"t": "2025-05-12", "min": 1.0, "max": 214.26, "med": 29.23, "q1": 17.59, "q3": 45.36}, {"t": "2025-05-13", "min": 6.23, "max": 190.77, "med": 35.59, "q1": 25.92, "q3": 45.28}, {"t": "2025-05-14", "min": 4.95, "max": 319.41, "med": 38.11, "q1": 24.69, "q3": 49.41}, {"t": "2025-05-15", "min": 5.0, "max": 334.15, "med": 37.79, "q1": 26.55, "q3": 50.42}, {"t": "2025-05-16", "min": 3.79, "max": 189.82, "med": 20.9, "q1": 15.05, "q3": 34.04}, {"t": "2025-05-17", "min": 6.0, "max": 205.08, "med": 33.54, "q1": 26.97, "q3": 43.69}, {"t": "2025-05-18", "min": 8.56, "max": 260.61, "med": 24.44, "q1": 19.92, "q3": 32.04}, {"t": "2025-05-19", "min": 10.67, "max": 89.51, "med": 32.61, "q1": 21.74, "q3": 41.23}, {"t": "2025-05-20", "min": 8.15, "max": 171.44, "med": 25.51, "q1": 18.29, "q3": 37.64}, {"t": "2025-05-21", "min": 10.59, "max": 171.49, "med": 27.0, "q1": 21.0, "q3": 34.24}, {"t": "2025-05-22", "min": 22.77, "max": 345.56, "med": 37.32, "q1": 32.13, "q3": 44.88}, {"t": "2025-05-23", "min": 22.46, "max": 109.56, "med": 40.79, "q1": 31.67, "q3": 47.21}, {"t": "2025-05-25", "min": 2.0, "max": 163.49, "med": 33.77, "q1": 27.59, "q3": 47.74}, {"t": "2025-05-26", "min": 3.62, "max": 223.33, "med": 38.28, "q1": 20.35, "q3": 49.51}, {"t": "2025-05-27", "min": 1.38, "max": 193.59, "med": 46.85, "q1": 32.86, "q3": 60.77}, {"t": "2025-05-28", "min": 2.97, "max": 171.54, "med": 37.26, "q1": 27.95, "q3": 50.59}, {"t": "2025-05-29", "min": 0.0, "max": 180.38, "med": 29.56, "q1": 17.07, "q3": 36.28}, {"t": "2025-05-30", "min": 0.44, "max": 149.74, "med": 17.07, "q1": 6.31, "q3": 35.18}, {"t": "2025-05-31", "min": 0.0, "max": 140.77, "med": 18.62, "q1": 3.97, "q3": 33.64}, {"t": "2025-06-01", "min": 0.55, "max": 194.05, "med": 27.23, "q1": 18.02, "q3": 37.4}, {"t": "2025-06-02", "min": 0.37, "max": 311.72, "med": 33.4, "q1": 16.41, "q3": 41.79}, {"t": "2025-06-03", "min": 0.36, "max": 394.51, "med": 32.14, "q1": 18.41, "q3": 49.31}, {"t": "2025-06-04", "min": 0.71, "max": 162.13, "med": 23.29, "q1": 11.36, "q3": 36.74}, {"t": "2025-06-05", "min": 0.0, "max": 156.1, "med": 24.79, "q1": 11.38, "q3": 39.96}, {"t": "2025-06-06", "min": 0.0, "max": 267.45, "med": 17.32, "q1": 5.44, "q3": 36.0}, {"t": "2025-06-07", "min": 4.63, "max": 263.92, "med": 21.05, "q1": 16.92, "q3": 32.46}, {"t": "2025-06-08", "min": 18.07, "max": 206.9, "med": 36.97, "q1": 31.51, "q3": 41.59}, {"t": "2025-06-09", "min": 7.1, "max": 312.23, "med": 24.62, "q1": 17.97, "q3": 36.61}, {"t": "2025-06-10", "min": 1.28, "max": 112.69, "med": 17.67, "q1": 8.55, "q3": 28.18}, {"t": "2025-06-11", "min": 0.0, "max": 106.28, "med": 19.51, "q1": 8.77, "q3": 33.69}, {"t": "2025-06-12", "min": 4.28, "max": 123.54, "med": 19.61, "q1": 10.33, "q3": 32.92}, {"t": "2025-06-13", "min": 5.0, "max": 122.64, "med": 32.04, "q1": 20.41, "q3": 41.46}, {"t": "2025-06-14", "min": 5.21, "max": 247.56, "med": 42.13, "q1": 27.69, "q3": 53.37}, {"t": "2025-06-15", "min": 15.38, "max": 197.79, "med": 41.21, "q1": 35.78, "q3": 45.64}, {"t": "2025-06-16", "min": 5.31, "max": 298.2, "med": 30.77, "q1": 18.35, "q3": 39.97}, {"t": "2025-06-17", "min": 0.0, "max": 261.79, "med": 20.79, "q1": 6.49, "q3": 36.64}, {"t": "2025-06-18", "min": 0.36, "max": 145.05, "med": 37.64, "q1": 18.87, "q3": 51.67}, {"t": "2025-06-19", "min": 21.72, "max": 167.28, "med": 42.86, "q1": 30.26, "q3": 54.9}, {"t": "2025-06-21", "min": 14.74, "max": 181.13, "med": 28.1, "q1": 23.35, "q3": 34.0}, {"t": "2025-06-22", "min": 2.31, "max": 203.72, "med": 24.42, "q1": 17.6, "q3": 36.97}, {"t": "2025-06-23", "min": 6.54, "max": 137.63, "med": 26.26, "q1": 20.28, "q3": 36.04}, {"t": "2025-06-24", "min": 5.95, "max": 180.49, "med": 16.14, "q1": 10.19, "q3": 28.62}, {"t": "2025-06-25", "min": 2.9, "max": 363.31, "med": 24.46, "q1": 14.24, "q3": 38.24}, {"t": "2025-06-26", "min": 3.44, "max": 212.72, "med": 21.88, "q1": 16.14, "q3": 30.24}, {"t": "2025-06-27", "min": 4.49, "max": 125.59, "med": 23.49, "q1": 18.02, "q3": 35.03}, {"t": "2025-06-28", "min": 2.92, "max": 215.92, "med": 22.36, "q1": 15.82, "q3": 36.13}, {"t": "2025-06-29", "min": 1.14, "max": 323.14, "med": 10.05, "q1": 5.0, "q3": 30.56}, {"t": "2025-06-30", "min": 0.15, "max": 216.23, "med": 17.48, "q1": 6.19, "q3": 26.18}, {"t": "2025-07-01", "min": 4.18, "max": 182.79, "med": 28.95, "q1": 16.05, "q3": 42.45}, {"t": "2025-07-02", "min": 3.13, "max": 161.54, "med": 15.51, "q1": 8.41, "q3": 36.86}, {"t": "2025-07-03", "min": 0.0, "max": 159.15, "med": 10.6, "q1": 3.72, "q3": 24.54}, {"t": "2025-07-04", "min": 0.41, "max": 207.21, "med": 10.56, "q1": 5.62, "q3": 30.31}, {"t": "2025-07-05", "min": 2.1, "max": 357.26, "med": 19.82, "q1": 14.67, "q3": 33.36}, {"t": "2025-07-06", "min": 0.0, "max": 375.77, "med": 19.72, "q1": 7.24, "q3": 32.4}, {"t": "2025-07-07", "min": 17.55, "max": 271.45, "med": 34.49, "q1": 30.18, "q3": 46.69}, {"t": "2025-07-08", "min": 12.72, "max": 211.15, "med": 29.79, "q1": 24.36, "q3": 39.0}, {"t": "2025-07-09", "min": 4.08, "max": 168.46, "med": 18.2, "q1": 13.14, "q3": 27.69}, {"t": "2025-07-10", "min": 1.31, "max": 150.72, "med": 8.91, "q1": 5.13, "q3": 25.97}, {"t": "2025-07-11", "min": 5.54, "max": 194.38, "med": 37.63, "q1": 22.01, "q3": 53.17}, {"t": "2025-07-12", "min": 11.13, "max": 209.38, "med": 41.77, "q1": 26.45, "q3": 60.78}, {"t": "2025-07-13", "min": 20.69, "max": 276.27, "med": 36.81, "q1": 26.86, "q3": 50.47}, {"t": "2025-07-14", "min": 16.55, "max": 1222.64, "med": 33.82, "q1": 25.69, "q3": 47.97}, {"t": "2025-07-15", "min": 2.56, "max": 170.92, "med": 21.03, "q1": 9.27, "q3": 40.54}, {"t": "2025-07-16", "min": 4.3, "max": 195.9, "med": 27.58, "q1": 19.67, "q3": 40.49}, {"t": "2025-07-17", "min": 2.33, "max": 229.03, "med": 31.51, "q1": 16.18, "q3": 42.05}, {"t": "2025-07-18", "min": 0.68, "max": 281.05, "med": 33.59, "q1": 19.73, "q3": 46.85}, {"t": "2025-07-19", "min": 1.41, "max": 155.59, "med": 29.15, "q1": 18.2, "q3": 39.36}, {"t": "2025-07-20", "min": 2.13, "max": 299.49, "med": 34.51, "q1": 25.74, "q3": 51.5}, {"t": "2025-07-21", "min": 8.56, "max": 215.97, "med": 54.28, "q1": 35.44, "q3": 94.05}, {"t": "2025-07-22", "min": 10.97, "max": 122.36, "med": 35.09, "q1": 24.76, "q3": 43.28}, {"t": "2025-07-23", "min": 15.05, "max": 165.36, "med": 42.85, "q1": 30.92, "q3": 47.92}, {"t": "2025-07-24", "min": 14.82, "max": 223.62, "med": 26.56, "q1": 23.23, "q3": 33.67}, {"t": "2025-07-25", "min": 7.18, "max": 141.38, "med": 19.05, "q1": 13.17, "q3": 31.26}, {"t": "2025-07-26", "min": 12.13, "max": 236.08, "med": 31.36, "q1": 20.41, "q3": 38.76}, {"t": "2025-07-27", "min": 8.64, "max": 220.03, "med": 29.85, "q1": 23.46, "q3": 40.56}, {"t": "2025-07-28", "min": 0.0, "max": 142.41, "med": 7.76, "q1": 1.15, "q3": 28.31}, {"t": "2025-07-29", "min": 0.0, "max": 162.62, "med": 4.18, "q1": 1.29, "q3": 20.56}, {"t": "2025-07-30", "min": 0.0, "max": 93.97, "med": 3.72, "q1": 1.07, "q3": 19.3}, {"t": "2025-07-31", "min": 0.0, "max": 79.77, "med": 4.18, "q1": 1.2, "q3": 19.2}, {"t": "2025-08-01", "min": 0.0, "max": 205.82, "med": 28.97, "q1": 6.97, "q3": 45.13}, {"t": "2025-08-02", "min": 3.38, "max": 266.1, "med": 41.05, "q1": 28.19, "q3": 49.46}, {"t": "2025-08-03", "min": 17.97, "max": 211.15, "med": 35.42, "q1": 28.49, "q3": 45.23}, {"t": "2025-08-04", "min": 11.79, "max": 213.59, "med": 29.36, "q1": 22.01, "q3": 43.22}, {"t": "2025-08-05", "min": 5.31, "max": 256.87, "med": 27.08, "q1": 19.07, "q3": 40.15}, {"t": "2025-08-06", "min": 3.56, "max": 377.05, "med": 36.15, "q1": 22.97, "q3": 46.37}, {"t": "2025-08-07", "min": 5.72, "max": 289.1, "med": 31.82, "q1": 20.97, "q3": 44.17}, {"t": "2025-08-08", "min": 18.46, "max": 218.51, "med": 36.78, "q1": 27.38, "q3": 49.64}, {"t": "2025-08-09", "min": 21.46, "max": 229.03, "med": 37.6, "q1": 30.82, "q3": 51.41}, {"t": "2025-08-10", "min": 19.14, "max": 371.44, "med": 33.13, "q1": 27.94, "q3": 43.22}, {"t": "2025-08-11", "min": 7.44, "max": 261.67, "med": 24.85, "q1": 20.51, "q3": 31.95}, {"t": "2025-08-12", "min": 10.59, "max": 147.31, "med": 26.1, "q1": 19.8, "q3": 35.06}, {"t": "2025-08-13", "min": 6.44, "max": 205.54, "med": 24.94, "q1": 16.54, "q3": 38.49}, {"t": "2025-08-14", "min": 2.87, "max": 126.13, "med": 17.67, "q1": 9.58, "q3": 27.33}, {"t": "2025-08-15", "min": 7.87, "max": 232.15, "med": 30.18, "q1": 18.2, "q3": 47.15}, {"t": "2025-08-16", "min": 8.33, "max": 2286.71, "med": 32.82, "q1": 19.87, "q3": 42.21}, {"t": "2025-08-17", "min": 13.08, "max": 106.41, "med": 36.08, "q1": 29.45, "q3": 46.15}, {"t": "2025-08-18", "min": 9.26, "max": 215.79, "med": 40.2, "q1": 20.44, "q3": 47.74}, {"t": "2025-08-19", "min": 15.33, "max": 103.18, "med": 33.28, "q1": 24.28, "q3": 43.63}, {"t": "2025-08-20", "min": 18.89, "max": 291.36, "med": 32.82, "q1": 27.74, "q3": 43.35}, {"t": "2025-08-21", "min": 21.05, "max": 151.62, "med": 40.28, "q1": 33.58, "q3": 53.37}, {"t": "2025-08-22", "min": 20.1, "max": 180.74, "med": 44.54, "q1": 31.53, "q3": 55.38}, {"t": "2025-08-23", "min": 27.87, "max": 179.08, "med": 47.23, "q1": 37.92, "q3": 52.44}, {"t": "2025-08-24", "min": 27.87, "max": 215.85, "med": 43.94, "q1": 37.46, "q3": 50.67}, {"t": "2025-08-25", "min": 21.79, "max": 228.44, "med": 31.67, "q1": 27.36, "q3": 37.69}, {"t": "2025-08-26", "min": 14.41, "max": 183.05, "med": 28.58, "q1": 23.41, "q3": 34.04}, {"t": "2025-08-27", "min": 0.0, "max": 314.58, "med": 2.38, "q1": 0.92, "q3": 11.12}, {"t": "2025-08-28", "min": 0.0, "max": 159.36, "med": 7.21, "q1": 1.41, "q3": 26.87}, {"t": "2025-08-29", "min": 0.0, "max": 236.95, "med": 18.48, "q1": 6.62, "q3": 32.85}, {"t": "2025-08-30", "min": 0.41, "max": 203.05, "med": 30.69, "q1": 13.64, "q3": 39.72}, {"t": "2025-08-31", "min": 11.95, "max": 397.62, "med": 39.33, "q1": 31.31, "q3": 46.85}, {"t": "2025-09-01", "min": 11.97, "max": 357.77, "med": 33.54, "q1": 26.51, "q3": 43.38}, {"t": "2025-09-02", "min": 19.41, "max": 396.59, "med": 35.4, "q1": 27.67, "q3": 48.41}, {"t": "2025-09-03", "min": 17.97, "max": 203.49, "med": 27.82, "q1": 23.08, "q3": 40.74}, {"t": "2025-09-04", "min": 18.07, "max": 161.13, "med": 33.08, "q1": 26.67, "q3": 43.44}, {"t": "2025-09-05", "min": 11.72, "max": 128.74, "med": 31.77, "q1": 23.51, "q3": 38.64}, {"t": "2025-09-06", "min": 6.26, "max": 164.15, "med": 29.77, "q1": 18.2, "q3": 44.77}, {"t": "2025-09-07", "min": 5.49, "max": 125.26, "med": 18.43, "q1": 11.67, "q3": 29.54}, {"t": "2025-09-08", "min": 0.15, "max": 79.64, "med": 15.97, "q1": 6.23, "q3": 22.65}, {"t": "2025-09-09", "min": 0.0, "max": 112.1, "med": 5.97, "q1": 3.26, "q3": 18.54}, {"t": "2025-09-10", "min": 0.44, "max": 126.95, "med": 21.56, "q1": 6.92, "q3": 37.56}, {"t": "2025-09-11", "min": 1.0, "max": 151.33, "med": 15.94, "q1": 6.74, "q3": 28.77}, {"t": "2025-09-12", "min": 2.04, "max": 231.21, "med": 27.26, "q1": 19.36, "q3": 39.4}, {"t": "2025-09-13", "min": 3.1, "max": 244.44, "med": 19.14, "q1": 9.44, "q3": 31.51}, {"t": "2025-09-14", "min": 1.69, "max": 119.05, "med": 12.49, "q1": 8.26, "q3": 22.41}, {"t": "2025-09-15", "min": 4.97, "max": 185.62, "med": 21.46, "q1": 16.48, "q3": 28.77}, {"t": "2025-09-16", "min": 5.26, "max": 222.74, "med": 18.37, "q1": 9.97, "q3": 32.53}, {"t": "2025-09-17", "min": 4.23, "max": 252.21, "med": 19.14, "q1": 10.85, "q3": 29.33}, {"t": "2025-09-18", "min": 0.63, "max": 216.33, "med": 24.33, "q1": 11.51, "q3": 42.08}, {"t": "2025-09-19", "min": 4.3, "max": 219.79, "med": 22.08, "q1": 11.56, "q3": 38.67}, {"t": "2025-09-20", "min": 5.72, "max": 201.67, "med": 21.85, "q1": 16.0, "q3": 32.09}, {"t": "2025-09-21", "min": 2.67, "max": 161.33, "med": 17.82, "q1": 9.53, "q3": 32.6}, {"t": "2025-09-22", "min": 1.67, "max": 497.72, "med": 39.0, "q1": 23.12, "q3": 50.56}, {"t": "2025-09-23", "min": 4.84, "max": 218.67, "med": 42.9, "q1": 20.2, "q3": 51.14}, {"t": "2025-09-24", "min": 10.9, "max": 315.13, "med": 32.46, "q1": 25.97, "q3": 46.11}, {"t": "2025-09-25", "min": 8.41, "max": 162.38, "med": 35.77, "q1": 23.41, "q3": 43.38}, {"t": "2025-09-26", "min": 6.85, "max": 112.18, "med": 28.47, "q1": 19.94, "q3": 37.9}, {"t": "2025-09-27", "min": 6.33, "max": 222.36, "med": 23.42, "q1": 16.0, "q3": 35.2}, {"t": "2025-09-28", "min": 9.53, "max": 1374.28, "med": 23.49, "q1": 17.64, "q3": 47.28}, {"t": "2025-09-29", "min": 2.38, "max": 125.18, "med": 21.95, "q1": 18.3, "q3": 28.83}, {"t": "2025-09-30", "min": 5.31, "max": 341.87, "med": 31.79, "q1": 19.97, "q3": 39.69}, {"t": "2025-10-01", "min": 10.69, "max": 106.77, "med": 29.09, "q1": 23.69, "q3": 39.97}, {"t": "2025-10-02", "min": 0.38, "max": 246.18, "med": 32.69, "q1": 18.38, "q3": 40.18}, {"t": "2025-10-03", "min": 1.72, "max": 86.82, "med": 21.08, "q1": 8.28, "q3": 32.13}, {"t": "2025-10-04", "min": 4.23, "max": 431.41, "med": 26.46, "q1": 17.69, "q3": 37.15}, {"t": "2025-10-05", "min": 13.03, "max": 340.33, "med": 32.08, "q1": 23.97, "q3": 43.0}, {"t": "2025-10-06", "min": 10.49, "max": 253.13, "med": 32.74, "q1": 22.0, "q3": 47.85}, {"t": "2025-10-07", "min": 1.72, "max": 149.9, "med": 24.79, "q1": 9.36, "q3": 38.59}, {"t": "2025-10-08", "min": 0.0, "max": 210.74, "med": 20.3, "q1": 4.96, "q3": 32.47}, {"t": "2025-10-09", "min": 0.0, "max": 158.38, "med": 8.36, "q1": 3.51, "q3": 21.23}, {"t": "2025-10-10", "min": 0.0, "max": 100.56, "med": 7.33, "q1": 4.15, "q3": 20.36}, {"t": "2025-10-11", "min": 4.43, "max": 196.62, "med": 18.73, "q1": 11.36, "q3": 34.78}, {"t": "2025-10-12", "min": 2.27, "max": 384.79, "med": 15.91, "q1": 9.49, "q3": 22.49}, {"t": "2025-10-13", "min": 1.08, "max": 163.38, "med": 10.53, "q1": 5.59, "q3": 32.38}, {"t": "2025-10-14", "min": 3.28, "max": 130.38, "med": 17.43, "q1": 8.63, "q3": 24.83}, {"t": "2025-10-15", "min": 3.21, "max": 73.69, "med": 11.1, "q1": 7.08, "q3": 20.92}, {"t": "2025-10-17", "min": 3.72, "max": 58.05, "med": 8.31, "q1": 6.83, "q3": 16.52}, {"t": "2025-10-18", "min": 3.1, "max": 46.85, "med": 18.1, "q1": 10.67, "q3": 25.77}, {"t": "2025-10-19", "min": 0.0, "max": 48.46, "med": 18.23, "q1": 4.62, "q3": 31.92}, {"t": "2025-10-20", "min": 6.44, "max": 49.51, "med": 25.03, "q1": 16.89, "q3": 33.59}, {"t": "2025-10-21", "min": 5.23, "max": 54.0, "med": 29.88, "q1": 24.74, "q3": 36.21}, {"t": "2025-10-22", "min": 14.9, "max": 69.2, "med": 33.21, "q1": 28.26, "q3": 42.92}, {"t": "2025-10-23", "min": 7.05, "max": 87.74, "med": 34.83, "q1": 30.14, "q3": 47.58}, {"t": "2025-10-24", "min": 11.54, "max": 66.45, "med": 24.79, "q1": 20.14, "q3": 33.64}, {"t": "2025-10-25", "min": 9.64, "max": 57.77, "med": 29.72, "q1": 24.64, "q3": 34.38}, {"t": "2025-10-26", "min": 7.26, "max": 84.82, "med": 27.15, "q1": 17.69, "q3": 36.72}, {"t": "2025-10-27", "min": 18.14, "max": 59.54, "med": 33.31, "q1": 27.04, "q3": 39.42}, {"t": "2025-10-28", "min": 15.31, "max": 42.36, "med": 25.9, "q1": 22.23, "q3": 31.29}, {"t": "2025-10-29", "min": 3.03, "max": 48.38, "med": 27.92, "q1": 16.26, "q3": 32.14}, {"t": "2025-10-30", "min": 0.54, "max": 31.21, "med": 8.85, "q1": 6.05, "q3": 14.0}, {"t": "2025-10-31", "min": 1.82, "max": 188.62, "med": 13.56, "q1": 8.31, "q3": 20.05}, {"t": "2025-11-01", "min": 5.97, "max": 58.69, "med": 21.13, "q1": 13.59, "q3": 27.63}, {"t": "2025-11-02", "min": 2.46, "max": 84.79, "med": 31.54, "q1": 18.51, "q3": 44.67}, {"t": "2025-11-03", "min": 3.82, "max": 43.56, "med": 20.82, "q1": 12.41, "q3": 26.79}, {"t": "2025-11-09", "min": 0.0, "max": 44.1, "med": 19.32, "q1": 7.29, "q3": 30.37}, {"t": "2025-11-10", "min": 3.54, "max": 87.74, "med": 16.54, "q1": 10.67, "q3": 28.38}, {"t": "2025-11-12", "min": 0.69, "max": 28.23, "med": 9.47, "q1": 6.56, "q3": 16.68}, {"t": "2025-11-13", "min": 0.0, "max": 17.43, "med": 0.0, "q1": 0.0, "q3": 0.73}, {"t": "2025-11-14", "min": 0.0, "max": 21.41, "med": 0.0, "q1": 0.0, "q3": 0.56}, {"t": "2025-11-15", "min": 0.0, "max": 97.08, "med": 4.26, "q1": 0.68, "q3": 12.97}, {"t": "2025-11-16", "min": 0.0, "max": 36.11, "med": 0.0, "q1": 0.0, "q3": 3.79}, {"t": "2025-11-17", "min": 0.0, "max": 24.95, "med": 1.0, "q1": 0.0, "q3": 2.82}, {"t": "2025-11-18", "min": 0.0, "max": 324.69, "med": 1.23, "q1": 0.0, "q3": 5.85}, {"t": "2025-11-19", "min": 0.0, "max": 45.41, "med": 4.21, "q1": 0.93, "q3": 11.54}, {"t": "2025-11-20", "min": 0.0, "max": 60.23, "med": 19.2, "q1": 4.55, "q3": 27.49}, {"t": "2025-11-21", "min": 0.0, "max": 62.62, "med": 23.32, "q1": 16.54, "q3": 37.31}, {"t": "2025-11-22", "min": 12.36, "max": 152.9, "med": 28.99, "q1": 24.51, "q3": 33.72}, {"t": "2025-11-24", "min": 0.0, "max": 21.77, "med": 6.41, "q1": 2.49, "q3": 11.18}, {"t": "2025-11-25", "min": 0.0, "max": 29.31, "med": 0.5, "q1": 0.0, "q3": 3.33}, {"t": "2025-11-26", "min": 0.0, "max": 42.95, "med": 0.83, "q1": 0.0, "q3": 4.54}, {"t": "2025-11-27", "min": 0.0, "max": 37.18, "med": 0.52, "q1": 0.0, "q3": 1.82}, {"t": "2025-11-28", "min": 0.0, "max": 32.31, "med": 0.0, "q1": 0.0, "q3": 0.37}, {"t": "2025-11-29", "min": 0.0, "max": 30.08, "med": 0.0, "q1": 0.0, "q3": 1.21}, {"t": "2025-11-30", "min": 0.0, "max": 64.64, "med": 4.95, "q1": 1.79, "q3": 7.62}, {"t": "2025-12-01", "min": 0.0, "max": 36.51, "med": 1.29, "q1": 0.0, "q3": 3.6}, {"t": "2025-12-02", "min": 0.0, "max": 159.26, "med": 9.5, "q1": 2.5, "q3": 18.67}, {"t": "2025-12-03", "min": 0.0, "max": 46.44, "med": 8.69, "q1": 4.46, "q3": 16.72}, {"t": "2025-12-04", "min": 0.0, "max": 27.13, "med": 5.14, "q1": 2.4, "q3": 8.88}, {"t": "2025-12-05", "min": 0.0, "max": 49.56, "med": 16.92, "q1": 6.69, "q3": 29.08}, {"t": "2025-12-06", "min": 0.0, "max": 40.77, "med": 15.59, "q1": 5.64, "q3": 21.97}, {"t": "2025-12-07", "min": 0.0, "max": 31.9, "med": 1.56, "q1": 0.47, "q3": 3.49}, {"t": "2025-12-08", "min": 0.0, "max": 29.79, "med": 0.23, "q1": 0.0, "q3": 2.1}, {"t": "2025-12-09", "min": 0.0, "max": 39.03, "med": 4.18, "q1": 2.13, "q3": 7.67}, {"t": "2025-12-10", "min": 0.0, "max": 50.46, "med": 3.01, "q1": 1.0, "q3": 5.77}, {"t": "2025-12-11", "min": 0.0, "max": 17.3, "med": 2.21, "q1": 0.64, "q3": 4.51}, {"t": "2025-12-12", "min": 0.0, "max": 8.97, "med": 3.04, "q1": 1.77, "q3": 4.46}, {"t": "2025-12-13", "min": 2.97, "max": 12836.1, "med": 13.13, "q1": 7.1, "q3": 20.43}, {"t": "2025-12-14", "min": 5.36, "max": 151.54, "med": 25.68, "q1": 20.29, "q3": 30.59}, {"t": "2025-12-15", "min": 0.0, "max": 140.44, "med": 6.05, "q1": 3.69, "q3": 11.54}, {"t": "2025-12-16", "min": 0.0, "max": 66.03, "med": 5.41, "q1": 2.18, "q3": 17.82}, {"t": "2025-12-17", "min": 0.0, "max": 126.0, "med": 7.64, "q1": 1.85, "q3": 32.36}, {"t": "2025-12-18", "min": 23.95, "max": 95.72, "med": 39.26, "q1": 32.04, "q3": 45.87}, {"t": "2025-12-19", "min": 9.33, "max": 117.77, "med": 37.36, "q1": 30.41, "q3": 52.38}, {"t": "2025-12-20", "min": 6.87, "max": 50.56, "med": 35.78, "q1": 25.53, "q3": 43.01}, {"t": "2025-12-21", "min": 3.79, "max": 43.46, "med": 12.83, "q1": 8.0, "q3": 22.74}, {"t": "2026-01-02", "min": 2.77, "max": 38.03, "med": 9.26, "q1": 6.85, "q3": 18.13}, {"t": "2026-01-03", "min": 0.0, "max": 52.59, "med": 8.03, "q1": 1.0, "q3": 28.69}, {"t": "2026-01-04", "min": 0.0, "max": 239.14, "med": 1.17, "q1": 0.0, "q3": 12.92}, {"t": "2026-01-05", "min": 0.0, "max": 285.49, "med": 0.61, "q1": 0.0, "q3": 1.93}, {"t": "2026-01-06", "min": 0.0, "max": 18.05, "med": 0.5, "q1": 0.0, "q3": 3.36}, {"t": "2026-01-07", "min": 0.0, "max": 50.18, "med": 1.51, "q1": 0.53, "q3": 4.21}, {"t": "2026-01-08", "min": 0.0, "max": 31.9, "med": 5.65, "q1": 0.08, "q3": 16.72}, {"t": "2026-01-09", "min": 0.0, "max": 33.74, "med": 2.36, "q1": 0.71, "q3": 4.87}, {"t": "2026-01-10", "min": 0.0, "max": 42.92, "med": 2.86, "q1": 1.31, "q3": 4.99}, {"t": "2026-01-11", "min": 0.0, "max": 47.08, "med": 17.92, "q1": 4.92, "q3": 26.97}, {"t": "2026-01-12", "min": 7.18, "max": 66.61, "med": 25.05, "q1": 19.82, "q3": 38.0}, {"t": "2026-01-13", "min": 4.43, "max": 93.77, "med": 25.36, "q1": 16.82, "q3": 30.29}, {"t": "2026-01-14", "min": 1.23, "max": 43.79, "med": 18.64, "q1": 11.32, "q3": 23.62}, {"t": "2026-01-15", "min": 0.0, "max": 50.0, "med": 11.87, "q1": 6.62, "q3": 21.49}, {"t": "2026-01-16", "min": 0.0, "max": 46.28, "med": 18.51, "q1": 13.31, "q3": 27.24}, {"t": "2026-01-17", "min": 0.0, "max": 58.64, "med": 17.78, "q1": 5.09, "q3": 25.18}, {"t": "2026-01-18", "min": 0.5, "max": 52.44, "med": 10.44, "q1": 6.59, "q3": 18.73}, {"t": "2026-01-19", "min": 0.0, "max": 25.87, "med": 0.0, "q1": 0.0, "q3": 2.37}, {"t": "2026-01-20", "min": 0.0, "max": 28.72, "med": 2.49, "q1": 0.0, "q3": 8.05}, {"t": "2026-01-21", "min": 0.0, "max": 43.69, "med": 1.12, "q1": 0.0, "q3": 2.67}, {"t": "2026-01-22", "min": 0.0, "max": 47.89, "med": 7.38, "q1": 1.45, "q3": 20.19}, {"t": "2026-01-23", "min": 6.59, "max": 191.9, "med": 21.82, "q1": 18.55, "q3": 25.62}, {"t": "2026-01-24", "min": 10.15, "max": 54.79, "med": 36.61, "q1": 25.31, "q3": 45.14}, {"t": "2026-01-25", "min": 24.28, "max": 112.59, "med": 40.03, "q1": 31.17, "q3": 48.04}, {"t": "2026-01-26", "min": 4.03, "max": 77.31, "med": 18.86, "q1": 9.41, "q3": 35.21}, {"t": "2026-01-27", "min": 7.26, "max": 70.38, "med": 32.29, "q1": 26.77, "q3": 43.28}, {"t": "2026-01-28", "min": 2.38, "max": 55.64, "med": 13.74, "q1": 9.58, "q3": 20.77}, {"t": "2026-01-29", "min": 15.05, "max": 74.73, "med": 40.69, "q1": 29.95, "q3": 49.32}, {"t": "2026-01-30", "min": 0.0, "max": 859.69, "med": 22.15, "q1": 4.54, "q3": 31.12}, {"t": "2026-01-31", "min": 0.0, "max": 25.67, "med": 4.41, "q1": 2.33, "q3": 7.41}, {"t": "2026-02-01", "min": 0.0, "max": 8.13, "med": 0.0, "q1": 0.0, "q3": 1.0}, {"t": "2026-02-03", "min": 0.0, "max": 235.21, "med": 0.0, "q1": 0.0, "q3": 1.41}, {"t": "2026-02-04", "min": 0.0, "max": 3312.49, "med": 0.0, "q1": 0.0, "q3": 1.36}, {"t": "2026-02-05", "min": 0.0, "max": 17.77, "med": 1.33, "q1": 0.0, "q3": 3.41}, {"t": "2026-02-06", "min": 0.0, "max": 47.0, "med": 1.95, "q1": 0.0, "q3": 4.92}, {"t": "2026-02-07", "min": 2.59, "max": 43.21, "med": 13.99, "q1": 8.74, "q3": 22.59}, {"t": "2026-02-08", "min": 20.74, "max": 37.38, "med": 27.38, "q1": 24.64, "q3": 30.1}, {"t": "2026-02-10", "min": 0.0, "max": 28.82, "med": 0.0, "q1": 0.0, "q3": 0.28}, {"t": "2026-02-11", "min": 0.0, "max": 43.72, "med": 4.43, "q1": 0.0, "q3": 8.59}, {"t": "2026-02-14", "min": 0.0, "max": 36.59, "med": 0.83, "q1": 0.0, "q3": 2.92}, {"t": "2026-02-15", "min": 0.0, "max": 56.97, "med": 1.73, "q1": 0.0, "q3": 4.46}, {"t": "2026-02-16", "min": 0.0, "max": 33.26, "med": 1.43, "q1": 0.0, "q3": 3.1}, {"t": "2026-02-17", "min": 5.59, "max": 118.33, "med": 19.77, "q1": 15.0, "q3": 33.15}, {"t": "2026-02-18", "min": 0.92, "max": 187.85, "med": 20.18, "q1": 8.46, "q3": 24.54}, {"t": "2026-02-19", "min": 0.0, "max": 47.31, "med": 4.36, "q1": 2.46, "q3": 10.74}, {"t": "2026-02-20", "min": 21.67, "max": 68.05, "med": 31.42, "q1": 28.64, "q3": 35.4}, {"t": "2026-02-21", "min": 0.0, "max": 158.74, "med": 5.7, "q1": 2.79, "q3": 12.23}, {"t": "2026-02-22", "min": 0.0, "max": 47.54, "med": 3.38, "q1": 0.31, "q3": 10.53}, {"t": "2026-02-23", "min": 0.0, "max": 30.15, "med": 1.33, "q1": 0.21, "q3": 3.21}, {"t": "2026-02-24", "min": 0.0, "max": 9.56, "med": 0.9, "q1": 0.0, "q3": 2.35}, {"t": "2026-02-25", "min": 0.0, "max": 33.69, "med": 0.64, "q1": 0.0, "q3": 2.62}, {"t": "2026-02-27", "min": 1.56, "max": 4999.0, "med": 14.57, "q1": 10.62, "q3": 4999.0}, {"t": "2026-03-01", "min": 0.0, "max": 4999.0, "med": 11.68, "q1": 6.15, "q3": 26.94}, {"t": "2026-03-02", "min": 0.0, "max": 25.95, "med": 7.81, "q1": 3.68, "q3": 16.38}, {"t": "2026-03-03", "min": 0.0, "max": 110.54, "med": 10.08, "q1": 5.5, "q3": 25.33}, {"t": "2026-03-04", "min": 0.0, "max": 75.64, "med": 16.76, "q1": 9.46, "q3": 24.41}, {"t": "2026-03-05", "min": 0.0, "max": 34.56, "med": 1.92, "q1": 1.0, "q3": 9.02}, {"t": "2026-03-06", "min": 0.64, "max": 42.82, "med": 12.1, "q1": 6.87, "q3": 21.11}, {"t": "2026-03-07", "min": 0.49, "max": 58.33, "med": 13.49, "q1": 6.18, "q3": 25.08}, {"t": "2026-03-08", "min": 3.18, "max": 187.56, "med": 10.92, "q1": 6.72, "q3": 19.28}, {"t": "2026-03-09", "min": 6.79, "max": 42.56, "med": 12.72, "q1": 10.4, "q3": 16.6}, {"t": "2026-03-10", "min": 0.13, "max": 25.28, "med": 7.9, "q1": 3.79, "q3": 10.18}, {"t": "2026-03-11", "min": 0.0, "max": 25.62, "med": 0.81, "q1": 0.0, "q3": 2.09}, {"t": "2026-03-12", "min": 0.0, "max": 49.33, "med": 0.45, "q1": 0.0, "q3": 1.97}, {"t": "2026-03-13", "min": 0.0, "max": 22.28, "med": 3.0, "q1": 1.59, "q3": 4.67}, {"t": "2026-03-14", "min": 1.31, "max": 78.77, "med": 22.23, "q1": 4.15, "q3": 33.58}, {"t": "2026-03-15", "min": 11.49, "max": 43.49, "med": 20.1, "q1": 18.89, "q3": 25.67}];
+const ts=RAW.map(d=>new Date(d.t).getTime());
+const med=RAW.map(d=>Math.min(d.med,CAP));
+const maxV=RAW.map(d=>Math.min(d.max,CAP));
+const q1=RAW.map(d=>Math.min(d.q1,CAP));
+const q3=RAW.map(d=>Math.min(d.q3,CAP));
+const offlineDate=new Date('2026-03-15').getTime();
+const regDate=new Date('2026-04-01').getTime();
 
-const ts   = RAW.map(d => new Date(d.t).getTime());
-const med  = RAW.map(d => Math.min(d.med, CAP));
-const maxV = RAW.map(d => Math.min(d.max, CAP));
-const q1   = RAW.map(d => Math.min(d.q1,  CAP));
-const q3   = RAW.map(d => Math.min(d.q3,  CAP));
-
-const offlineDate = new Date('2026-03-15').getTime();
-const regDate     = new Date('2026-04-01').getTime();
-
-const zonesPlugin = {
-  id: 'zones',
-  beforeDraw(chart) {
-    const {ctx, chartArea: ca, scales: {x, y}} = chart;
-    if (!ca) return;
-    ctx.save();
-    ctx.rect(ca.left, ca.top, ca.width, ca.height);
-    ctx.clip();
-
-    const bands = [
-      [0,   12,    'rgba(74,222,128,0.07)'],
-      [12,  35.4,  'rgba(250,204,21,0.08)'],
-      [35.4, 55.4, 'rgba(251,146,60,0.09)'],
-      [55.4,150.4, 'rgba(249,115,22,0.10)'],
-      [150.4,250.4,'rgba(220,38,38,0.11)'],
-      [250.4, CAP,  'rgba(126,34,206,0.14)'],
-    ];
-    bands.forEach(([lo, hi, col]) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(ca.left, y.getPixelForValue(hi), ca.width, y.getPixelForValue(lo) - y.getPixelForValue(hi));
-    });
-
-    [12, 35.4, 55.4, 150.4, 250.4].forEach(v => {
-      const py = y.getPixelForValue(v);
-      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(ca.left, py); ctx.lineTo(ca.right, py); ctx.stroke();
-    });
-
-    const whoY = y.getPixelForValue(15);
-    ctx.strokeStyle = 'rgba(74,222,128,0.9)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([7, 5]);
-    ctx.beginPath(); ctx.moveTo(ca.left, whoY); ctx.lineTo(ca.right, whoY); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(74,222,128,0.9)';
-    ctx.font = 'bold 10px system-ui';
-    ctx.fillText('WHO 15', ca.left + 6, whoY - 5);
-
-    ctx.restore();
+const zonesPlugin={
+  id:'zones',
+  beforeDraw(chart){
+    const{ctx,chartArea:ca,scales:{x,y}}=chart;if(!ca)return;
+    ctx.save();ctx.rect(ca.left,ca.top,ca.width,ca.height);ctx.clip();
+    [[0,12,'rgba(74,222,128,0.07)'],[12,35.4,'rgba(250,204,21,0.08)'],[35.4,55.4,'rgba(251,146,60,0.09)'],[55.4,150.4,'rgba(249,115,22,0.10)'],[150.4,250.4,'rgba(220,38,38,0.11)'],[250.4,CAP,'rgba(126,34,206,0.14)']].forEach(([lo,hi,col])=>{ctx.fillStyle=col;ctx.fillRect(ca.left,y.getPixelForValue(hi),ca.width,y.getPixelForValue(lo)-y.getPixelForValue(hi))});
+    [12,35.4,55.4,150.4,250.4].forEach(v=>{const py=y.getPixelForValue(v);ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ca.left,py);ctx.lineTo(ca.right,py);ctx.stroke()});
+    const whoY=y.getPixelForValue(15);ctx.strokeStyle='rgba(74,222,128,0.9)';ctx.lineWidth=1.5;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(ca.left,whoY);ctx.lineTo(ca.right,whoY);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(74,222,128,0.9)';ctx.font='bold 10px system-ui';ctx.fillText('WHO 15',ca.left+6,whoY-5);
+    ctx.restore()
   },
-  afterDraw(chart) {
-    const {ctx, chartArea: ca, scales: {x, y}} = chart;
-    if (!ca) return;
-    ctx.save();
-    ctx.rect(ca.left, ca.top, ca.width, ca.height);
-    ctx.clip();
-
-    const xOff = x.getPixelForValue(offlineDate);
-    if (xOff < ca.right) {
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(xOff, ca.top, ca.right - xOff, ca.height);
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.font = 'bold 12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('NO DATA', xOff + (ca.right - xOff) / 2, ca.top + ca.height * 0.22);
-    }
-
-    function roundRect(cx, x, y, w, h, r) {
-      cx.beginPath();
-      cx.moveTo(x+r,y); cx.lineTo(x+w-r,y);
-      cx.quadraticCurveTo(x+w,y,x+w,y+r);
-      cx.lineTo(x+w,y+h-r);
-      cx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-      cx.lineTo(x+r,y+h);
-      cx.quadraticCurveTo(x,y+h,x,y+h-r);
-      cx.lineTo(x,y+r);
-      cx.quadraticCurveTo(x,y,x+r,y);
-      cx.closePath();
-    }
-
-    function vLine(dateTs, color, lines, side) {
-      const px = x.getPixelForValue(dateTs);
-      if (px < ca.left || px > ca.right) return;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.8;
-      ctx.setLineDash([5, 4]);
-      ctx.beginPath(); ctx.moveTo(px, ca.top); ctx.lineTo(px, ca.bottom); ctx.stroke();
-      ctx.setLineDash([]);
-      const fsize = 10;
-      ctx.font = `bold ${fsize}px system-ui`;
-      const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
-      const pad = 6, lh = 14, bw = maxW + pad*2, bh = lines.length * lh + pad*2;
-      const bx = side === 'left' ? px - bw - 4 : px + 4;
-      const by = ca.top + 18;
-      ctx.fillStyle = 'rgba(10,12,20,0.92)';
-      roundRect(ctx, bx, by, bw, bh, 4); ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      roundRect(ctx, bx, by, bw, bh, 4); ctx.stroke();
-      ctx.fillStyle = color;
-      ctx.textAlign = 'left';
-      lines.forEach((line, i) => ctx.fillText(line, bx + pad, by + pad + fsize + i * lh));
-    }
-
-    vLine(offlineDate, 'rgba(248,113,113,0.9)', ['SENSOR','OFFLINE','Mar 15'], 'left');
-    vLine(regDate,     'rgba(251,191,36,0.9)',  ['WASTE BAN','BACKFIRES','Apr 1'], 'right');
-    ctx.restore();
+  afterDraw(chart){
+    const{ctx,chartArea:ca,scales:{x,y}}=chart;if(!ca)return;
+    ctx.save();ctx.rect(ca.left,ca.top,ca.width,ca.height);ctx.clip();
+    const xOff=x.getPixelForValue(offlineDate);
+    if(xOff<ca.right){ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(xOff,ca.top,ca.right-xOff,ca.height);ctx.fillStyle='rgba(255,255,255,0.15)';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText('NO DATA',xOff+(ca.right-xOff)/2,ca.top+ca.height*0.22)}
+    function rr(cx,x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.lineTo(x+w-r,y);cx.quadraticCurveTo(x+w,y,x+w,y+r);cx.lineTo(x+w,y+h-r);cx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);cx.lineTo(x+r,y+h);cx.quadraticCurveTo(x,y+h,x,y+h-r);cx.lineTo(x,y+r);cx.quadraticCurveTo(x,y,x+r,y);cx.closePath()}
+    function vLine(dt,color,lines,side){const px=x.getPixelForValue(dt);if(px<ca.left||px>ca.right)return;ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(px,ca.top);ctx.lineTo(px,ca.bottom);ctx.stroke();ctx.setLineDash([]);const fs=10;ctx.font=`bold ${fs}px system-ui`;const mw=Math.max(...lines.map(l=>ctx.measureText(l).width));const p=6,lh=14,bw=mw+p*2,bh=lines.length*lh+p*2;const bx=side==='left'?px-bw-4:px+4,by=ca.top+18;ctx.fillStyle='rgba(10,12,20,0.92)';rr(ctx,bx,by,bw,bh,4);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=1;rr(ctx,bx,by,bw,bh,4);ctx.stroke();ctx.fillStyle=color;ctx.textAlign='left';lines.forEach((l,i)=>ctx.fillText(l,bx+p,by+p+fs+i*lh))}
+    vLine(offlineDate,'rgba(248,113,113,0.9)',['SENSOR','OFFLINE','Mar 15'],'left');
+    vLine(regDate,'rgba(251,191,36,0.9)',['WASTE BAN','TAKES EFFECT','Apr 1'],'right');
+    ctx.restore()
   }
 };
+new Chart(document.getElementById('chart'),{type:'line',plugins:[zonesPlugin],data:{labels:ts,datasets:[{data:maxV,borderColor:'rgba(248,113,113,0.65)',backgroundColor:'transparent',borderWidth:1,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:'#f87171',fill:false,tension:.2,order:3},{data:q3,borderColor:'transparent',backgroundColor:'rgba(96,165,250,0.28)',borderWidth:0,pointRadius:0,fill:'+1',tension:.3,order:2},{data:q1,borderColor:'transparent',backgroundColor:'transparent',borderWidth:0,pointRadius:0,fill:false,tension:.3,order:2},{data:med,borderColor:'#60a5fa',backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#60a5fa',fill:false,tension:.3,order:1}]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(8,10,18,0.97)',titleColor:'#e2e6f0',bodyColor:'#8891aa',borderColor:'#2e3550',borderWidth:1,padding:12,titleFont:{size:13,weight:'bold'},bodyFont:{size:12},callbacks:{title(items){const raw=RAW[items[0].dataIndex];return new Date(raw.t+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'})},label(item){const raw=RAW[item.dataIndex];if(item.datasetIndex===3){let cat=raw.med>55.5?' · UNHEALTHY':raw.med>35.5?' · USG':raw.med>25?' · above WHO 24hr':raw.med>15?' · above WHO annual':'';return` Median: ${raw.med.toFixed(1)} µg/m³${cat}`}if(item.datasetIndex===0){const note=raw.max>=CAP?` (capped; actual: ${raw.max.toFixed(0)})`:''
+const cat=raw.max>250.5?' · 🔴 HAZARDOUS':raw.max>150.5?' · Very Unhealthy':raw.max>55.5?' · Unhealthy':'';return` Max: ${Math.min(raw.max,CAP).toFixed(0)} µg/m³${note}${cat}`}return null},filter:item=>item.datasetIndex===0||item.datasetIndex===3}}},scales:{x:{type:'time',time:{unit:'month',displayFormats:{month:"MMM ''yy"}},grid:{color:'rgba(255,255,255,0.05)'},border:{color:'#252b3d'},ticks:{color:'#6b7494',font:{size:11},maxTicksLimit:10}},y:{min:0,max:CAP,grid:{color:'rgba(255,255,255,0.06)'},border:{color:'#252b3d'},ticks:{color:'#6b7494',font:{size:11},callback:v=>v+' µg/m³'},title:{display:true,text:'PM2.5 (µg/m³)',color:'#6b7494',font:{size:11}}}}}});
 
-new Chart(document.getElementById('chart'), {
-  type: 'line',
-  plugins: [zonesPlugin],
-  data: {
-    labels: ts,
-    datasets: [
-      { data: maxV, borderColor: 'rgba(248,113,113,0.65)', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: '#f87171', fill: false, tension: 0.2, order: 3 },
-      { data: q3,   borderColor: 'transparent', backgroundColor: 'rgba(96,165,250,0.28)', borderWidth: 0, pointRadius: 0, fill: '+1', tension: 0.3, order: 2 },
-      { data: q1,   borderColor: 'transparent', backgroundColor: 'transparent', borderWidth: 0, pointRadius: 0, fill: false, tension: 0.3, order: 2 },
-      { data: med,  borderColor: '#60a5fa', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: '#60a5fa', fill: false, tension: 0.3, order: 1 },
-    ]
-  },
-  options: {
-    responsive: true,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: 'rgba(8,10,18,0.97)',
-        titleColor: '#e2e6f0',
-        bodyColor: '#8891aa',
-        borderColor: '#2e3550',
-        borderWidth: 1,
-        padding: 12,
-        titleFont: { size: 13, weight: 'bold' },
-        bodyFont: { size: 12 },
-        callbacks: {
-          title(items) {
-            const raw = RAW[items[0].dataIndex];
-            return new Date(raw.t + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
-          },
-          label(item) {
-            const raw = RAW[item.dataIndex];
-            if (item.datasetIndex === 3) {
-              let cat = raw.med > 250.5 ? ' · HAZARDOUS' : raw.med > 150.5 ? ' · VERY UNHEALTHY' : raw.med > 55.5 ? ' · UNHEALTHY' : raw.med > 35.5 ? ' · USG' : raw.med > 15 ? ' · above WHO guideline' : '';
-              return ` Median: ${raw.med.toFixed(1)} µg/m³${cat}`;
-            }
-            if (item.datasetIndex === 0) {
-              const note = raw.max >= CAP ? ` (capped; actual: ${raw.max.toFixed(0)})` : '';
-              const cat  = raw.max > 250.5 ? ' · 🔴 HAZARDOUS' : raw.max > 150.5 ? ' · Very Unhealthy' : '';
-              return ` Max: ${Math.min(raw.max, CAP).toFixed(0)} µg/m³${note}${cat}`;
-            }
-            return null;
-          },
-          filter: item => item.datasetIndex === 0 || item.datasetIndex === 3
-        }
-      }
-    },
-    scales: {
-      x: { type: 'time', time: { unit: 'month', displayFormats: { month: "MMM ''yy" } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { color: '#252b3d' }, ticks: { color: '#6b7494', font: { size: 11 }, maxTicksLimit: 10 } },
-      y: { min: 0, max: CAP, grid: { color: 'rgba(255,255,255,0.06)' }, border: { color: '#252b3d' }, ticks: { color: '#6b7494', font: { size: 11 }, callback: v => v + ' µg/m³' }, title: { display: true, text: 'PM2.5 (µg/m³)', color: '#6b7494', font: { size: 11 } } }
-    }
-  }
-});
-</script>
+// Language selector (minimal — headings only for non-English)
+const LANGS={en:{flag:'🌐',name:'English'},id:{flag:'🇮🇩',name:'Bahasa Indonesia'},fr:{flag:'🇫🇷',name:'Français'},de:{flag:'🇩🇪',name:'Deutsch'},zh:{flag:'🇨🇳',name:'中文'},ja:{flag:'🇯🇵',name:'日本語'},ko:{flag:'🇰🇷',name:'한국어'},ru:{flag:'🇷🇺',name:'Русский'}};
+const menuEl=document.getElementById('langMenu');
+Object.entries(LANGS).forEach(([code,{flag,name}])=>{const btn=document.createElement('button');btn.className='lang-opt'+(code==='en'?' active':'');btn.innerHTML=`<span>${flag}</span> ${name}`;btn.onclick=()=>setLang(code);menuEl.appendChild(btn)});
+document.addEventListener('click',e=>{if(!e.target.closest('.lang-select'))menuEl.classList.remove('open')});
 
-<!-- ══════════════════════════════════════════════════════════ TRANSLATION SYSTEM -->
-<script>
-const LANGS = {
-  en: {flag:'🇬🇧',name:'English'},
-  id: {flag:'🇮🇩',name:'Bahasa Indonesia'},
-  fr: {flag:'🇫🇷',name:'Français'},
-  de: {flag:'🇩🇪',name:'Deutsch'},
-  zh: {flag:'🇨🇳',name:'中文 (简体)'},
-  ja: {flag:'🇯🇵',name:'日本語'},
-  ko: {flag:'🇰🇷',name:'한국어'},
-  ru: {flag:'🇷🇺',name:'Русский'},
+const headingT={
+  '#summary h2':{id:'Ringkasan: Yang Kami Ketahui',fr:'Résumé : Ce Que Nous Savons',de:'Zusammenfassung: Was Wir Wissen',zh:'摘要：我们所知道的',ja:'概要：わかっていること',ko:'요약: 우리가 아는 것',ru:'Обзор: Что Мы Знаем'},
+  '#live h2':{id:'Data Langsung — Udara Bali Saat Ini',fr:'Données en Direct — L\'Air de Bali Maintenant',de:'Live-Daten — Balis Luft Jetzt',zh:'实时数据——巴厘岛空气现状',ja:'ライブデータ——バリの空気の現状',ko:'실시간 데이터 — 현재 발리 공기',ru:'Данные в Реальном Времени'},
+  '#historical h2':{id:'Data Historis: 469 Hari PM2.5 Kerobokan',fr:'Données Historiques : 469 Jours de PM2.5',de:'Historische Daten: 469 Tage PM2.5',zh:'历史数据：469天PM2.5记录',ja:'過去データ：469日のPM2.5記録',ko:'과거 데이터: 469일간의 PM2.5',ru:'Исторические Данные: 469 Дней PM2.5'},
+  '#regulation h2':{id:'Perubahan Regulasi 1 April',fr:'Le Changement de Réglementation du 1er Avril',de:'Die Verordnungsänderung vom 1. April',zh:'4月1日法规变更',ja:'4月1日の規制変更',ko:'4월 1일 규정 변경',ru:'Изменение Регулирования 1 Апреля'},
+  '#monitoring h2':{id:'Infrastruktur Pemantauan Bali',fr:'L\'Infrastructure de Surveillance à Bali',de:'Balis Überwachungsinfrastruktur',zh:'巴厘岛监测基础设施',ja:'バリ島のモニタリング体制',ko:'발리 모니터링 인프라',ru:'Мониторинговая Инфраструктура Бали'},
+  '#action h2':{id:'Yang Dibutuhkan: Pemantauan yang Lebih Baik',fr:'Ce Qui Est Nécessaire : Un Meilleur Suivi',de:'Was Gebraucht Wird: Bessere Überwachung',zh:'需要什么：更好的监测',ja:'必要なこと：より良いモニタリング',ko:'필요한 것: 더 나은 모니터링',ru:'Что Нужно: Лучший Мониторинг'},
+  '#check-now h2':{id:'Cek Kualitas Udara Bali Sekarang',fr:'Vérifiez la Qualité de l\'Air à Bali',de:'Balis Luftqualität Jetzt Prüfen',zh:'立即查看巴厘岛空气质量',ja:'バリの大気質を今すぐ確認',ko:'지금 발리 대기질 확인',ru:'Проверьте Воздух на Бали Сейчас'},
 };
-
-// Each key maps a CSS selector to translations per language.
-// Only elements matched by selector get swapped. Tables, links, and source cards stay in English.
-const T = {
-  // ── Nav ──
-  '#topnav a[href="#summary"]':        {en:'Summary',id:'Ringkasan',fr:'Résumé',de:'Zusammenfassung',zh:'摘要',ja:'概要',ko:'요약',ru:'Обзор'},
-  '#topnav a[href="#regulation"]':     {en:'Regulation',id:'Regulasi',fr:'Réglementation',de:'Verordnung',zh:'法规',ja:'規制',ko:'규정',ru:'Регулирование'},
-  '#topnav a[href="#data"]':           {en:'Data',id:'Data',fr:'Données',de:'Daten',zh:'数据',ja:'データ',ko:'데이터',ru:'Данные'},
-  '#topnav a[href="#chart-section"]':  {en:'Chart',id:'Grafik',fr:'Graphique',de:'Diagramm',zh:'图表',ja:'チャート',ko:'차트',ru:'График'},
-  '#topnav a[href="#monitoring"]':     {en:'Monitoring',id:'Pemantauan',fr:'Surveillance',de:'Überwachung',zh:'监测',ja:'モニタリング',ko:'모니터링',ru:'Мониторинг'},
-  '#topnav a[href="#health"]':         {en:'Health',id:'Kesehatan',fr:'Santé',de:'Gesundheit',zh:'健康',ja:'健康',ko:'건강',ru:'Здоровье'},
-  '#topnav a[href="#verify"]':         {en:'Verify',id:'Verifikasi',fr:'Vérifier',de:'Überprüfen',zh:'验证',ja:'検証',ko:'검증',ru:'Проверить'},
-  '#topnav a[href="#questions"]':      {en:'Questions',id:'Pertanyaan',fr:'Questions',de:'Fragen',zh:'问题',ja:'質問',ko:'질문',ru:'Вопросы'},
-  '[data-i18n="nav_check"]':          {en:'Check Air Now ↗',id:'Cek Udara Sekarang ↗',fr:'Vérifier l\'Air ↗',de:'Luft Prüfen ↗',zh:'查看空气质量 ↗',ja:'今の空気質 ↗',ko:'대기질 확인 ↗',ru:'Воздух Сейчас ↗'},
-
-  // ── Header ──
-  '.eyebrow': {
-    en:'Evidence Brief · Public Health',
-    id:'Ringkasan Bukti · Kesehatan Masyarakat',
-    fr:'Dossier de Preuves · Santé Publique',
-    de:'Beweispapier · Öffentliche Gesundheit',
-    zh:'证据简报 · 公共卫生',
-    ja:'エビデンスブリーフ · 公衆衛生',
-    ko:'증거 브리프 · 공중보건',
-    ru:'Доказательная Справка · Общественное Здоровье'
-  },
-  '.doc-header h1': {
-    en:'Bali\'s Invisible Air Quality Crisis',
-    id:'Krisis Kualitas Udara Bali yang Tak Terlihat',
-    fr:'La Crise Invisible de la Qualité de l\'Air à Bali',
-    de:'Balis unsichtbare Luftqualitätskrise',
-    zh:'巴厘岛隐形的空气质量危机',
-    ja:'バリ島の見えない大気汚染危機',
-    ko:'발리의 보이지 않는 대기질 위기',
-    ru:'Невидимый Кризис Качества Воздуха на Бали'
-  },
-
-  // ── Alert ──
-  '.alert': {
-    en:'<strong>As of April 13, 2026:</strong> Bali\'s only government air quality station (Denpasar) has been offline since August 2025. Limited private monitoring exists (Nafas: 4 stations; IQAir contributors: ~10 sensors; PurpleAir: 1 active), but there are no official government sensors operating in Ubud, Kerobokan, Canggu, or central Denpasar — the areas most affected by recent waste burning concerns.',
-    id:'<strong>Per 13 April 2026:</strong> Satu-satunya stasiun kualitas udara pemerintah di Bali (Denpasar) tidak beroperasi sejak Agustus 2025. Pemantauan swasta terbatas tersedia (Nafas: 4 stasiun; kontributor IQAir: ~10 sensor; PurpleAir: 1 aktif), tetapi tidak ada sensor pemerintah resmi yang beroperasi di Ubud, Kerobokan, Canggu, atau pusat Denpasar.',
-    fr:'<strong>Au 13 avril 2026 :</strong> La seule station gouvernementale de Bali (Denpasar) est hors ligne depuis août 2025. Un suivi privé limité existe (Nafas : 4 stations ; IQAir : ~10 capteurs ; PurpleAir : 1 actif), mais aucun capteur gouvernemental officiel ne fonctionne à Ubud, Kerobokan, Canggu ou au centre de Denpasar.',
-    de:'<strong>Stand 13. April 2026:</strong> Balis einzige staatliche Luftqualitätsstation (Denpasar) ist seit August 2025 offline. Begrenzte private Überwachung existiert (Nafas: 4 Stationen; IQAir: ~10 Sensoren; PurpleAir: 1 aktiv), aber es gibt keine offiziellen staatlichen Sensoren in Ubud, Kerobokan, Canggu oder Zentral-Denpasar.',
-    zh:'<strong>截至2026年4月13日：</strong>巴厘岛唯一的政府空气质量站（登巴萨）自2025年8月以来一直处于离线状态。存在有限的私人监测（Nafas：4个站点；IQAir贡献者：约10个传感器；PurpleAir：1个活跃），但在乌布、克罗伯坎、仓古或登巴萨市中心没有官方政府传感器运行。',
-    ja:'<strong>2026年4月13日現在：</strong>バリ島唯一の政府大気質観測所（デンパサール）は2025年8月以降オフラインです。限定的な民間モニタリングは存在しますが（Nafas：4局、IQAir：約10センサー、PurpleAir：1台）、ウブド、ケロボカン、チャングー、デンパサール中心部に公式政府センサーはありません。',
-    ko:'<strong>2026년 4월 13일 현재:</strong> 발리의 유일한 정부 대기질 관측소(덴파사르)는 2025년 8월 이후 오프라인입니다. 제한적인 민간 모니터링이 존재하지만(Nafas: 4곳, IQAir: ~10개, PurpleAir: 1개), 우붓, 크로보칸, 짱구, 덴파사르 중심부에는 공식 정부 센서가 작동하지 않습니다.',
-    ru:'<strong>По состоянию на 13 апреля 2026 г.:</strong> Единственная государственная станция на Бали (Денпасар) не работает с августа 2025 г. Существует ограниченный частный мониторинг (Nafas: 4 станции; IQAir: ~10 датчиков; PurpleAir: 1 активный), но в Убуде, Керобокане, Чангу и центральном Денпасаре нет официальных государственных датчиков.'
-  },
-
-  // ── Section Headings ──
-  '#summary h2': {en:'Summary',id:'Ringkasan',fr:'Résumé',de:'Zusammenfassung',zh:'摘要',ja:'概要',ko:'요약',ru:'Обзор'},
-  '#regulation h2': {
-    en:'The Regulation That Backfired',
-    id:'Regulasi yang Berbalik Merugikan',
-    fr:'La Réglementation qui a Échoué',
-    de:'Die Verordnung, die nach hinten losging',
-    zh:'适得其反的法规',
-    ja:'裏目に出た規制',
-    ko:'역효과를 낳은 규정',
-    ru:'Регулирование, Которое Дало Обратный Эффект'
-  },
-  '#data h2': {
-    en:'The Data: What the Sensors Recorded Before Going Dark',
-    id:'Data: Apa yang Dicatat Sensor Sebelum Mati',
-    fr:'Les Données : Ce que les Capteurs ont Enregistré Avant de s\'Éteindre',
-    de:'Die Daten: Was die Sensoren aufzeichneten, bevor sie ausfielen',
-    zh:'数据：传感器停止工作前记录了什么',
-    ja:'データ：センサーが停止する前に記録したもの',
-    ko:'데이터: 센서가 작동을 멈추기 전에 기록한 것',
-    ru:'Данные: Что Зафиксировали Датчики До Отключения'
-  },
-  '#chart-section h2': {
-    en:'16 Months of Data — Visualised',
-    id:'16 Bulan Data — Divisualisasikan',
-    fr:'16 Mois de Données — Visualisées',
-    de:'16 Monate Daten — Visualisiert',
-    zh:'16个月的数据——可视化',
-    ja:'16ヶ月のデータ — 可視化',
-    ko:'16개월의 데이터 — 시각화',
-    ru:'16 Месяцев Данных — Визуализация'
-  },
-  '#monitoring h2': {
-    en:'What Monitoring Exists Today',
-    id:'Pemantauan Apa yang Ada Saat Ini',
-    fr:'Quelle Surveillance Existe Aujourd\'hui',
-    de:'Welche Überwachung Gibt es Heute',
-    zh:'目前存在哪些监测',
-    ja:'現在どのようなモニタリングが存在するか',
-    ko:'현재 어떤 모니터링이 존재하는가',
-    ru:'Какой Мониторинг Существует Сегодня'
-  },
-  '#health h2': {
-    en:'Understanding PM2.5: Why This Matters for Health',
-    id:'Memahami PM2.5: Mengapa Ini Penting untuk Kesehatan',
-    fr:'Comprendre les PM2.5 : Pourquoi C\'est Important pour la Santé',
-    de:'PM2.5 Verstehen: Warum Dies für die Gesundheit Wichtig Ist',
-    zh:'了解PM2.5：为什么这对健康很重要',
-    ja:'PM2.5を理解する：なぜ健康に重要なのか',
-    ko:'PM2.5 이해하기: 건강에 왜 중요한가',
-    ru:'Понимание PM2.5: Почему Это Важно для Здоровья'
-  },
-  '#verify h2': {
-    en:'What Can Be Verified Independently',
-    id:'Apa yang Dapat Diverifikasi Secara Independen',
-    fr:'Ce qui Peut Être Vérifié Indépendamment',
-    de:'Was Unabhängig Überprüft Werden Kann',
-    zh:'可以独立验证的内容',
-    ja:'独立して検証できること',
-    ko:'독립적으로 검증할 수 있는 것',
-    ru:'Что Можно Проверить Независимо'
-  },
-  '#questions h2': {
-    en:'Questions That Need Answers',
-    id:'Pertanyaan yang Membutuhkan Jawaban',
-    fr:'Questions qui Nécessitent des Réponses',
-    de:'Fragen, die Antworten Brauchen',
-    zh:'需要回答的问题',
-    ja:'回答が必要な質問',
-    ko:'답이 필요한 질문들',
-    ru:'Вопросы, Требующие Ответов'
-  },
-  '#check-now h2': {
-    en:'Check Bali\'s Air Quality Right Now',
-    id:'Cek Kualitas Udara Bali Sekarang',
-    fr:'Vérifiez la Qualité de l\'Air à Bali Maintenant',
-    de:'Überprüfen Sie Balis Luftqualität Jetzt',
-    zh:'立即查看巴厘岛空气质量',
-    ja:'バリ島の大気質を今すぐ確認',
-    ko:'지금 발리 대기질 확인하기',
-    ru:'Проверьте Качество Воздуха на Бали Прямо Сейчас'
-  },
-
-  // ── Summary key paragraphs ──
-  '#summary p:first-of-type': {
-    en:'Independent air quality sensor data from Bali shows that residents and tourists have been breathing dangerously polluted air for at least 16 months. On <strong>320 out of 469 recorded days</strong>, fine particulate matter (PM2.5) exceeded the World Health Organization\'s annual guideline. On <strong>107 of those days</strong>, pollution spikes reached levels classified as "Hazardous" by the US EPA — the worst category, where all people are at serious health risk.',
-    id:'Data sensor kualitas udara independen dari Bali menunjukkan bahwa penduduk dan wisatawan telah menghirup udara yang sangat tercemar selama setidaknya 16 bulan. Pada <strong>320 dari 469 hari yang tercatat</strong>, partikel halus (PM2.5) melebihi pedoman tahunan Organisasi Kesehatan Dunia. Pada <strong>107 hari tersebut</strong>, lonjakan polusi mencapai tingkat yang diklasifikasikan sebagai "Berbahaya" oleh US EPA — kategori terburuk.',
-    fr:'Les données de capteurs indépendants à Bali montrent que les résidents et les touristes respirent un air dangereusement pollué depuis au moins 16 mois. Sur <strong>320 des 469 jours enregistrés</strong>, les particules fines (PM2.5) ont dépassé les directives annuelles de l\'OMS. Sur <strong>107 de ces jours</strong>, les pics de pollution ont atteint des niveaux classés « Dangereux » par l\'EPA — la pire catégorie.',
-    de:'Unabhängige Luftqualitätssensordaten aus Bali zeigen, dass Bewohner und Touristen mindestens 16 Monate lang gefährlich verschmutzte Luft eingeatmet haben. An <strong>320 von 469 aufgezeichneten Tagen</strong> überschritt Feinstaub (PM2.5) die Jahresrichtlinie der WHO. An <strong>107 dieser Tage</strong> erreichten Verschmutzungsspitzen die EPA-Kategorie „Gefährlich" — die schlimmste Stufe.',
-    zh:'来自巴厘岛的独立空气质量传感器数据显示，居民和游客至少16个月来一直在呼吸危险的污染空气。在<strong>469个记录日中有320天</strong>，细颗粒物（PM2.5）超过了世界卫生组织的年度指导标准。其中<strong>107天</strong>污染峰值达到美国环保署分类的"危险"级别——最严重的类别。',
-    ja:'バリ島の独立した大気質センサーデータによると、住民と観光客は少なくとも16ヶ月間、危険なレベルの汚染された空気を吸っていました。<strong>記録された469日中320日</strong>で、微小粒子状物質（PM2.5）がWHOの年間ガイドラインを超えました。そのうち<strong>107日</strong>では、汚染のピークが米国EPAの「危険」レベルに達しました。',
-    ko:'발리의 독립적인 대기질 센서 데이터에 따르면 주민과 관광객은 최소 16개월 동안 위험하게 오염된 공기를 호흡해 왔습니다. <strong>기록된 469일 중 320일</strong>에서 미세먼지(PM2.5)가 WHO 연간 기준을 초과했습니다. 그 중 <strong>107일</strong>은 미국 EPA의 "위험" 수준에 도달했습니다.',
-    ru:'Данные независимых датчиков качества воздуха на Бали показывают, что жители и туристы дышали опасно загрязнённым воздухом не менее 16 месяцев. В <strong>320 из 469 зафиксированных дней</strong> мелкодисперсные частицы (PM2.5) превышали годовую норму ВОЗ. В <strong>107 из этих дней</strong> пиковые значения загрязнения достигали категории «Опасный» по шкале EPA.'
-  },
-  '#summary p:nth-of-type(2)': {
-    en:'<strong>Then the sensors went dark.</strong>',
-    id:'<strong>Kemudian sensor mati.</strong>',
-    fr:'<strong>Puis les capteurs se sont éteints.</strong>',
-    de:'<strong>Dann wurden die Sensoren abgeschaltet.</strong>',
-    zh:'<strong>然后传感器停止了工作。</strong>',
-    ja:'<strong>そしてセンサーは停止しました。</strong>',
-    ko:'<strong>그리고 센서는 작동을 멈췄습니다.</strong>',
-    ru:'<strong>А затем датчики замолчали.</strong>'
-  },
-
-  // ── Stat labels ──
-  '#summary .s-red .lbl': {en:'Days exceeding WHO annual guideline (15 µg/m³) — 320 of 469 days',id:'Hari melebihi pedoman tahunan WHO (15 µg/m³) — 320 dari 469 hari',fr:'Jours dépassant la directive annuelle de l\'OMS (15 µg/m³) — 320 sur 469 jours',de:'Tage über WHO-Jahresrichtlinie (15 µg/m³) — 320 von 469 Tagen',zh:'超过WHO年度指导标准(15 µg/m³)的天数——469天中有320天',ja:'WHO年間ガイドライン(15 µg/m³)を超えた日数——469日中320日',ko:'WHO 연간 기준(15 µg/m³) 초과일 — 469일 중 320일',ru:'Дней с превышением годовой нормы ВОЗ (15 мкг/м³) — 320 из 469'},
-  '#summary .s-orange .lbl': {en:'Days with spikes into "Very Unhealthy" range (>150 µg/m³)',id:'Hari dengan lonjakan ke rentang "Sangat Tidak Sehat" (>150 µg/m³)',fr:'Jours avec pics dans la zone « Très malsain » (>150 µg/m³)',de:'Tage mit Spitzen im Bereich „Sehr ungesund" (>150 µg/m³)',zh:'飙升至"非常不健康"范围(>150 µg/m³)的天数',ja:'「非常に不健康」な範囲(>150 µg/m³)に達した日数',ko:'"매우 건강에 해로운" 범위(>150 µg/m³) 급증일',ru:'Дней со скачками в зону «Очень вредно» (>150 мкг/м³)'},
-  '#summary .s-purple .lbl': {en:'Days with spikes into "Hazardous" range (>250 µg/m³)',id:'Hari dengan lonjakan ke rentang "Berbahaya" (>250 µg/m³)',fr:'Jours avec pics dans la zone « Dangereux » (>250 µg/m³)',de:'Tage mit Spitzen im Bereich „Gefährlich" (>250 µg/m³)',zh:'飙升至"危险"范围(>250 µg/m³)的天数',ja:'「危険」な範囲(>250 µg/m³)に達した日数',ko:'"위험" 범위(>250 µg/m³) 급증일',ru:'Дней со скачками в зону «Опасно» (>250 мкг/м³)'},
-  '#summary .s-blue .lbl': {en:'µg/m³ highest single reading — sensor max, 333× the WHO limit',id:'µg/m³ pembacaan tertinggi — maksimum sensor, 333× batas WHO',fr:'µg/m³ lecture la plus élevée — max capteur, 333× la limite OMS',de:'µg/m³ höchster Einzelwert — Sensormaximum, 333× der WHO-Grenzwert',zh:'µg/m³ 最高单次读数——传感器最大值，WHO限值的333倍',ja:'µg/m³ 最高単一測定値——センサー最大値、WHO基準の333倍',ko:'µg/m³ 최고 단일 측정값 — 센서 최대값, WHO 제한의 333배',ru:'мкг/м³ максимальное показание — предел датчика, в 333 раза выше нормы ВОЗ'},
-
-  // ── Verify section intro ──
-  '#verify > p': {
-    en:'All claims in this document can be verified using publicly accessible sources:',
-    id:'Semua klaim dalam dokumen ini dapat diverifikasi menggunakan sumber yang dapat diakses publik:',
-    fr:'Toutes les affirmations de ce document peuvent être vérifiées à l\'aide de sources publiquement accessibles :',
-    de:'Alle Angaben in diesem Dokument können anhand öffentlich zugänglicher Quellen überprüft werden:',
-    zh:'本文件中的所有主张都可以通过公开来源进行验证：',
-    ja:'本文書のすべての主張は、公開されている情報源で検証できます：',
-    ko:'이 문서의 모든 주장은 공개적으로 접근 가능한 출처를 통해 검증할 수 있습니다:',
-    ru:'Все утверждения в этом документе можно проверить из общедоступных источников:'
-  },
-
-  // ── Questions items ──
-  '#questions li:nth-child(1)': {
-    en:'Why has the KLHK Denpasar air quality station been offline for over 8 months, and why has it been <strong>removed from the national station list</strong> rather than marked as under maintenance?',
-    id:'Mengapa stasiun kualitas udara KLHK Denpasar tidak beroperasi selama lebih dari 8 bulan, dan mengapa <strong>dihapus dari daftar stasiun nasional</strong> alih-alih ditandai sebagai dalam pemeliharaan?',
-    fr:'Pourquoi la station KLHK de Denpasar est-elle hors ligne depuis plus de 8 mois, et pourquoi a-t-elle été <strong>retirée de la liste nationale</strong> plutôt que marquée en maintenance ?',
-    de:'Warum ist die KLHK-Station in Denpasar seit über 8 Monaten offline, und warum wurde sie <strong>aus der nationalen Stationsliste entfernt</strong>, anstatt als in Wartung markiert zu werden?',
-    zh:'为什么KLHK登巴萨空气质量站已离线超过8个月，为什么它被<strong>从国家站点列表中删除</strong>而不是标记为维护中？',
-    ja:'なぜKLHKデンパサール大気質観測所は8ヶ月以上オフラインのままで、なぜメンテナンス中と表示される代わりに<strong>国家観測所リストから削除されたのですか</strong>？',
-    ko:'KLHK 덴파사르 대기질 관측소가 8개월 이상 오프라인인 이유는 무엇이며, 왜 유지보수 중으로 표시하지 않고 <strong>국가 관측소 목록에서 삭제</strong>되었습니까?',
-    ru:'Почему станция KLHK в Денпасаре не работает более 8 месяцев и почему она была <strong>удалена из национального списка станций</strong>, а не отмечена как находящаяся на обслуживании?'
-  },
-  '#questions li:nth-child(2)': {
-    en:'Why does the only independent sensor in the Kerobokan/Canggu area stop recording <strong>two weeks before</strong> a regulation that experts warned would increase burning — and who owns and operates this sensor?',
-    id:'Mengapa satu-satunya sensor independen di area Kerobokan/Canggu berhenti merekam <strong>dua minggu sebelum</strong> regulasi yang diperkirakan para ahli akan meningkatkan pembakaran — dan siapa yang memiliki dan mengoperasikan sensor ini?',
-    fr:'Pourquoi le seul capteur indépendant de la zone Kerobokan/Canggu a-t-il cessé d\'enregistrer <strong>deux semaines avant</strong> une réglementation qui augmenterait la combustion — et qui possède ce capteur ?',
-    de:'Warum hörte der einzige unabhängige Sensor im Gebiet Kerobokan/Canggu <strong>zwei Wochen vor</strong> einer Verordnung auf zu zeichnen — und wem gehört dieser Sensor?',
-    zh:'为什么克罗伯坎/仓古地区唯一的独立传感器在专家警告会增加焚烧的法规实施<strong>两周前</strong>停止记录——谁拥有和运营这个传感器？',
-    ja:'なぜケロボカン/チャングー地域唯一の独立センサーが、焼却増加が予想される規制の<strong>2週間前</strong>に記録を停止したのか——このセンサーの所有者と運営者は誰ですか？',
-    ko:'왜 크로보칸/짱구 지역의 유일한 독립 센서가 소각 증가가 예상되는 규정 <strong>2주 전</strong>에 기록을 중단했으며, 이 센서의 소유자와 운영자는 누구입니까?',
-    ru:'Почему единственный независимый датчик в районе Керобокан/Чангу прекратил запись <strong>за две недели до</strong> регулирования, которое, по мнению экспертов, увеличит сжигание — и кому принадлежит этот датчик?'
-  },
-  '#questions li:nth-child(3)': {
-    en:'Who is responsible for maintaining air quality monitoring in Bali, and <strong>what is the budget</strong> for this? What happened to funding?',
-    id:'Siapa yang bertanggung jawab untuk memelihara pemantauan kualitas udara di Bali, dan <strong>berapa anggarannya</strong>? Apa yang terjadi dengan pendanaan?',
-    fr:'Qui est responsable de la surveillance de la qualité de l\'air à Bali, et <strong>quel est le budget</strong> pour cela ?',
-    de:'Wer ist für die Luftqualitätsüberwachung auf Bali verantwortlich, und <strong>wie hoch ist das Budget</strong> dafür?',
-    zh:'谁负责维护巴厘岛的空气质量监测，<strong>预算是多少</strong>？资金怎么了？',
-    ja:'バリ島の大気質モニタリングの維持管理は誰が担当していますか、<strong>予算はいくらですか</strong>？',
-    ko:'발리의 대기질 모니터링 유지 관리는 누가 담당하며, <strong>예산은 얼마</strong>입니까?',
-    ru:'Кто отвечает за мониторинг качества воздуха на Бали и <strong>каков бюджет</strong> на это?'
-  },
-  '#questions li:nth-child(4)': {
-    en:'Given 16 months of data showing dangerous air quality levels, <strong>what health warnings were issued</strong> to residents and tourists during this period?',
-    id:'Mengingat 16 bulan data menunjukkan tingkat kualitas udara yang berbahaya, <strong>peringatan kesehatan apa yang dikeluarkan</strong> kepada penduduk dan wisatawan selama periode ini?',
-    fr:'Compte tenu de 16 mois de données montrant des niveaux dangereux, <strong>quels avertissements sanitaires ont été émis</strong> aux résidents et touristes ?',
-    de:'Angesichts von 16 Monaten Daten mit gefährlichen Werten — <strong>welche Gesundheitswarnungen wurden</strong> an Bewohner und Touristen ausgegeben?',
-    zh:'鉴于16个月的数据显示危险的空气质量水平，在此期间向居民和游客<strong>发布了哪些健康警告</strong>？',
-    ja:'16ヶ月の危険な大気質データがあるにもかかわらず、この期間中に住民と観光客に対して<strong>どのような健康警告が発出されましたか</strong>？',
-    ko:'16개월간의 위험한 대기질 데이터에도 불구하고, 이 기간 동안 주민과 관광객에게 <strong>어떤 건강 경고가 발령</strong>되었습니까?',
-    ru:'Учитывая 16 месяцев данных об опасном уровне загрязнения, <strong>какие предупреждения о здоровье были выданы</strong> жителям и туристам?'
-  },
-  '#questions li:nth-child(5)': {
-    en:'What is the <strong>actual air quality in Bali right now</strong> — particularly in Ubud, Kuta, Denpasar, and Canggu — and why is there no way for the public to know?',
-    id:'Bagaimana <strong>kualitas udara di Bali saat ini sebenarnya</strong> — terutama di Ubud, Kuta, Denpasar, dan Canggu — dan mengapa publik tidak memiliki cara untuk mengetahuinya?',
-    fr:'Quelle est la <strong>qualité réelle de l\'air à Bali actuellement</strong> — en particulier à Ubud, Kuta, Denpasar et Canggu — et pourquoi le public n\'a-t-il aucun moyen de le savoir ?',
-    de:'Wie ist die <strong>tatsächliche Luftqualität auf Bali gerade</strong> — besonders in Ubud, Kuta, Denpasar und Canggu — und warum gibt es keine Möglichkeit für die Öffentlichkeit, dies zu erfahren?',
-    zh:'<strong>巴厘岛目前的实际空气质量</strong>如何——特别是在乌布、库塔、登巴萨和仓古——为什么公众无法了解？',
-    ja:'<strong>バリ島の現在の実際の大気質</strong>はどうなっていますか——特にウブド、クタ、デンパサール、チャングーで——なぜ一般市民が知る方法がないのですか？',
-    ko:'<strong>현재 발리의 실제 대기질</strong>은 어떠합니까 — 특히 우붓, 쿠타, 덴파사르, 짱구 — 그리고 왜 시민들이 알 수 있는 방법이 없습니까?',
-    ru:'Каково <strong>реальное качество воздуха на Бали сейчас</strong> — особенно в Убуде, Куте, Денпасаре и Чангу — и почему общественность не может это узнать?'
-  },
-  '#questions li:nth-child(6)': {
-    en:'What are the <strong>health impacts on Bali\'s approximately 4.4 million residents</strong>, particularly children and elderly people, from prolonged exposure to waste burning smoke?',
-    id:'Apa <strong>dampak kesehatan pada sekitar 4,4 juta penduduk Bali</strong>, terutama anak-anak dan lansia, dari paparan asap pembakaran sampah yang berkepanjangan?',
-    fr:'Quels sont les <strong>impacts sur la santé des 4,4 millions d\'habitants de Bali</strong>, en particulier les enfants et les personnes âgées, d\'une exposition prolongée à la fumée de combustion des déchets ?',
-    de:'Welche <strong>gesundheitlichen Auswirkungen auf die etwa 4,4 Millionen Einwohner Balis</strong> hat die langfristige Belastung durch Müllverbrennungsrauch, besonders für Kinder und ältere Menschen?',
-    zh:'长期暴露在垃圾焚烧烟雾中对<strong>巴厘岛约440万居民的健康影响</strong>是什么，特别是对儿童和老年人？',
-    ja:'廃棄物焼却煙への長期曝露による<strong>バリ島の約440万人の住民への健康影響</strong>は何ですか、特に子供と高齢者への影響は？',
-    ko:'폐기물 소각 연기에 장기간 노출됨으로 인한 <strong>발리의 약 440만 주민에 대한 건강 영향</strong>은 무엇이며, 특히 어린이와 노인에게는 어떤 영향이 있습니까?',
-    ru:'Каковы <strong>последствия для здоровья примерно 4,4 миллиона жителей Бали</strong>, особенно детей и пожилых людей, от длительного воздействия дыма от сжигания отходов?'
-  },
-};
-
-// ── Build language menu ──
-const menuEl = document.getElementById('langMenu');
-Object.entries(LANGS).forEach(([code, {flag, name}]) => {
-  const btn = document.createElement('button');
-  btn.className = 'lang-opt' + (code === 'en' ? ' active' : '');
-  btn.innerHTML = `<span class="flag">${flag}</span> ${name}`;
-  btn.onclick = () => setLang(code);
-  menuEl.appendChild(btn);
-});
-
-function toggleLangMenu() {
-  menuEl.classList.toggle('open');
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('.lang-select')) menuEl.classList.remove('open');
-});
-
-// ── Store original English HTML for elements ──
-const originals = {};
-Object.keys(T).forEach(sel => {
-  const el = document.querySelector(sel);
-  if (el) originals[sel] = el.innerHTML;
-});
-
-function setLang(lang) {
-  // Update button
-  document.getElementById('langLabel').textContent = LANGS[lang].name;
-  document.querySelector('#langBtn .flag').textContent = LANGS[lang].flag;
-  document.documentElement.lang = lang;
-
-  // Swap text
-  Object.entries(T).forEach(([sel, texts]) => {
-    const el = document.querySelector(sel);
-    if (!el) return;
-    if (texts[lang]) {
-      el.innerHTML = texts[lang];
-    } else if (originals[sel]) {
-      el.innerHTML = originals[sel];
-    }
-  });
-
-  // Update active state
-  menuEl.querySelectorAll('.lang-opt').forEach((btn, i) => {
-    btn.classList.toggle('active', Object.keys(LANGS)[i] === lang);
-  });
+const originals={};
+Object.keys(headingT).forEach(sel=>{const el=document.querySelector(sel);if(el)originals[sel]=el.innerHTML});
+function setLang(lang){
+  document.getElementById('langLabel').textContent=LANGS[lang].name;
+  document.querySelector('#langBtn .flag').textContent=LANGS[lang].flag;
+  document.documentElement.lang=lang;
+  Object.entries(headingT).forEach(([sel,texts])=>{const el=document.querySelector(sel);if(!el)return;el.innerHTML=texts[lang]||originals[sel]||el.innerHTML});
+  menuEl.querySelectorAll('.lang-opt').forEach((btn,i)=>btn.classList.toggle('active',Object.keys(LANGS)[i]===lang));
   menuEl.classList.remove('open');
 }
 </script>
