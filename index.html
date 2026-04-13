@@ -9,45 +9,80 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{
+/* ── Dark theme (default) ── */
+:root,[data-theme="dark"]{
   --bg:#0c0e16;--bg2:#131620;--bg3:#191d2b;
   --border:#232840;--border2:#2e3450;
   --text:#e2e6f0;--muted:#8891aa;--faint:#4a5170;
   --red:#f87171;--orange:#fb923c;--yellow:#fbbf24;
   --green:#4ade80;--blue:#60a5fa;--purple:#a78bfa;
+  --nav-bg:rgba(12,14,22,0.92);
+  --h1:#fff;--h2:#fff;
+  --alert-bg:rgba(251,191,36,0.07);--alert-border:rgba(251,191,36,0.2);--alert-text:#fde68a;
+  --callout-bg:rgba(251,191,36,0.06);--callout-border:rgba(251,191,36,0.2);--callout-text:#fde68a;
+  --callout-blue-bg:rgba(96,165,250,0.06);--callout-blue-border:rgba(96,165,250,0.2);--callout-blue-text:#93c5fd;
+  --callout-green-bg:rgba(74,222,128,0.06);--callout-green-border:rgba(74,222,128,0.2);--callout-green-text:#86efac;
+  --hover-bg:rgba(255,255,255,0.05);--hover-td:rgba(255,255,255,0.02);
+  --chart-grid:rgba(255,255,255,0.05);--chart-grid2:rgba(255,255,255,0.06);
+  --nodata-fill:rgba(0,0,0,0.25);--nodata-text:rgba(255,255,255,0.15);
+  --zone-sep:rgba(255,255,255,0.07);
+  --shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+/* ── Light theme ── */
+[data-theme="light"]{
+  --bg:#f5f6fa;--bg2:#ffffff;--bg3:#eef0f5;
+  --border:#d8dce6;--border2:#c5cad6;
+  --text:#1a1d2e;--muted:#4a5068;--faint:#7a809a;
+  --red:#dc2626;--orange:#ea580c;--yellow:#b45309;
+  --green:#16a34a;--blue:#2563eb;--purple:#7c3aed;
+  --nav-bg:rgba(245,246,250,0.92);
+  --h1:#111827;--h2:#1e293b;
+  --alert-bg:rgba(251,191,36,0.1);--alert-border:rgba(180,83,9,0.3);--alert-text:#92400e;
+  --callout-bg:rgba(251,191,36,0.08);--callout-border:rgba(180,83,9,0.25);--callout-text:#78350f;
+  --callout-blue-bg:rgba(37,99,235,0.06);--callout-blue-border:rgba(37,99,235,0.2);--callout-blue-text:#1e40af;
+  --callout-green-bg:rgba(22,163,74,0.06);--callout-green-border:rgba(22,163,74,0.2);--callout-green-text:#166534;
+  --hover-bg:rgba(0,0,0,0.04);--hover-td:rgba(0,0,0,0.02);
+  --chart-grid:rgba(0,0,0,0.06);--chart-grid2:rgba(0,0,0,0.08);
+  --nodata-fill:rgba(0,0,0,0.06);--nodata-text:rgba(0,0,0,0.25);
+  --zone-sep:rgba(0,0,0,0.08);
+  --shadow:0 4px 16px rgba(0,0,0,0.08);
 }
 html{scroll-behavior:smooth}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px;transition:background .3s,color .3s}
 .page{max-width:900px;margin:0 auto;padding:40px 24px 80px}
 
 /* Nav */
-#topnav{position:sticky;top:0;z-index:100;background:rgba(12,14,22,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;align-items:center}
+#topnav{position:sticky;top:0;z-index:100;background:var(--nav-bg);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;align-items:center;transition:background .3s}
 #topnav a{color:var(--faint);text-decoration:none;padding:3px 8px;border-radius:4px;transition:.15s}
-#topnav a:hover{color:var(--text);background:rgba(255,255,255,0.05)}
+#topnav a:hover{color:var(--text);background:var(--hover-bg)}
+/* Theme toggle */
+.theme-toggle{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:16px;width:32px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;padding:0;line-height:1}
+.theme-toggle:hover{border-color:var(--blue);color:var(--text)}
+
 .lang-select{margin-left:auto;position:relative}
 .lang-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.15s}
 .lang-btn:hover{border-color:var(--blue);color:var(--text)}
-.lang-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;min-width:180px;z-index:200;padding:4px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.lang-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;min-width:180px;z-index:200;padding:4px;box-shadow:var(--shadow)}
 .lang-menu.open{display:block}
 .lang-opt{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;cursor:pointer;font-size:12.5px;color:var(--muted);transition:.1s;border:none;background:none;width:100%;text-align:left}
-.lang-opt:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.lang-opt:hover{background:var(--hover-bg);color:var(--text)}
 .lang-opt.active{color:var(--blue)}
 
 /* Header */
 .doc-header{margin-bottom:36px}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin-bottom:10px}
-.doc-header h1{font-size:26px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:14px}
+.doc-header h1{font-size:26px;font-weight:800;color:var(--h1);line-height:1.25;margin-bottom:14px}
 .meta{display:flex;gap:20px;flex-wrap:wrap;font-size:12.5px;color:var(--faint);border-top:1px solid var(--border);padding-top:12px}
 .meta span strong{color:var(--muted)}
 
 /* Alert */
-.alert{background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:16px 20px;margin-bottom:32px;font-size:14px;color:#fde68a;line-height:1.65}
+.alert{background:var(--alert-bg);border:1px solid var(--alert-border);border-radius:10px;padding:16px 20px;margin-bottom:32px;font-size:14px;color:var(--alert-text);line-height:1.65}
 .alert strong{color:var(--yellow)}
 
 /* Sections */
 .section{margin-bottom:44px}
 .section-label{font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
-h2{font-size:20px;font-weight:700;color:#fff;margin-bottom:14px;line-height:1.3}
+h2{font-size:20px;font-weight:700;color:var(--h2);margin-bottom:14px;line-height:1.3}
 h3{font-size:15px;font-weight:700;color:var(--text);margin:20px 0 10px}
 p{color:var(--muted);margin-bottom:12px;font-size:14px;line-height:1.7}
 p strong{color:var(--text)}
@@ -84,7 +119,7 @@ thead th{background:var(--bg3);color:var(--muted);font-size:11px;font-weight:700
 tbody tr{border-bottom:1px solid var(--border)}
 tbody tr:last-child{border-bottom:none}
 tbody td{padding:9px 12px;color:var(--muted);vertical-align:top}
-tbody tr:hover td{background:rgba(255,255,255,0.02)}
+tbody tr:hover td{background:var(--hover-td)}
 .td-key{font-weight:600;color:var(--text);white-space:nowrap}
 .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
 .badge-red{background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.25)}
@@ -115,11 +150,11 @@ tbody tr:hover td{background:rgba(255,255,255,0.02)}
 .questions li::before{counter-increment:q;content:counter(q);position:absolute;left:14px;top:14px;width:24px;height:24px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);border-radius:50%;color:var(--blue);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
 
 /* Callout */
-.callout{background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:16px 20px;margin:16px 0;font-size:13.5px;color:#fde68a;line-height:1.65}
+.callout{background:var(--callout-bg);border:1px solid var(--callout-border);border-radius:10px;padding:16px 20px;margin:16px 0;font-size:13.5px;color:var(--callout-text);line-height:1.65}
 .callout strong{color:var(--yellow)}
-.callout-blue{background:rgba(96,165,250,0.06);border-color:rgba(96,165,250,0.2);color:#93c5fd}
+.callout-blue{background:var(--callout-blue-bg);border-color:var(--callout-blue-border);color:var(--callout-blue-text)}
 .callout-blue strong{color:var(--blue)}
-.callout-green{background:rgba(74,222,128,0.06);border-color:rgba(74,222,128,0.2);color:#86efac}
+.callout-green{background:var(--callout-green-bg);border-color:var(--callout-green-border);color:var(--callout-green-text)}
 .callout-green strong{color:var(--green)}
 
 /* Live snapshot cards */
@@ -134,6 +169,20 @@ tbody tr:hover td{background:rgba(255,255,255,0.02)}
 .aqi-mod .snap-aqi,.aqi-mod .snap-cat{color:var(--yellow)}
 .aqi-usg .snap-aqi,.aqi-usg .snap-cat{color:var(--orange)}
 .aqi-unh .snap-aqi,.aqi-unh .snap-cat{color:#f97316}
+
+/* Light mode badge adjustments */
+[data-theme="light"] .badge-red{background:rgba(220,38,38,0.1);color:#b91c1c;border-color:rgba(220,38,38,0.3)}
+[data-theme="light"] .badge-green{background:rgba(22,163,74,0.1);color:#166534;border-color:rgba(22,163,74,0.3)}
+[data-theme="light"] .badge-yellow{background:rgba(180,83,9,0.1);color:#92400e;border-color:rgba(180,83,9,0.3)}
+[data-theme="light"] .badge-orange{background:rgba(234,88,12,0.1);color:#9a3412;border-color:rgba(234,88,12,0.3)}
+[data-theme="light"] .badge-purple{background:rgba(124,58,237,0.1);color:#5b21b6;border-color:rgba(124,58,237,0.3)}
+[data-theme="light"] .badge-gray{background:rgba(0,0,0,0.05);color:#4a5068;border-color:rgba(0,0,0,0.12)}
+[data-theme="light"] .snap-card{border-color:#d8dce6}
+[data-theme="light"] .aqi-good .snap-aqi,[data-theme="light"] .aqi-good .snap-cat{color:#16a34a}
+[data-theme="light"] .aqi-mod .snap-aqi,[data-theme="light"] .aqi-mod .snap-cat{color:#b45309}
+[data-theme="light"] thead th{background:#e8eaf0}
+[data-theme="light"] .chart-card{background:#fff;border-color:#d8dce6}
+[data-theme="light"] .source{background:#fff;border-color:#d8dce6}
 
 .divider{border:none;border-top:1px solid var(--border);margin:40px 0}
 .doc-footer{font-size:11.5px;color:var(--faint);line-height:1.8;border-top:1px solid var(--border);padding-top:20px;margin-top:40px}
@@ -150,7 +199,8 @@ tbody tr:hover td{background:rgba(255,255,255,0.02)}
   <a href="#monitoring">Monitoring</a>
   <a href="#action">What's Needed</a>
   <a href="#verify">Verify</a>
-  <a href="#check-now" style="color:#4ade80;font-weight:600">Check Air Now ↗</a>
+  <a href="#check-now" style="color:var(--green);font-weight:600">Check Air Now ↗</a>
+  <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn" title="Toggle light/dark mode">🌙</button>
   <div class="lang-select">
     <button class="lang-btn" onclick="document.getElementById('langMenu').classList.toggle('open')" id="langBtn"><span class="flag">🌐</span> <span id="langLabel">English</span> ▾</button>
     <div class="lang-menu" id="langMenu"></div>
@@ -485,12 +535,12 @@ tbody tr:hover td{background:rgba(255,255,255,0.02)}
     <div style="display:flex;flex-direction:column;gap:14px;margin:20px 0">
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative">
         <div style="position:absolute;top:14px;right:16px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.25);padding:2px 8px;border-radius:10px">Recommended</div>
-        <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">1. IQAir — Global Air Quality Map</div>
+        <div style="font-size:18px;font-weight:800;color:var(--h1);margin-bottom:2px">1. IQAir — Global Air Quality Map</div>
         <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Most comprehensive global view · ~10 Bali stations · Real-time + forecast</div>
         <a href="https://www.iqair.com/id/air-quality-map" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ iqair.com/id/air-quality-map</a>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px">
-        <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">2. Nafas — Indonesia Air Quality App</div>
+        <div style="font-size:18px;font-weight:800;color:var(--h1);margin-bottom:2px">2. Nafas — Indonesia Air Quality App</div>
         <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Best Indonesia-specific data · 4 Bali stations including Ubud · Mobile app recommended</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
           <a href="https://nafas.com/id-en" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ Website</a>
@@ -499,7 +549,7 @@ tbody tr:hover td{background:rgba(255,255,255,0.02)}
         </div>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px">
-        <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px">3. PurpleAir · AQICN · KLHK</div>
+        <div style="font-size:18px;font-weight:800;color:var(--h1);margin-bottom:2px">3. PurpleAir · AQICN · KLHK</div>
         <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Community sensors, global network, and Indonesian government data</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
           <a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ PurpleAir Bali</a>
@@ -544,8 +594,11 @@ const zonesPlugin={
   beforeDraw(chart){
     const{ctx,chartArea:ca,scales:{x,y}}=chart;if(!ca)return;
     ctx.save();ctx.rect(ca.left,ca.top,ca.width,ca.height);ctx.clip();
-    [[0,12,'rgba(74,222,128,0.07)'],[12,35.4,'rgba(250,204,21,0.08)'],[35.4,55.4,'rgba(251,146,60,0.09)'],[55.4,150.4,'rgba(249,115,22,0.10)'],[150.4,250.4,'rgba(220,38,38,0.11)'],[250.4,CAP,'rgba(126,34,206,0.14)']].forEach(([lo,hi,col])=>{ctx.fillStyle=col;ctx.fillRect(ca.left,y.getPixelForValue(hi),ca.width,y.getPixelForValue(lo)-y.getPixelForValue(hi))});
-    [12,35.4,55.4,150.4,250.4].forEach(v=>{const py=y.getPixelForValue(v);ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ca.left,py);ctx.lineTo(ca.right,py);ctx.stroke()});
+    const isDk=document.documentElement.getAttribute('data-theme')!=='light';
+    const zoneAlpha=isDk?[0.07,0.08,0.09,0.10,0.11,0.14]:[0.08,0.10,0.12,0.14,0.16,0.18];
+    [[0,12,`rgba(74,222,128,${zoneAlpha[0]})`],[12,35.4,`rgba(250,204,21,${zoneAlpha[1]})`],[35.4,55.4,`rgba(251,146,60,${zoneAlpha[2]})`],[55.4,150.4,`rgba(249,115,22,${zoneAlpha[3]})`],[150.4,250.4,`rgba(220,38,38,${zoneAlpha[4]})`],[250.4,CAP,`rgba(126,34,206,${zoneAlpha[5]})`]].forEach(([lo,hi,col])=>{ctx.fillStyle=col;ctx.fillRect(ca.left,y.getPixelForValue(hi),ca.width,y.getPixelForValue(lo)-y.getPixelForValue(hi))});
+    const sepColor=getComputedStyle(document.documentElement).getPropertyValue('--zone-sep').trim();
+    [12,35.4,55.4,150.4,250.4].forEach(v=>{const py=y.getPixelForValue(v);ctx.strokeStyle=sepColor;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ca.left,py);ctx.lineTo(ca.right,py);ctx.stroke()});
     const whoY=y.getPixelForValue(15);ctx.strokeStyle='rgba(74,222,128,0.9)';ctx.lineWidth=1.5;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(ca.left,whoY);ctx.lineTo(ca.right,whoY);ctx.stroke();ctx.setLineDash([]);
     ctx.fillStyle='rgba(74,222,128,0.9)';ctx.font='bold 10px system-ui';ctx.fillText('WHO 15',ca.left+6,whoY-5);
     ctx.restore()
@@ -554,9 +607,12 @@ const zonesPlugin={
     const{ctx,chartArea:ca,scales:{x,y}}=chart;if(!ca)return;
     ctx.save();ctx.rect(ca.left,ca.top,ca.width,ca.height);ctx.clip();
     const xOff=x.getPixelForValue(offlineDate);
-    if(xOff<ca.right){ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(xOff,ca.top,ca.right-xOff,ca.height);ctx.fillStyle='rgba(255,255,255,0.15)';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText('NO DATA',xOff+(ca.right-xOff)/2,ca.top+ca.height*0.22)}
+    const cs=getComputedStyle(document.documentElement);
+    if(xOff<ca.right){ctx.fillStyle=cs.getPropertyValue('--nodata-fill').trim();ctx.fillRect(xOff,ca.top,ca.right-xOff,ca.height);ctx.fillStyle=cs.getPropertyValue('--nodata-text').trim();ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText('NO DATA',xOff+(ca.right-xOff)/2,ca.top+ca.height*0.22)}
     function rr(cx,x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.lineTo(x+w-r,y);cx.quadraticCurveTo(x+w,y,x+w,y+r);cx.lineTo(x+w,y+h-r);cx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);cx.lineTo(x+r,y+h);cx.quadraticCurveTo(x,y+h,x,y+h-r);cx.lineTo(x,y+r);cx.quadraticCurveTo(x,y,x+r,y);cx.closePath()}
-    function vLine(dt,color,lines,side){const px=x.getPixelForValue(dt);if(px<ca.left||px>ca.right)return;ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(px,ca.top);ctx.lineTo(px,ca.bottom);ctx.stroke();ctx.setLineDash([]);const fs=10;ctx.font=`bold ${fs}px system-ui`;const mw=Math.max(...lines.map(l=>ctx.measureText(l).width));const p=6,lh=14,bw=mw+p*2,bh=lines.length*lh+p*2;const bx=side==='left'?px-bw-4:px+4,by=ca.top+18;ctx.fillStyle='rgba(10,12,20,0.92)';rr(ctx,bx,by,bw,bh,4);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=1;rr(ctx,bx,by,bw,bh,4);ctx.stroke();ctx.fillStyle=color;ctx.textAlign='left';lines.forEach((l,i)=>ctx.fillText(l,bx+p,by+p+fs+i*lh))}
+    const isDk2=document.documentElement.getAttribute('data-theme')!=='light';
+    const badgeBg=isDk2?'rgba(10,12,20,0.92)':'rgba(255,255,255,0.95)';
+    function vLine(dt,color,lines,side){const px=x.getPixelForValue(dt);if(px<ca.left||px>ca.right)return;ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(px,ca.top);ctx.lineTo(px,ca.bottom);ctx.stroke();ctx.setLineDash([]);const fs=10;ctx.font=`bold ${fs}px system-ui`;const mw=Math.max(...lines.map(l=>ctx.measureText(l).width));const p=6,lh=14,bw=mw+p*2,bh=lines.length*lh+p*2;const bx=side==='left'?px-bw-4:px+4,by=ca.top+18;ctx.fillStyle=badgeBg;rr(ctx,bx,by,bw,bh,4);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=1;rr(ctx,bx,by,bw,bh,4);ctx.stroke();ctx.fillStyle=color;ctx.textAlign='left';lines.forEach((l,i)=>ctx.fillText(l,bx+p,by+p+fs+i*lh))}
     vLine(offlineDate,'rgba(248,113,113,0.9)',['SENSOR','OFFLINE','Mar 15'],'left');
     vLine(regDate,'rgba(251,191,36,0.9)',['WASTE BAN','TAKES EFFECT','Apr 1'],'right');
     ctx.restore()
@@ -590,6 +646,57 @@ function setLang(lang){
   menuEl.querySelectorAll('.lang-opt').forEach((btn,i)=>btn.classList.toggle('active',Object.keys(LANGS)[i]===lang));
   menuEl.classList.remove('open');
 }
+
+// ── Theme toggle ──
+const themes = ['auto','light','dark'];
+const icons = {auto:'⚙️',light:'☀️',dark:'🌙'};
+let themeIdx = 0;
+
+function getSystemTheme(){return window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'}
+
+function applyTheme(t){
+  const effective = t === 'auto' ? getSystemTheme() : t;
+  document.documentElement.setAttribute('data-theme', effective);
+  document.getElementById('themeBtn').textContent = icons[t];
+  // Update chart colors
+  const chart = Chart.instances[0];
+  if(chart){
+    const isDark = effective === 'dark';
+    const tickColor = isDark ? '#6b7494' : '#6b7494';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+    const borderColor = isDark ? '#252b3d' : '#d8dce6';
+    chart.options.scales.x.grid.color = gridColor;
+    chart.options.scales.x.border.color = borderColor;
+    chart.options.scales.x.ticks.color = tickColor;
+    chart.options.scales.y.grid.color = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+    chart.options.scales.y.border.color = borderColor;
+    chart.options.scales.y.ticks.color = tickColor;
+    chart.options.scales.y.title.color = tickColor;
+    chart.options.plugins.tooltip.backgroundColor = isDark ? 'rgba(8,10,18,0.97)' : 'rgba(255,255,255,0.97)';
+    chart.options.plugins.tooltip.titleColor = isDark ? '#e2e6f0' : '#1a1d2e';
+    chart.options.plugins.tooltip.bodyColor = isDark ? '#8891aa' : '#4a5068';
+    chart.options.plugins.tooltip.borderColor = isDark ? '#2e3550' : '#d8dce6';
+    chart.update('none');
+  }
+}
+
+function cycleTheme(){
+  themeIdx = (themeIdx + 1) % themes.length;
+  const t = themes[themeIdx];
+  localStorage.setItem('bali-aq-theme', t);
+  applyTheme(t);
+}
+
+// Init from saved preference or default to auto
+(function(){
+  const saved = localStorage.getItem('bali-aq-theme');
+  if(saved){themeIdx = themes.indexOf(saved); if(themeIdx<0)themeIdx=0;}
+  applyTheme(themes[themeIdx]);
+  // Listen for system theme changes when in auto mode
+  window.matchMedia('(prefers-color-scheme:light)').addEventListener('change',()=>{
+    if(themes[themeIdx]==='auto')applyTheme('auto');
+  });
+})();
 </script>
 </body>
 </html>
