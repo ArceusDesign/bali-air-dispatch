@@ -1,0 +1,8 @@
+.DS_Store
+*.csv
+*.xlsx
+*.png
+*.pdf
+*.md
+node_modules/
+.vercel/
