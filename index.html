@@ -186,6 +186,29 @@ tbody tr:hover td{background:var(--hover-td)}
 
 .divider{border:none;border-top:1px solid var(--border);margin:40px 0}
 .doc-footer{font-size:11.5px;color:var(--faint);line-height:1.8;border-top:1px solid var(--border);padding-top:20px;margin-top:40px}
+
+/* In-page nav */
+.page-nav{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:32px}
+.page-nav-links{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.page-nav-links a{display:inline-block;padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--bg3);border:1px solid var(--border);text-decoration:none;transition:.15s;white-space:nowrap}
+.page-nav-links a:hover{color:var(--text);background:var(--hover-bg);border-color:var(--border2)}
+.page-nav-burger{display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:18px;width:36px;height:32px;cursor:pointer;align-items:center;justify-content:center;padding:0;line-height:1}
+.page-nav-burger:hover{border-color:var(--blue);color:var(--text)}
+@media(max-width:600px){
+  .page-nav-links{display:none;flex-direction:column;gap:6px}
+  .page-nav-links.open{display:flex}
+  .page-nav-links a{width:100%;text-align:center}
+  .page-nav-burger{display:flex}
+}
+
+/* Glossary */
+.glossary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0}
+.glossary-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.glossary-card dt{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.glossary-card dd{font-size:12.5px;color:var(--muted);line-height:1.6;margin:0}
+@media(max-width:600px){
+  .glossary-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -193,12 +216,10 @@ tbody tr:hover td{background:var(--hover-td)}
 <nav id="topnav">
   <a href="#summary">Summary</a>
   <a href="#live">Live Data</a>
-  <a href="#historical">Historical</a>
   <a href="#chart-section">Chart</a>
   <a href="#regulation">Regulation</a>
   <a href="#monitoring">Monitoring</a>
   <a href="#action">What's Needed</a>
-  <a href="#verify">Verify</a>
   <a href="#check-now" style="color:var(--green);font-weight:600">Check Air Now ↗</a>
   <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn" title="Toggle light/dark mode">🌙</button>
   <div class="lang-select">
@@ -215,14 +236,28 @@ tbody tr:hover td{background:var(--hover-td)}
     <h1>Bali's Air Quality Monitoring Gap — What the Data Shows and What's Missing</h1>
     <div class="meta">
       <span><strong>Last updated:</strong> April 14, 2026</span>
-      <span><strong>Compiled by:</strong> Concerned residents</span>
-      <span><strong>Purpose:</strong> Public awareness and advocacy for better monitoring</span>
     </div>
   </div>
 
   <!-- ALERT -->
   <div class="alert">
     <strong>As of April 14, 2026:</strong> Bali's only government air quality station in Denpasar has been offline since August 2025. One government sensor remains active (Badung Sempidi). Limited private monitoring exists (Nafas: 4 stations, IQAir contributors: ~10 sensors, PurpleAir: 2 sensors), but there are no official government sensors operating in Ubud, Kerobokan, Canggu, or central Denpasar.
+  </div>
+
+  <!-- IN-PAGE NAV -->
+  <div class="page-nav">
+    <button class="page-nav-burger" onclick="document.getElementById('pageNavLinks').classList.toggle('open')" aria-label="Toggle navigation">☰</button>
+    <div class="page-nav-links" id="pageNavLinks">
+      <a href="#summary">Summary</a>
+      <a href="#live">Live Data</a>
+      <a href="#historical">Historical</a>
+      <a href="#chart-section">Chart</a>
+      <a href="#regulation">Regulation</a>
+      <a href="#monitoring">Monitoring</a>
+      <a href="#action">What's Needed</a>
+      <a href="#verify">Verify</a>
+      <a href="#check-now">Check Air Now ↗</a>
+    </div>
   </div>
 
   <!-- SUMMARY -->
@@ -248,6 +283,7 @@ tbody tr:hover td{background:var(--hover-td)}
     <div class="section-label">Section 2</div>
     <h2>Live Data Snapshot — What Bali's Air Looks Like Right Now</h2>
     <p>The following readings were verified on <strong>April 13, 2026</strong> from multiple independent sources. These are point-in-time readings — air quality varies by hour, weather, and proximity to pollution sources.</p>
+    <p style="font-size:11px;color:var(--faint);margin-bottom:16px">⏱ Data snapshot taken April 13, 2026. Updated periodically — check sources directly for the latest readings.</p>
 
     <h3>Current Readings Across Bali</h3>
     <div class="snap-grid">
@@ -320,58 +356,9 @@ tbody tr:hover td{background:var(--hover-td)}
 
   <hr class="divider">
 
-  <!-- HISTORICAL DATA -->
-  <div class="section" id="historical">
-    <div class="section-label">Section 3</div>
-    <h2>Historical Data: 469 Days of Kerobokan PM2.5 Readings</h2>
-
-    <p>A GAIA community sensor in Kerobokan (near Canggu) recorded PM2.5 continuously from November 1, 2024 through March 15, 2026. The sensor used a GAIA A12 unit with three redundant dust sensors and automatic cross-validation, recording 900–1,200+ readings per day.</p>
-
-    <h3>Monthly Median Averages</h3>
-    <p>The monthly data shows variation across the recording period. Some months were within WHO guidelines; others were significantly above. This may reflect seasonal patterns — dry season (Apr–Oct) tends to show higher readings — but with data from only one location, we cannot determine this conclusively.</p>
-
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Month</th><th>Avg Daily Median</th><th>vs WHO Annual (15)</th><th>Category</th></tr></thead>
-        <tbody>
-          <tr><td>Nov 2024</td><td>32.7 µg/m³</td><td>2.2× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
-          <tr><td>Dec 2024</td><td>12.2 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
-          <tr><td>Jan 2025</td><td>17.4 µg/m³</td><td>1.2× above</td><td><span class="badge badge-yellow">Above WHO</span></td></tr>
-          <tr><td>Feb 2025</td><td>31.3 µg/m³</td><td>2.1× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
-          <tr><td>Mar 2025</td><td>24.3 µg/m³</td><td>1.6× above</td><td><span class="badge badge-yellow">Above WHO</span></td></tr>
-          <tr><td>Apr 2025</td><td>24.5 µg/m³</td><td>1.6× above</td><td><span class="badge badge-yellow">Above WHO</span></td></tr>
-          <tr><td>May 2025</td><td>31.9 µg/m³</td><td>2.1× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
-          <tr><td>Jun 2025</td><td>26.2 µg/m³</td><td>1.7× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
-          <tr><td>Jul 2025</td><td>25.3 µg/m³</td><td>1.7× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
-          <tr><td>Aug 2025</td><td>31.3 µg/m³</td><td>2.1× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
-          <tr><td>Sep 2025</td><td>25.1 µg/m³</td><td>1.7× above</td><td><span class="badge badge-orange">Above WHO</span></td></tr>
-          <tr><td>Oct 2025</td><td>22.2 µg/m³</td><td>1.5× above</td><td><span class="badge badge-yellow">Above WHO</span></td></tr>
-          <tr><td>Nov 2025</td><td>9.3 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
-          <tr><td>Dec 2025</td><td>12.1 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
-          <tr><td>Jan 2026</td><td>14.0 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
-          <tr><td>Feb 2026</td><td>7.1 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
-          <tr><td>Mar 2026</td><td>10.1 µg/m³</td><td>Below guideline</td><td><span class="badge badge-green">Within WHO</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Denpasar Government Station — Comparison</h3>
-    <p>The Denpasar KLHK station recorded 548 days of data (September 2023 – August 2025) before going offline. Its readings were generally <strong>lower than Kerobokan</strong>, with an average daily median of 15.1 µg/m³ — right at the WHO annual guideline. Only 8.2% of days exceeded the WHO 24-hour guideline (25 µg/m³). The highest daily maximum was 89.2 µg/m³.</p>
-    <p>This suggests that central Denpasar experienced better air quality than Kerobokan during the overlapping period. However, the Denpasar station has been offline since August 2025 — meaning there is <strong>no government data for the most recent 8 months</strong>, including the period after the April 1 waste regulation change.</p>
-
-    <div class="callout">
-      <strong>Why does this matter?</strong> The Denpasar station went offline while its last readings showed PM2.5 in the 60–89 µg/m³ range (classified "Unhealthy" by the US EPA). We cannot know whether conditions have improved or worsened since then, because there is no data.
-    </div>
-
-    <h3>About the Spike Readings</h3>
-    <p>The Kerobokan sensor occasionally recorded extreme maximum readings — up to the sensor's saturation limit of 4,999 µg/m³. These represent <strong>brief, intense events</strong> (likely nearby burning) within otherwise moderate days. On the day of the highest spike (March 1, 2026), the daily median was only 11.7 µg/m³. While these spikes pose real health risks to anyone nearby during the event, they are not representative of sustained daily exposure. Without additional sensors nearby, it is not possible to determine how far these plumes travel.</p>
-  </div>
-
-  <hr class="divider">
-
   <!-- CHART -->
   <div class="section" id="chart-section">
-    <div class="section-label">Section 4</div>
+    <div class="section-label">Section 3</div>
     <h2>469 Days of Data — Visualised</h2>
     <p>The chart below shows every day of recorded data from the Kerobokan sensor. The blue line shows the daily median; the red line shows the daily maximum spike. Hover for exact values. Background colour bands show US EPA air quality categories.</p>
 
@@ -401,7 +388,7 @@ tbody tr:hover td{background:var(--hover-td)}
 
   <!-- REGULATION -->
   <div class="section" id="regulation">
-    <div class="section-label">Section 5</div>
+    <div class="section-label">Section 4</div>
     <h2>The April 1 Regulation Change</h2>
     <p>On April 1, 2026, Denpasar authorities banned organic waste from the Suwung landfill — Bali's largest waste processing site — as part of a plan to close it by August 2026. The regulation's <strong>stated goal is a legitimate environmental objective</strong>: pushing households toward waste separation and reducing landfill dependency.</p>
     <p>However, reports indicate that implementation has outpaced infrastructure. Without adequate composting facilities or collection alternatives in place, some residents have reportedly turned to burning waste or dumping it in waterways. Denpasar cleanup crews were reportedly removing approximately 7 tons of waste from rivers daily, according to the city's Public Works office (PUPR).</p>
@@ -425,8 +412,8 @@ tbody tr:hover td{background:var(--hover-td)}
 
   <!-- MONITORING -->
   <div class="section" id="monitoring">
-    <div class="section-label">Section 6</div>
-    <h2>Bali's Monitoring Infrastructure</h2>
+    <div class="section-label">Section 5</div>
+    <h2>Bali's Current Monitoring Infrastructure</h2>
     <p>An audit of all publicly accessible air quality platforms (conducted April 13, 2026) reveals significant monitoring gaps:</p>
 
     <div class="tbl-wrap">
@@ -448,7 +435,7 @@ tbody tr:hover td{background:var(--hover-td)}
     </div>
 
     <h3>What's Missing</h3>
-    <p>The Denpasar government station (KLHK, located at Graha Sewaka Dharma, Lumintang) went offline on <strong>August 9, 2025</strong>. It is listed on the KLHK portal as "Sedang dalam perawatan" (under maintenance). However, a search of the KLHK station list at <a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank" style="color:var(--blue)">ispu.menlhk.go.id</a> returns no results for "Denpasar," "Bali," or "Gianyar" — only Kabupaten Badung is listed. This was independently verified on April 13, 2026.</p>
+    <p>The Denpasar government station (KLHK, located at Graha Sewaka Dharma, Lumintang) went offline on <strong>August 9, 2025</strong>. It is listed on the KLHK portal as "Sedang dalam perawatan" (under maintenance). However, a search of the KLHK station list at <a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank" style="color:var(--blue)">ispu.menlhk.go.id</a> returns no results for "Denpasar," "Bali," or "Gianyar" — only Kabupaten Badung is listed.</p>
     <p>The Kerobokan community sensor (GAIA network) stopped recording on March 15, 2026. As a privately owned community device, it may have simply failed or been taken offline by its operator. The reason for the outage is unknown.</p>
   </div>
 
@@ -456,9 +443,9 @@ tbody tr:hover td{background:var(--hover-td)}
 
   <!-- WHAT'S NEEDED -->
   <div class="section" id="action">
-    <div class="section-label">Section 7</div>
+    <div class="section-label">Section 6</div>
     <h2>What's Needed: A Case for Better Monitoring</h2>
-    <p>This is not a document claiming a cover-up. Sensor failures can be mundane — equipment breaks, maintenance budgets run out, private operators move on. The systemic issue is that <strong>Bali does not have adequate air quality monitoring infrastructure</strong> for an island of its size and importance.</p>
+    <p>The systemic issue is that <strong>Bali does not have adequate air quality monitoring infrastructure</strong> for an island of its size and importance.</p>
 
     <h3>The Gap in Context</h3>
     <div class="tbl-wrap">
@@ -486,7 +473,7 @@ tbody tr:hover td{background:var(--hover-td)}
 
   <!-- HEALTH STANDARDS -->
   <div class="section" id="health">
-    <div class="section-label">Section 8</div>
+    <div class="section-label">Section 7</div>
     <h2>Understanding PM2.5</h2>
     <p>PM2.5 refers to fine particulate matter smaller than 2.5 micrometers — small enough to penetrate deep into the lungs and enter the bloodstream. Long-term exposure is linked to respiratory and cardiovascular disease. When waste containing plastics is burned, the smoke contains additional toxic compounds (dioxins, furans) that standard PM sensors do not measure.</p>
     <div class="tbl-wrap">
@@ -508,28 +495,9 @@ tbody tr:hover td{background:var(--hover-td)}
 
   <hr class="divider">
 
-  <!-- VERIFY -->
-  <div class="section" id="verify">
-    <div class="section-label">Section 9</div>
-    <h2>Verify Everything Independently</h2>
-    <p>All data in this document comes from publicly accessible sources. We encourage independent verification:</p>
-
-    <ul class="verify-list">
-      <li><strong>Kerobokan sensor historical data (download raw CSV)</strong><br><a href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank">aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/</a></li>
-      <li><strong>Denpasar government sensor historical data</strong><br><a href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" target="_blank">aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/</a></li>
-      <li><strong>KLHK station list (search for Bali/Denpasar)</strong><br><a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank">ispu.menlhk.go.id/webv5/#/stasiun</a></li>
-      <li><strong>IQAir live readings — Bali</strong><br><a href="https://www.iqair.com/id/air-quality-map" target="_blank">iqair.com/id/air-quality-map</a></li>
-      <li><strong>PurpleAir Bali sensors (live map)</strong><br><a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank">map.purpleair.com — Bali</a></li>
-      <li><strong>Nafas Indonesia (mobile app recommended)</strong><br><a href="https://nafas.com/id-en" target="_blank">nafas.com/id-en</a></li>
-      <li><strong>Waste regulation reporting — Hey Bali News</strong><br><a href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" target="_blank">heybali.info →</a></li>
-    </ul>
-  </div>
-
-  <hr class="divider">
-
   <!-- CHECK AIR NOW -->
   <div class="section" id="check-now">
-    <div class="section-label">Section 10</div>
+    <div class="section-label">Section 8</div>
     <h2>Check Bali's Air Quality Now</h2>
 
     <div style="display:flex;flex-direction:column;gap:14px;margin:20px 0">
@@ -539,7 +507,8 @@ tbody tr:hover td{background:var(--hover-td)}
         <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Most comprehensive global view · ~10 Bali stations · Real-time + forecast</div>
         <a href="https://www.iqair.com/id/air-quality-map" target="_blank" style="color:var(--blue);font-size:13px;font-weight:600;text-decoration:none">→ iqair.com/id/air-quality-map</a>
       </div>
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative">
+        <div style="position:absolute;top:14px;right:16px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.25);padding:2px 8px;border-radius:10px">Recommended</div>
         <div style="font-size:18px;font-weight:800;color:var(--h1);margin-bottom:2px">2. Nafas — Indonesia Air Quality App</div>
         <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Best Indonesia-specific data · 4 Bali stations including Ubud · Mobile app recommended</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -561,6 +530,95 @@ tbody tr:hover td{background:var(--hover-td)}
 
     <div class="callout-blue callout">
       <strong>Protect yourself:</strong> Download the <strong>Nafas app</strong> for push alerts. Above 35 µg/m³, keep windows closed and use a purifier if available. Above 55 µg/m³, avoid outdoor exercise. Children, elderly, and people with respiratory conditions should take extra precautions.
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- HISTORICAL DATA -->
+  <div class="section" id="historical">
+    <div class="section-label">Section 9</div>
+    <h2>Historical Data: What the Available Records Show</h2>
+
+    <p>Historical air quality data for Bali is limited. Two sensors have historical CSV data publicly available from the AQICN network: <strong>Kerobokan</strong> (469 days, November 2024 – March 2026) and <strong>Denpasar government station</strong> (548 days, September 2023 – August 2025). Both are currently offline. The active Badung Sempidi station does not provide downloadable historical data through AQICN.</p>
+
+    <h3>Denpasar Government Station (KLHK)</h3>
+    <p>The Denpasar KLHK station recorded <strong>548 days of data</strong> from September 2023 to August 2025. The average daily median was <strong>15.1 µg/m³</strong> — right at the WHO annual guideline of 15 µg/m³. Approximately 40% of days exceeded the WHO annual guideline, and 8% exceeded the WHO 24-hour guideline of 25 µg/m³.</p>
+    <p>Notably, the station's final two recordings showed a sharp spike — daily medians of <strong>45.7 and 75.0 µg/m³</strong> on August 8–9, 2025 — before going offline. The station has been offline for 8+ months with no public repair timeline.</p>
+    <p><em>Note: This data comes from a government-operated station in central Denpasar, representing urban conditions.</em></p>
+
+    <h3>Kerobokan Community Sensor (GAIA Network)</h3>
+    <p>The Kerobokan sensor recorded <strong>469 days of data</strong> from November 2024 to March 2026. The average daily median was <strong>21.9 µg/m³</strong> — 1.5 times the WHO annual guideline. 44% of days exceeded the WHO 24-hour guideline of 25 µg/m³. Monthly averages ranged from 7.1 to 32.7 µg/m³ depending on the month.</p>
+    <p>Located in a residential area near Canggu, this sensor may be closer to burning sources than the central Denpasar station. During the <strong>166-day overlap period</strong> with the Denpasar station, Kerobokan readings were consistently 1.1–1.7 times higher — suggesting localised variation in air quality even within south Bali.</p>
+    <p>A monthly pattern showed higher readings from February through October and lower readings from November through March, but this cannot be confirmed as seasonal without more data points from additional years and locations.</p>
+
+    <h3>Why More Data Is Needed</h3>
+    <p>The two historical sensors — both now offline — covered a limited area of south Bali. There is <strong>no historical data available for Ubud, Sanur, North Bali, or East Bali</strong>. The Klungkung PurpleAir sensor in East Bali currently shows similar moderate patterns but has limited history.</p>
+    <p>Without distributed monitoring, it is impossible to determine whether the patterns seen in Kerobokan and Denpasar are representative of Bali as a whole. More sensors, in more locations, recording over longer periods are needed to build a meaningful picture of the island's air quality.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- VERIFY -->
+  <div class="section" id="verify">
+    <div class="section-label">Section 10</div>
+    <h2>Verify Everything Independently</h2>
+    <p>All data in this document comes from publicly accessible sources. We encourage independent verification:</p>
+
+    <ul class="verify-list">
+      <li><strong>Kerobokan sensor historical data (download raw CSV)</strong><br><a href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank">aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/</a></li>
+      <li><strong>Denpasar government sensor historical data</strong><br><a href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" target="_blank">aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/</a></li>
+      <li><strong>KLHK station list (search for Bali/Denpasar)</strong><br><a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank">ispu.menlhk.go.id/webv5/#/stasiun</a></li>
+      <li><strong>IQAir live readings — Bali</strong><br><a href="https://www.iqair.com/id/air-quality-map" target="_blank">iqair.com/id/air-quality-map</a></li>
+      <li><strong>PurpleAir Bali sensors (live map)</strong><br><a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank">map.purpleair.com — Bali</a></li>
+      <li><strong>Nafas Indonesia (mobile app recommended)</strong><br><a href="https://nafas.com/id-en" target="_blank">nafas.com/id-en</a></li>
+      <li><strong>Waste regulation reporting — Hey Bali News</strong><br><a href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" target="_blank">heybali.info →</a></li>
+    </ul>
+  </div>
+
+  <hr class="divider">
+
+  <!-- GLOSSARY -->
+  <div class="section" id="glossary">
+    <div class="section-label">Section 11</div>
+    <h2>Glossary</h2>
+    <div class="glossary-grid">
+      <dl class="glossary-card">
+        <dt>PM2.5</dt>
+        <dd>Fine particulate matter smaller than 2.5 micrometers. Small enough to enter the lungs and bloodstream. Primary measure of air pollution health risk.</dd>
+      </dl>
+      <dl class="glossary-card">
+        <dt>AQI (Air Quality Index)</dt>
+        <dd>A standardized scale for reporting air quality. This page uses the US EPA AQI scale (0–500). Higher = worse.</dd>
+      </dl>
+      <dl class="glossary-card">
+        <dt>WHO Guideline (Annual)</dt>
+        <dd>World Health Organization recommended maximum annual average PM2.5 exposure: 15 µg/m³.</dd>
+      </dl>
+      <dl class="glossary-card">
+        <dt>WHO Guideline (24-hour)</dt>
+        <dd>WHO recommended maximum daily average PM2.5 exposure: 25 µg/m³.</dd>
+      </dl>
+      <dl class="glossary-card">
+        <dt>µg/m³</dt>
+        <dd>Micrograms per cubic meter. The standard unit for measuring particle concentration in air.</dd>
+      </dl>
+      <dl class="glossary-card">
+        <dt>KLHK</dt>
+        <dd>Kementerian Lingkungan Hidup dan Kehutanan. Indonesia's Ministry of Environment and Forestry. Operates government air quality monitoring stations.</dd>
+      </dl>
+      <dl class="glossary-card">
+        <dt>ISPU</dt>
+        <dd>Indeks Standar Pencemar Udara. Indonesia's national air quality index system, operated by KLHK.</dd>
+      </dl>
+      <dl class="glossary-card">
+        <dt>GAIA</dt>
+        <dd>A network of low-cost community air quality sensors coordinated by the AQICN project.</dd>
+      </dl>
+      <dl class="glossary-card">
+        <dt>Median</dt>
+        <dd>The middle value in a set of readings. Used instead of average because it's less affected by extreme spikes.</dd>
+      </dl>
     </div>
   </div>
 
