@@ -268,24 +268,24 @@ tbody tr:hover td{background:var(--hover-td)}
     <p>Air quality data from multiple independent sources across Bali consistently shows PM2.5 levels that exceed World Health Organization guidelines — and the monitoring infrastructure needed to track the problem is failing.</p>
 
     <h3>The concerning data</h3>
-    <p><strong>9 sensors across 5 independent platforms</strong> (PurpleAir, AQICN, Airly/Nafas, OpenAQ, IQAir) currently report Bali air quality readings. As of April 14, 2026, the majority of inland stations read in the <strong>Moderate range or worse</strong>, with the government's own Badung Sempidi station recording <strong>PM2.5 of 38 µg/m³ — exceeding the WHO 24-hour guideline of 25 by 52%</strong>.</p>
-    <p><strong>469 days of historical data</strong> from a community sensor in Kerobokan (Nov 2024 – Mar 2026) show that <strong>44% of recorded days exceeded the WHO 24-hour safe exposure limit</strong>. The typical daily PM2.5 was 21.9 µg/m³ — 1.5× the WHO annual guideline.</p>
+    <p><strong>9 sensors across 5 independent platforms</strong> (PurpleAir, AQICN, Airly/Nafas, OpenAQ, IQAir) currently report Bali air quality readings. As of April 14, 2026, the majority of inland stations read in the <strong>Moderate range or worse</strong>, with the government's own Badung Sempidi station recording <strong>PM2.5 of 38 µg/m³ — exceeding the WHO 2021 24-hour guideline of 15 µg/m³ by over 150%</strong>.</p>
+    <p><strong>469 days of historical data</strong> from a community sensor in Kerobokan (Nov 2024 – Mar 2026) show that <strong>68% of recorded days exceeded the WHO 2021 24-hour guideline of 15 µg/m³</strong>. The typical daily PM2.5 was 21.9 µg/m³ — 4.4× the WHO 2021 annual guideline of 5 µg/m³.</p>
     <p><strong>687 days of data from Klungkung</strong> (East Bali, PurpleAir) show a <strong>strikingly similar pattern</strong> — confirming this is not an isolated, hyperlocal issue but a broader concern across the island.</p>
     <p>Meanwhile, <strong>Jimbaran on the southern coast consistently records near-zero PM2.5</strong>, demonstrating that clean air exists in Bali — the pollution is location-dependent and likely tied to inland burning activity.</p>
 
     <h3>The monitoring collapse</h3>
     <p>Bali's <strong>only government air quality station in Denpasar has been offline since August 9, 2025</strong> — over 8 months with no public repair timeline. Its final two readings showed a sharp spike to PM2.5 of 45.7 and 75.0 µg/m³ (classified "Unhealthy") before it went dark.</p>
-    <p>The station has been <strong>removed from the KLHK national monitoring portal</strong> — a search for "Denpasar," "Bali," or "Gianyar" returns no results. Only Kabupaten Badung (Sempidi) is listed.</p>
+    <p>The station does not appear in search results on the public KLHK portal (ispu.menlhk.go.id) — searches for 'Denpasar,' 'Bali,' or 'Gianyar' return no results, though the station remains in internal listings as 'Sedang dalam perawatan' (under maintenance). Only Kabupaten Badung (Sempidi) is listed in public-facing search results.</p>
     <p>The only independent community sensor covering the Kerobokan–Canggu corridor <strong>stopped recording on March 15, 2026</strong> — two weeks before a regulation change that has reportedly increased waste burning.</p>
-    <p><strong>One government sensor now covers the entire island of 4.4 million people.</strong> For comparison, Singapore (5.9M) operates 18. Bangkok (10.7M) operates approximately 70.</p>
+    <p><strong>One government sensor now covers the entire island of 4.4 million people.</strong> For comparison, Hong Kong (7.5M) operates 18. Bangkok (10.7M) operates approximately 70.</p>
 
     <h3>The regulation gap</h3>
-    <p><strong>On April 1, 2026</strong>, Denpasar banned organic waste from the Suwung landfill. Reports indicate the move — intended to encourage waste separation — has instead driven an increase in waste burning and river dumping, with cleanup crews removing approximately 7 tons of waste from rivers daily. Burning mixed waste releases PM2.5, dioxins, and other toxic compounds.</p>
+    <p><strong>On April 1, 2026</strong>, Denpasar banned organic waste from the Suwung landfill. Reports indicate the move — intended to encourage waste separation — has instead driven an increase in waste burning and river dumping, with cleanup crews removing approximately 7 tons of waste from rivers daily, according to local media reporting citing Denpasar's PUPR office. Burning mixed waste releases PM2.5, dioxins, and other toxic compounds.</p>
     <p><strong>There is currently no data to measure the air quality impact of this regulation change, because the monitoring infrastructure does not exist.</strong></p>
 
     <div class="stats">
-      <div class="stat s-yellow"><div class="val">44%</div><div class="lbl">Days where median PM2.5 exceeded the WHO 24-hour guideline (25 µg/m³) — 207 of 469 days recorded</div></div>
-      <div class="stat s-orange"><div class="val">21.9</div><div class="lbl">µg/m³ — average daily median PM2.5 across the full recording period. 1.5× the WHO annual guideline</div></div>
+      <div class="stat s-red"><div class="val">68%</div><div class="lbl">Days where median PM2.5 exceeded the WHO 2021 24-hour guideline (15 µg/m³) — 320 of 469 days recorded</div></div>
+      <div class="stat s-orange"><div class="val">21.9</div><div class="lbl">µg/m³ — average daily median. 4.4× the WHO 2021 annual guideline of 5 µg/m³</div></div>
       <div class="stat s-blue"><div class="val">1</div><div class="lbl">Active government air quality station for all of Bali (4.4 million residents)</div></div>
       <div class="stat s-red"><div class="val">8+ mo</div><div class="lbl">Duration the Denpasar government station has been offline — with no public repair timeline</div></div>
     </div>
@@ -297,7 +297,7 @@ tbody tr:hover td{background:var(--hover-td)}
   <div class="section" id="live">
     <div class="section-label">Section 2</div>
     <h2>Live Data Snapshot — What Bali's Air Looks Like Right Now</h2>
-    <p>Live readings from multiple independent sources across Bali. Data is refreshed automatically every 2 hours from PurpleAir, AQICN, and IQAir APIs.</p>
+    <p>Live readings from multiple independent sources across Bali. Auto-refreshed approximately hourly from PurpleAir, AQICN, and IQAir APIs.</p>
     <p style="font-size:11px;color:var(--faint);margin-bottom:16px" id="liveTimestamp">⏱ Loading live data...</p>
 
     <h3>Current Readings Across Bali</h3>
@@ -347,12 +347,12 @@ tbody tr:hover td{background:var(--hover-td)}
         <div class="li"><div class="sw line" style="background:#60a5fa"></div>Daily median PM2.5</div>
         <div class="li"><div class="sw" style="background:rgba(96,165,250,0.32)"></div>Middle 50% range (Q1–Q3)</div>
         <div class="li"><div class="sw line" style="background:rgba(248,113,113,0.8);height:2px"></div>Daily maximum spike</div>
-        <div class="li"><div class="sw dash"></div>WHO guideline (15 µg/m³)</div>
+        <div class="li"><div class="sw dash"></div>WHO 24hr guideline (15 µg/m³)</div>
       </div>
       <div class="aqi-zones">
         <span class="zlbl">EPA zones:</span>
-        <div class="zi"><div class="zd" style="background:#4ade80"></div>Good (0–12)</div>
-        <div class="zi"><div class="zd" style="background:#facc15"></div>Moderate (12–35)</div>
+        <div class="zi"><div class="zd" style="background:#4ade80"></div>Good (0–9)</div>
+        <div class="zi"><div class="zd" style="background:#facc15"></div>Moderate (9–35)</div>
         <div class="zi"><div class="zd" style="background:#fb923c"></div>Unhealthy Sensitive (35–55)</div>
         <div class="zi"><div class="zd" style="background:#f97316"></div>Unhealthy (55–150)</div>
         <div class="zi"><div class="zd" style="background:#dc2626"></div>Very Unhealthy (150–250)</div>
@@ -430,7 +430,7 @@ tbody tr:hover td{background:var(--hover-td)}
         <thead><tr><th>Comparison</th><th>Government AQ Stations</th><th>Population</th><th>Stations per million</th></tr></thead>
         <tbody>
           <tr><td class="td-key">Bali (current)</td><td>1</td><td>4.4 million</td><td>0.2</td></tr>
-          <tr><td class="td-key">Singapore</td><td>18</td><td>5.9 million</td><td>3.1</td></tr>
+          <tr><td class="td-key">Hong Kong</td><td>18</td><td>7.5 million</td><td>2.4</td></tr>
           <tr><td class="td-key">Bangkok (Thailand)</td><td>~70</td><td>10.7 million</td><td>6.5</td></tr>
           <tr><td class="td-key">London (UK)</td><td>100+</td><td>9.0 million</td><td>11+</td></tr>
         </tbody>
@@ -457,14 +457,15 @@ tbody tr:hover td{background:var(--hover-td)}
       <table>
         <thead><tr><th>Standard</th><th>PM2.5 Level</th><th>Classification</th></tr></thead>
         <tbody>
-          <tr><td class="td-key">WHO Annual Guideline</td><td>15 µg/m³</td><td><span class="badge badge-green">Long-term target</span></td></tr>
-          <tr><td class="td-key">WHO 24-hour Guideline</td><td>25 µg/m³</td><td><span class="badge badge-green">Safe daily limit</span></td></tr>
-          <tr><td class="td-key">US EPA "Good"</td><td>0–12 µg/m³</td><td><span class="badge badge-green">Satisfactory</span></td></tr>
-          <tr><td class="td-key">US EPA "Moderate"</td><td>12.1–35.4 µg/m³</td><td><span class="badge badge-yellow">Acceptable; concern for sensitive groups</span></td></tr>
+          <tr><td class="td-key">WHO 2021 Guideline (Annual)</td><td>5 µg/m³</td><td><span class="badge badge-green">Recommended long-term target</span></td></tr>
+          <tr><td class="td-key">WHO 2021 Guideline (24-hour)</td><td>15 µg/m³</td><td><span class="badge badge-green">Recommended daily exposure limit</span></td></tr>
+          <tr><td class="td-key">WHO Interim Target 4 (IT-4)</td><td>Annual 10 / 24-hour 25 µg/m³</td><td><span class="badge badge-green">Transitional benchmark used by many countries</span></td></tr>
+          <tr><td class="td-key">US EPA "Good"</td><td>0–9.0 µg/m³</td><td><span class="badge badge-green">Satisfactory</span></td></tr>
+          <tr><td class="td-key">US EPA "Moderate"</td><td>9.1–35.4 µg/m³</td><td><span class="badge badge-yellow">Acceptable; concern for sensitive groups</span></td></tr>
           <tr><td class="td-key">US EPA "Unhealthy Sensitive"</td><td>35.5–55.4 µg/m³</td><td><span class="badge badge-orange">At-risk groups affected</span></td></tr>
-          <tr><td class="td-key">US EPA "Unhealthy"</td><td>55.5–150.4 µg/m³</td><td><span class="badge badge-orange">Everyone may be affected</span></td></tr>
-          <tr><td class="td-key">US EPA "Very Unhealthy"</td><td>150.5–250.4 µg/m³</td><td><span class="badge badge-red">Health alert</span></td></tr>
-          <tr><td class="td-key">US EPA "Hazardous"</td><td>250.5+ µg/m³</td><td><span class="badge badge-purple">Emergency conditions</span></td></tr>
+          <tr><td class="td-key">US EPA "Unhealthy"</td><td>55.5–125.4 µg/m³</td><td><span class="badge badge-orange">Everyone may be affected</span></td></tr>
+          <tr><td class="td-key">US EPA "Very Unhealthy"</td><td>125.5–225.4 µg/m³</td><td><span class="badge badge-red">Health alert</span></td></tr>
+          <tr><td class="td-key">US EPA "Hazardous"</td><td>225.5+ µg/m³</td><td><span class="badge badge-purple">Emergency conditions</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -481,7 +482,7 @@ tbody tr:hover td{background:var(--hover-td)}
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative">
         <div style="position:absolute;top:14px;right:16px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(74,222,128,0.12);color:#4ade80;border:1px solid rgba(74,222,128,0.25);padding:2px 8px;border-radius:10px">Live</div>
         <div style="font-size:18px;font-weight:800;color:var(--h1);margin-bottom:2px">1. BaliAir — Live Monitor Dashboard</div>
-        <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Our live dashboard · 9 stations · 5 sources · Interactive map · Auto-refreshed</div>
+        <div style="font-size:12px;color:var(--faint);margin-bottom:10px">Our live dashboard · 9 stations · 5 sources · Interactive map · Auto-refreshed approximately hourly</div>
         <a href="/monitor" style="color:var(--green);font-size:13px;font-weight:600;text-decoration:none">→ baliair.pages.dev/monitor</a>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px;position:relative">
@@ -524,12 +525,12 @@ tbody tr:hover td{background:var(--hover-td)}
     <p>Historical air quality data for Bali is limited. Two sensors have historical CSV data publicly available from the AQICN network: <strong>Kerobokan</strong> (469 days, November 2024 – March 2026) and <strong>Denpasar government station</strong> (548 days, September 2023 – August 2025). Both are currently offline. The active Badung Sempidi station does not provide downloadable historical data through AQICN.</p>
 
     <h3>Denpasar Government Station (KLHK)</h3>
-    <p>The Denpasar KLHK station recorded <strong>548 days of data</strong> from September 2023 to August 2025. The average daily median was <strong>15.1 µg/m³</strong> — right at the WHO annual guideline of 15 µg/m³. Approximately 40% of days exceeded the WHO annual guideline, and 8% exceeded the WHO 24-hour guideline of 25 µg/m³.</p>
+    <p>The Denpasar KLHK station recorded <strong>548 days of data</strong> from September 2023 to August 2025. The average daily median was <strong>15.1 µg/m³</strong> — 3.0× the WHO 2021 annual guideline of 5 µg/m³. Approximately 40% of days exceeded the WHO 2021 24-hour guideline of 15 µg/m³.</p>
     <p>Notably, the station's final two recordings showed a sharp spike — daily medians of <strong>45.7 and 75.0 µg/m³</strong> on August 8–9, 2025 — before going offline. The station has been offline for 8+ months with no public repair timeline.</p>
     <p><em>Note: This data comes from a government-operated station in central Denpasar, representing urban conditions.</em></p>
 
     <h3>Kerobokan Community Sensor (GAIA Network)</h3>
-    <p>The Kerobokan sensor recorded <strong>469 days of data</strong> from November 2024 to March 2026. The average daily median was <strong>21.9 µg/m³</strong> — 1.5 times the WHO annual guideline. 44% of days exceeded the WHO 24-hour guideline of 25 µg/m³. Monthly averages ranged from 7.1 to 32.7 µg/m³ depending on the month.</p>
+    <p>The Kerobokan sensor recorded <strong>469 days of data</strong> from November 2024 to March 2026. The average daily median was <strong>21.9 µg/m³</strong> — 4.4 times the WHO 2021 annual guideline of 5 µg/m³. 68% of days exceeded the WHO 2021 24-hour guideline of 15 µg/m³. Monthly averages ranged from 7.1 to 32.7 µg/m³ depending on the month.</p>
     <p>Located in a residential area near Canggu, this sensor may be closer to burning sources than the central Denpasar station. During the <strong>166-day overlap period</strong> with the Denpasar station, Kerobokan readings were consistently 1.1–1.7 times higher — suggesting localised variation in air quality even within south Bali.</p>
     <p>A monthly pattern showed higher readings from February through October and lower readings from November through March, but this cannot be confirmed as seasonal without more data points from additional years and locations.</p>
 
@@ -574,11 +575,11 @@ tbody tr:hover td{background:var(--hover-td)}
       </dl>
       <dl class="glossary-card">
         <dt>WHO Guideline (Annual)</dt>
-        <dd>World Health Organization recommended maximum annual average PM2.5 exposure: 15 µg/m³.</dd>
+        <dd>World Health Organization recommended maximum annual average PM2.5 exposure: 5 µg/m³ (updated in 2021 from the previous guideline of 10 µg/m³).</dd>
       </dl>
       <dl class="glossary-card">
         <dt>WHO Guideline (24-hour)</dt>
-        <dd>WHO recommended maximum daily average PM2.5 exposure: 25 µg/m³.</dd>
+        <dd>WHO recommended maximum daily average PM2.5 exposure: 15 µg/m³ (updated in 2021 from the previous guideline of 25 µg/m³).</dd>
       </dl>
       <dl class="glossary-card">
         <dt>µg/m³</dt>
@@ -606,10 +607,10 @@ tbody tr:hover td{background:var(--hover-td)}
   <!-- FOOTER -->
   <div class="doc-footer">
     <strong style="color:var(--muted)">Data sources:</strong> AQICN/GAIA network, PurpleAir API, IQAir, KLHK ISPU portal · Historical sensor: Kerobokan-Umalas-Fusion, North Kuta, Badung Regency · 469 days, 900–1,200+ readings/day
-    <br><strong style="color:var(--muted)">Live data:</strong> PurpleAir API, AQICN API, Airly API (Nafas sensors), OpenAQ API, IQAir API · Auto-refreshed hourly
+    <br><strong style="color:var(--muted)">Live data:</strong> PurpleAir API, AQICN API, Airly API (Nafas sensors), OpenAQ API, IQAir API · Auto-refreshed approximately hourly
     <br><strong style="color:var(--muted)">Last updated:</strong> April 14, 2026
     <br><br>
-    <strong style="color:var(--muted)">Open source</strong> <a href="mailto:baliair@protonmail.com" style="color:var(--blue)">baliair@protonmail.com</a>
+    <strong style="color:var(--muted)">Contact:</strong> <a href="mailto:baliair@protonmail.com" style="color:var(--blue)">baliair@protonmail.com</a>
     <br><br>
     This is an independent public information resource. It contains no tracking, cookies, or analytics. All data is compiled from publicly available sources and can be independently verified using the links provided. This project is not affiliated with, endorsed by, or connected to any of the data sources, applications, organizations, or government agencies referenced herein.
   </div>
@@ -635,11 +636,11 @@ const zonesPlugin={
     ctx.save();ctx.rect(ca.left,ca.top,ca.width,ca.height);ctx.clip();
     const isDk=document.documentElement.getAttribute('data-theme')!=='light';
     const zoneAlpha=isDk?[0.07,0.08,0.09,0.10,0.11,0.14]:[0.08,0.10,0.12,0.14,0.16,0.18];
-    [[0,12,`rgba(74,222,128,${zoneAlpha[0]})`],[12,35.4,`rgba(250,204,21,${zoneAlpha[1]})`],[35.4,55.4,`rgba(251,146,60,${zoneAlpha[2]})`],[55.4,150.4,`rgba(249,115,22,${zoneAlpha[3]})`],[150.4,250.4,`rgba(220,38,38,${zoneAlpha[4]})`],[250.4,CAP,`rgba(126,34,206,${zoneAlpha[5]})`]].forEach(([lo,hi,col])=>{ctx.fillStyle=col;ctx.fillRect(ca.left,y.getPixelForValue(hi),ca.width,y.getPixelForValue(lo)-y.getPixelForValue(hi))});
+    [[0,9,`rgba(74,222,128,${zoneAlpha[0]})`],[9,35.4,`rgba(250,204,21,${zoneAlpha[1]})`],[35.4,55.4,`rgba(251,146,60,${zoneAlpha[2]})`],[55.4,150.4,`rgba(249,115,22,${zoneAlpha[3]})`],[150.4,250.4,`rgba(220,38,38,${zoneAlpha[4]})`],[250.4,CAP,`rgba(126,34,206,${zoneAlpha[5]})`]].forEach(([lo,hi,col])=>{ctx.fillStyle=col;ctx.fillRect(ca.left,y.getPixelForValue(hi),ca.width,y.getPixelForValue(lo)-y.getPixelForValue(hi))});
     const sepColor=getComputedStyle(document.documentElement).getPropertyValue('--zone-sep').trim();
-    [12,35.4,55.4,150.4,250.4].forEach(v=>{const py=y.getPixelForValue(v);ctx.strokeStyle=sepColor;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ca.left,py);ctx.lineTo(ca.right,py);ctx.stroke()});
+    [9,35.4,55.4,150.4,250.4].forEach(v=>{const py=y.getPixelForValue(v);ctx.strokeStyle=sepColor;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ca.left,py);ctx.lineTo(ca.right,py);ctx.stroke()});
     const whoY=y.getPixelForValue(15);ctx.strokeStyle='rgba(74,222,128,0.9)';ctx.lineWidth=1.5;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(ca.left,whoY);ctx.lineTo(ca.right,whoY);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle='rgba(74,222,128,0.9)';ctx.font='bold 10px system-ui';ctx.fillText('WHO 15',ca.left+6,whoY-5);
+    ctx.fillStyle='rgba(74,222,128,0.9)';ctx.font='bold 10px system-ui';ctx.fillText('WHO 24hr',ca.left+6,whoY-5);
     ctx.restore()
   },
   afterDraw(chart){
@@ -657,7 +658,7 @@ const zonesPlugin={
     ctx.restore()
   }
 };
-new Chart(document.getElementById('chart'),{type:'line',plugins:[zonesPlugin],data:{labels:ts,datasets:[{data:maxV,borderColor:'rgba(248,113,113,0.65)',backgroundColor:'transparent',borderWidth:1,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:'#f87171',fill:false,tension:.2,order:3},{data:q3,borderColor:'transparent',backgroundColor:'rgba(96,165,250,0.28)',borderWidth:0,pointRadius:0,fill:'+1',tension:.3,order:2},{data:q1,borderColor:'transparent',backgroundColor:'transparent',borderWidth:0,pointRadius:0,fill:false,tension:.3,order:2},{data:med,borderColor:'#60a5fa',backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#60a5fa',fill:false,tension:.3,order:1}]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(8,10,18,0.97)',titleColor:'#e2e6f0',bodyColor:'#8891aa',borderColor:'#2e3550',borderWidth:1,padding:12,titleFont:{size:13,weight:'bold'},bodyFont:{size:12},callbacks:{title(items){const raw=RAW[items[0].dataIndex];return new Date(raw.t+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'})},label(item){const raw=RAW[item.dataIndex];if(item.datasetIndex===3){let cat=raw.med>55.5?' · UNHEALTHY':raw.med>35.5?' · USG':raw.med>25?' · above WHO 24hr':raw.med>15?' · above WHO annual':'';return` Median: ${raw.med.toFixed(1)} µg/m³${cat}`}if(item.datasetIndex===0){const note=raw.max>=CAP?` (capped; actual: ${raw.max.toFixed(0)})`:''
+new Chart(document.getElementById('chart'),{type:'line',plugins:[zonesPlugin],data:{labels:ts,datasets:[{data:maxV,borderColor:'rgba(248,113,113,0.65)',backgroundColor:'transparent',borderWidth:1,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:'#f87171',fill:false,tension:.2,order:3},{data:q3,borderColor:'transparent',backgroundColor:'rgba(96,165,250,0.28)',borderWidth:0,pointRadius:0,fill:'+1',tension:.3,order:2},{data:q1,borderColor:'transparent',backgroundColor:'transparent',borderWidth:0,pointRadius:0,fill:false,tension:.3,order:2},{data:med,borderColor:'#60a5fa',backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#60a5fa',fill:false,tension:.3,order:1}]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(8,10,18,0.97)',titleColor:'#e2e6f0',bodyColor:'#8891aa',borderColor:'#2e3550',borderWidth:1,padding:12,titleFont:{size:13,weight:'bold'},bodyFont:{size:12},callbacks:{title(items){const raw=RAW[items[0].dataIndex];return new Date(raw.t+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'})},label(item){const raw=RAW[item.dataIndex];if(item.datasetIndex===3){let cat=raw.med>55.5?' · UNHEALTHY':raw.med>35.5?' · USG':raw.med>15?' · above WHO 24hr':raw.med>5?' · above WHO annual':'';return` Median: ${raw.med.toFixed(1)} µg/m³${cat}`}if(item.datasetIndex===0){const note=raw.max>=CAP?` (capped; actual: ${raw.max.toFixed(0)})`:''
 const cat=raw.max>250.5?' · 🔴 HAZARDOUS':raw.max>150.5?' · Very Unhealthy':raw.max>55.5?' · Unhealthy':'';return` Max: ${Math.min(raw.max,CAP).toFixed(0)} µg/m³${note}${cat}`}return null},filter:item=>item.datasetIndex===0||item.datasetIndex===3}}},scales:{x:{type:'time',time:{unit:'month',displayFormats:{month:"MMM ''yy"}},grid:{color:'rgba(255,255,255,0.05)'},border:{color:'#252b3d'},ticks:{color:'#6b7494',font:{size:11},maxTicksLimit:10}},y:{min:0,max:CAP,grid:{color:'rgba(255,255,255,0.06)'},border:{color:'#252b3d'},ticks:{color:'#6b7494',font:{size:11},callback:v=>v+' µg/m³'},title:{display:true,text:'PM2.5 (µg/m³)',color:'#6b7494',font:{size:11}}}}}});
 
 // Language selector (minimal — headings only for non-English)
@@ -768,7 +769,7 @@ function cycleTheme(){
 
     // Timestamp
     const updated = new Date(data.ts);
-    tsEl.textContent = `⏱ Live data · Last synced: ${updated.toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})} · Auto-refreshes every 2 hours`;
+    tsEl.textContent = `⏱ Live data · Last synced: ${updated.toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})} · Auto-refreshed approximately hourly`;
 
     if (!data.stations || data.stations.length === 0) {
       grid.innerHTML = '<div class="snap-card" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--faint)">No stations returned. Check sources directly.</div>';
@@ -793,7 +794,7 @@ function cycleTheme(){
       let clsName = 'aqi-good';
       if (pm > 55.4) clsName = 'aqi-unh';
       else if (pm > 35.4) clsName = 'aqi-usg';
-      else if (pm > 12) clsName = 'aqi-mod';
+      else if (pm > 9) clsName = 'aqi-mod';
 
       // Badge for WHO comparison
       let badge = '';
@@ -802,9 +803,8 @@ function cycleTheme(){
         else if (pm > 150.4) badge = '<span class="badge badge-red" style="font-size:9px;margin-top:6px;display:inline-block">VERY UNHEALTHY</span>';
         else if (pm > 55.4) badge = '<span class="badge badge-orange" style="font-size:9px;margin-top:6px;display:inline-block">UNHEALTHY</span>';
         else if (pm > 35.4) badge = '<span class="badge badge-orange" style="font-size:9px;margin-top:6px;display:inline-block">USG</span>';
-        else if (pm > 25) badge = '<span class="badge badge-yellow" style="font-size:9px;margin-top:6px;display:inline-block">ABOVE WHO 24HR</span>';
-        else if (pm > 15) badge = '<span class="badge badge-yellow" style="font-size:9px;margin-top:6px;display:inline-block">ABOVE WHO ANNUAL</span>';
-        else if (pm > 12) badge = '<span class="badge badge-green" style="font-size:9px;margin-top:6px;display:inline-block">MODERATE</span>';
+        else if (pm > 15) badge = '<span class="badge badge-yellow" style="font-size:9px;margin-top:6px;display:inline-block">ABOVE WHO 24HR</span>';
+        else if (pm > 9) badge = '<span class="badge badge-green" style="font-size:9px;margin-top:6px;display:inline-block">MODERATE</span>';
         else badge = '<span class="badge badge-green" style="font-size:9px;margin-top:6px;display:inline-block">GOOD</span>';
       }
 
@@ -820,19 +820,19 @@ function cycleTheme(){
 
     // Build observation callout
     const withPm = sorted.filter(s => s.pm25 != null);
-    const aboveWho24 = withPm.filter(s => s.pm25 > 25);
-    const aboveWhoAn = withPm.filter(s => s.pm25 > 15);
+    const aboveWho24 = withPm.filter(s => s.pm25 > 15);
+    const aboveWhoAn = withPm.filter(s => s.pm25 > 5);
     const govStations = withPm.filter(s => s.type.includes('Government'));
     const avgPm = withPm.length ? (withPm.reduce((s,x)=>s+x.pm25,0)/withPm.length).toFixed(1) : '—';
 
     let obsHtml = '<strong>Key observation:</strong> ';
     if (govStations.length > 0) {
       const gov = govStations[0];
-      obsHtml += `The government sensor at ${gov.name.split('(')[0].trim()} is reading PM2.5 of ${gov.pm25} µg/m³${gov.pm25 > 25 ? ' — above the WHO 24-hour guideline of 25' : ''}. `;
+      obsHtml += `The government sensor at ${gov.name.split('(')[0].trim()} is reading PM2.5 of ${gov.pm25} µg/m³${gov.pm25 > 15 ? ' — above the WHO 2021 24-hour guideline of 15' : ''}. `;
     }
     obsHtml += `Across ${withPm.length} stations reporting, the average PM2.5 is ${avgPm} µg/m³. `;
     if (aboveWho24.length > 0) {
-      obsHtml += `<strong>${aboveWho24.length} of ${withPm.length} stations</strong> currently exceed the WHO 24-hour guideline. `;
+      obsHtml += `<strong>${aboveWho24.length} of ${withPm.length} stations</strong> currently exceed the WHO 2021 24-hour guideline. `;
     }
     obsHtml += 'Air quality varies significantly by location — reinforcing the need for more localised monitoring.';
     obsEl.innerHTML = obsHtml;
