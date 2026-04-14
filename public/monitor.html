@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bali Air Quality — Live Monitor</title>
+<meta name="description" content="Real-time air quality monitoring across Bali from 9+ stations. Live PM2.5 readings, interactive map, and historical data.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root,[data-theme="dark"]{
+  --bg:#0c0e16;--bg2:#131620;--bg3:#191d2b;--border:#232840;--border2:#2e3450;
+  --text:#e2e6f0;--muted:#8891aa;--faint:#4a5170;
+  --red:#f87171;--orange:#fb923c;--yellow:#fbbf24;--green:#4ade80;--blue:#60a5fa;--purple:#a78bfa;
+  --nav-bg:rgba(12,14,22,0.92);--h1:#fff;--h2:#fff;
+  --hover-bg:rgba(255,255,255,0.05);--shadow:0 8px 32px rgba(0,0,0,0.4);
+  --map-tiles:1;
+}
+[data-theme="light"]{
+  --bg:#f5f6fa;--bg2:#ffffff;--bg3:#eef0f5;--border:#d8dce6;--border2:#c5cad6;
+  --text:#1a1d2e;--muted:#4a5068;--faint:#7a809a;
+  --red:#dc2626;--orange:#ea580c;--yellow:#b45309;--green:#16a34a;--blue:#2563eb;--purple:#7c3aed;
+  --nav-bg:rgba(245,246,250,0.92);--h1:#111827;--h2:#1e293b;
+  --hover-bg:rgba(0,0,0,0.04);--shadow:0 4px 16px rgba(0,0,0,0.08);
+  --map-tiles:1;
+}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px;transition:background .3s,color .3s}
+
+/* Nav */
+#topnav{position:sticky;top:0;z-index:1000;background:var(--nav-bg);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:8px;align-items:center;font-size:13px;transition:background .3s}
+#topnav a{color:var(--faint);text-decoration:none;padding:3px 8px;border-radius:4px;transition:.15s}
+#topnav a:hover{color:var(--text);background:var(--hover-bg)}
+.nav-title{font-weight:700;color:var(--h1);font-size:15px;margin-right:auto}
+.nav-title span{color:var(--green)}
+.theme-toggle{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;padding:0}
+.theme-toggle:hover{border-color:var(--blue);color:var(--text)}
+.theme-toggle svg{width:14px;height:14px;fill:currentColor}
+
+/* Layout */
+.page{max-width:1200px;margin:0 auto;padding:20px 20px 60px}
+.section{margin-bottom:32px}
+h2{font-size:18px;font-weight:700;color:var(--h2);margin-bottom:12px}
+p{color:var(--muted);font-size:13.5px;line-height:1.6;margin-bottom:10px}
+
+/* Status bar */
+.status-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px;font-size:12px;color:var(--faint)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.status-bar strong{color:var(--muted)}
+
+/* Cards grid — wider than main page */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:24px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .15s,transform .1s}
+.card:hover{border-color:var(--blue);transform:translateY(-1px)}
+.card-name{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-src{font-size:10px;color:var(--faint);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-pm{font-size:22px;font-weight:800;line-height:1;margin-bottom:3px}
+.card-cat{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.card-meta{font-size:9.5px;color:var(--faint);margin-top:4px}
+/* AQI colors */
+.c-good .card-pm,.c-good .card-cat{color:var(--green)}
+.c-mod .card-pm,.c-mod .card-cat{color:var(--yellow)}
+.c-usg .card-pm,.c-usg .card-cat{color:var(--orange)}
+.c-unh .card-pm,.c-unh .card-cat{color:#f97316}
+.c-vunh .card-pm,.c-vunh .card-cat{color:var(--red)}
+.c-haz .card-pm,.c-haz .card-cat{color:var(--purple)}
+
+/* Map */
+.map-wrap{border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:24px;position:relative}
+#map{height:500px;width:100%;background:var(--bg3)}
+@media(max-width:640px){#map{height:350px}}
+/* Dark map tiles */
+[data-theme="dark"] .leaflet-tile{filter:brightness(0.7) contrast(1.1) saturate(0.3) hue-rotate(180deg) invert(1)}
+[data-theme="dark"] .leaflet-container{background:#1a1e2e}
+.leaflet-popup-content-wrapper{background:var(--bg2)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:8px!important;box-shadow:var(--shadow)!important}
+.leaflet-popup-tip{background:var(--bg2)!important}
+.leaflet-popup-content{font-family:inherit!important;font-size:13px!important;line-height:1.5!important;color:var(--muted)!important}
+.leaflet-popup-content strong{color:var(--text)!important}
+.popup-pm{font-size:20px;font-weight:800;margin:4px 0}
+.leaflet-control-zoom a{background:var(--bg2)!important;color:var(--muted)!important;border-color:var(--border)!important}
+
+/* Chart */
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 18px 16px}
+.chart-hd{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.chart-sub{font-size:11px;color:var(--faint);margin-bottom:14px}
+canvas{display:block;width:100%!important}
+.chart-leg{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+.leg-i{display:flex;align-items:center;gap:5px}
+.leg-sw{width:20px;height:6px;border-radius:2px;flex-shrink:0}
+.leg-sw.line{height:2.5px}
+.leg-sw.dash{height:0;border-bottom:2px dashed var(--green);background:none;width:18px}
+
+/* Station detail cards */
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.detail-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.det-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.det-name{font-size:14px;font-weight:700;color:var(--text)}
+.det-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.03em;text-transform:uppercase}
+.det-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:3px 0;border-bottom:1px solid var(--border)}
+.det-row:last-child{border-bottom:none}
+.det-label{color:var(--faint)}
+.det-val{font-weight:600;color:var(--text)}
+
+/* Badge colors */
+.b-good{background:rgba(74,222,128,0.12);color:var(--green);border:1px solid rgba(74,222,128,0.25)}
+.b-mod{background:rgba(251,191,36,0.12);color:var(--yellow);border:1px solid rgba(251,191,36,0.25)}
+.b-usg{background:rgba(251,146,60,0.12);color:var(--orange);border:1px solid rgba(251,146,60,0.25)}
+.b-unh{background:rgba(249,115,22,0.12);color:#f97316;border:1px solid rgba(249,115,22,0.25)}
+.b-vunh{background:rgba(248,113,113,0.12);color:var(--red);border:1px solid rgba(248,113,113,0.25)}
+.b-haz{background:rgba(167,139,250,0.12);color:var(--purple);border:1px solid rgba(167,139,250,0.25)}
+
+[data-theme="light"] .card{background:#fff;border-color:#d8dce6}
+[data-theme="light"] .detail-card{background:#fff;border-color:#d8dce6}
+[data-theme="light"] .chart-card{background:#fff;border-color:#d8dce6}
+[data-theme="light"] .c-good .card-pm,[data-theme="light"] .c-good .card-cat{color:#16a34a}
+[data-theme="light"] .c-mod .card-pm,[data-theme="light"] .c-mod .card-cat{color:#b45309}
+
+/* Footer */
+.footer{font-size:11px;color:var(--faint);line-height:1.7;border-top:1px solid var(--border);padding-top:16px;margin-top:32px}
+.footer a{color:var(--blue);text-decoration:none}
+</style>
+</head>
+<body>
+
+<nav id="topnav">
+  <div class="nav-title"><span>●</span> Bali Air Quality — Live Monitor</div>
+  <a href="/">Evidence Brief</a>
+  <a href="#map-section">Map</a>
+  <a href="#history">History</a>
+  <a href="#stations">Stations</a>
+  <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn" title="Toggle theme"><svg viewBox="0 0 24 24"><path id="themeIcon" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg></button>
+</nav>
+
+<div class="page">
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span><span class="status-dot"></span> <strong>LIVE</strong></span>
+    <span id="statusText">Connecting to sensors...</span>
+    <span id="statusCount"></span>
+  </div>
+
+  <!-- LIVE CARDS -->
+  <div class="section">
+    <div class="cards-grid" id="cardsGrid">
+      <div class="card" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--faint)">Loading live data from 5 sources...</div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="section" id="map-section">
+    <h2>Sensor Map</h2>
+    <div class="map-wrap">
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <!-- HISTORICAL CHART -->
+  <div class="section" id="history">
+    <h2>Historical Data — Kerobokan Sensor (Nov 2024 – Mar 2026)</h2>
+    <p>469 days of PM2.5 data from the only sensor with downloadable historical records in the Denpasar–Canggu corridor. This sensor went offline March 15, 2026. More historical data will be added as new community sensors come online.</p>
+    <div class="chart-card">
+      <div class="chart-hd">Daily PM2.5 — Kerobokan (GAIA Network)</div>
+      <div class="chart-sub">Hover for readings · Y-axis capped at 350 µg/m³</div>
+      <canvas id="histChart" height="350"></canvas>
+      <div class="chart-leg">
+        <div class="leg-i"><div class="leg-sw line" style="background:#60a5fa"></div>Median</div>
+        <div class="leg-i"><div class="leg-sw" style="background:rgba(96,165,250,0.3)"></div>Q1–Q3</div>
+        <div class="leg-i"><div class="leg-sw line" style="background:rgba(248,113,113,0.7);height:1.5px"></div>Max spike</div>
+        <div class="leg-i"><div class="leg-sw dash"></div>WHO 15</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATION DETAILS -->
+  <div class="section" id="stations">
+    <h2>Station Details</h2>
+    <div class="detail-grid" id="detailGrid">
+      <div style="color:var(--faint);font-size:13px">Loading...</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <strong style="color:var(--muted)">Open source</strong> <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+    <br>Data: PurpleAir, AQICN, Airly (Nafas sensors), OpenAQ, IQAir · Auto-refreshed every 5 min
+    <br><br>
+    This page is hosted for public information purposes and contains no tracking, no cookies, and no analytics. Compiled from publicly available data by concerned Bali residents advocating for better air quality monitoring.
+  </div>
+
+</div>
+
+<!-- ═══ SCRIPTS ═══ -->
+<script>
+// ── Theme ──
+const iconPaths={dark:'M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z',light:'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42',auto:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 5v14a7 7 0 0 1 0-14z'};
+const themes=['auto','light','dark'];
+let themeIdx=0;
+function getSystemTheme(){return window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'}
+function applyTheme(t){
+  const eff=t==='auto'?getSystemTheme():t;
+  document.documentElement.setAttribute('data-theme',eff);
+  document.getElementById('themeIcon').setAttribute('d',iconPaths[t]);
+  // Rebuild map tiles if map exists
+  if(window._map){window._map.invalidateSize()}
+}
+function cycleTheme(){themeIdx=(themeIdx+1)%themes.length;const t=themes[themeIdx];localStorage.setItem('bali-aq-theme',t);applyTheme(t)}
+(function(){const s=localStorage.getItem('bali-aq-theme');if(s){themeIdx=themes.indexOf(s);if(themeIdx<0)themeIdx=0}applyTheme(themes[themeIdx]);window.matchMedia('(prefers-color-scheme:light)').addEventListener('change',()=>{if(themes[themeIdx]==='auto')applyTheme('auto')})})();
+
+// ── Map ──
+const map = L.map('map',{zoomControl:true,scrollWheelZoom:true}).setView([-8.5,115.27],10);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map);
+window._map = map;
+const markers = [];
+
+function markerColor(pm){
+  if(pm==null)return'#888';
+  if(pm<=12)return'#4ade80';
+  if(pm<=25)return'#facc15';
+  if(pm<=35.4)return'#fb923c';
+  if(pm<=55.4)return'#f97316';
+  if(pm<=150.4)return'#ef4444';
+  if(pm<=250.4)return'#dc2626';
+  return'#7e22ce';
+}
+
+function badgeClass(pm){
+  if(pm==null)return'b-mod';
+  if(pm<=12)return'b-good';
+  if(pm<=35.4)return'b-mod';
+  if(pm<=55.4)return'b-usg';
+  if(pm<=150.4)return'b-unh';
+  if(pm<=250.4)return'b-vunh';
+  return'b-haz';
+}
+
+function cardClass(cls){
+  return 'c-'+(cls||'mod');
+}
+
+// ── Live Data ──
+let stationsData = [];
+
+async function loadLive(){
+  const grid=document.getElementById('cardsGrid');
+  const detail=document.getElementById('detailGrid');
+  try{
+    const resp=await fetch('/api/live');
+    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+    const data=await resp.json();
+    stationsData=data.stations||[];
+
+    // Status bar
+    const ts=new Date(data.ts);
+    document.getElementById('statusText').textContent=`Last synced: ${ts.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}`;
+    document.getElementById('statusCount').textContent=`${stationsData.length} stations · ${data.sources||0} sources`;
+
+    // Sort: worst PM2.5 first
+    const sorted=[...stationsData].sort((a,b)=>(b.pm25||0)-(a.pm25||0));
+
+    // Cards
+    grid.innerHTML=sorted.map((s,i)=>{
+      const pm=s.pm25;
+      const pmStr=pm!=null?`${pm.toFixed(1)}`:'—';
+      const est=s.pm25_estimated?' <span style="font-size:9px;color:var(--faint)">(est)</span>':'';
+      return`<div class="card ${cardClass(s.cls)}" onclick="focusStation('${s.id}')">
+        <div class="card-name">${s.name}</div>
+        <div class="card-src">${s.source} · ${s.type}</div>
+        <div class="card-pm">${pmStr}${est}</div>
+        <div class="card-cat">${s.category}</div>
+        <div class="card-meta">µg/m³ PM2.5</div>
+      </div>`;
+    }).join('');
+
+    // Map markers
+    markers.forEach(m=>map.removeLayer(m));
+    markers.length=0;
+    sorted.forEach(s=>{
+      if(!s.lat||!s.lon)return;
+      const color=markerColor(s.pm25);
+      const pm=s.pm25!=null?s.pm25.toFixed(1):'—';
+      const m=L.circleMarker([s.lat,s.lon],{
+        radius:10,fillColor:color,fillOpacity:0.85,color:'#fff',weight:1.5,opacity:0.9
+      }).addTo(map);
+      m.bindPopup(`<strong>${s.name}</strong><br><div class="popup-pm" style="color:${color}">${pm} µg/m³</div>${s.category}<br><span style="font-size:11px;color:var(--faint)">${s.source} · ${s.type}</span>`);
+      m.stationId=s.id;
+      markers.push(m);
+    });
+
+    // Detail cards
+    detail.innerHTML=sorted.map(s=>{
+      const pm=s.pm25;
+      const pmStr=pm!=null?`${pm.toFixed(1)} µg/m³`:'No data';
+      const bc=badgeClass(pm);
+      const lastSeen=s.lastSeen?new Date(s.lastSeen).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'Unknown';
+      let extra='';
+      if(s.temperature!=null)extra+=`<div class="det-row"><span class="det-label">Temperature</span><span class="det-val">${s.temperature}°C</span></div>`;
+      if(s.humidity!=null)extra+=`<div class="det-row"><span class="det-label">Humidity</span><span class="det-val">${s.humidity}%</span></div>`;
+      if(s.pm10!=null)extra+=`<div class="det-row"><span class="det-label">PM10</span><span class="det-val">${s.pm10} µg/m³</span></div>`;
+      const staleNote=s.stale?'<div style="font-size:10px;color:var(--orange);margin-top:6px">⚠ Data may be stale</div>':'';
+      return`<div class="detail-card" id="det-${s.id}">
+        <div class="det-head">
+          <div class="det-name">${s.name}</div>
+          <div class="det-badge ${bc}">${s.category}</div>
+        </div>
+        <div class="det-row"><span class="det-label">PM2.5</span><span class="det-val">${pmStr}${s.pm25_estimated?' (estimated)':''}</span></div>
+        <div class="det-row"><span class="det-label">Source</span><span class="det-val">${s.source}</span></div>
+        <div class="det-row"><span class="det-label">Type</span><span class="det-val">${s.type}</span></div>
+        <div class="det-row"><span class="det-label">Last seen</span><span class="det-val">${lastSeen}</span></div>
+        ${extra}
+        <div class="det-row"><span class="det-label">Coordinates</span><span class="det-val">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}</span></div>
+        ${staleNote}
+      </div>`;
+    }).join('');
+
+    // Errors
+    if(data.errors&&data.errors.length>0){
+      console.warn('API errors:',data.errors);
+    }
+  }catch(e){
+    grid.innerHTML=`<div class="card" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--faint)">Unable to load live data. <a href="https://www.iqair.com/id/air-quality-map" style="color:var(--blue)">Check IQAir</a></div>`;
+    document.getElementById('statusText').textContent='Connection failed';
+  }
+}
+
+function focusStation(id){
+  // Find marker and open popup
+  const m=markers.find(m=>m.stationId===id);
+  if(m){map.setView(m.getLatLng(),13);m.openPopup()}
+  // Scroll to detail
+  const el=document.getElementById('det-'+id);
+  if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.borderColor='var(--blue)';setTimeout(()=>el.style.borderColor='',2000)}
+}
+
+// Load immediately and refresh every 5 min
+loadLive();
+setInterval(loadLive, 5*60*1000);
+
+// ── Historical Chart ──
+const CAP=350;
+const RAW=[{"t": "2024-11-01", "min": 4.55, "max": 66.2, "med": 25.85, "q1": 18.44, "q3": 36.68}, {"t": "2024-11-02", "min": 4.28, "max": 59.95, "med": 30.97, "q1": 20.51, "q3": 39.18}, {"t": "2024-11-03", "min": 3.13, "max": 76.54, "med": 27.29, "q1": 17.07, "q3": 34.28}, {"t": "2024-11-04", "min": 3.56, "max": 43.03, "med": 16.69, "q1": 8.28, "q3": 24.69}, {"t": "2024-11-05", "min": 4.51, "max": 52.15, "med": 17.55, "q1": 9.65, "q3": 29.67}, {"t": "2024-11-06", "min": 5.95, "max": 72.97, "med": 17.48, "q1": 10.68, "q3": 29.87}, {"t": "2024-11-07", "min": 9.64, "max": 73.84, "med": 32.44, "q1": 19.59, "q3": 41.86}, {"t": "2024-11-08", "min": 9.21, "max": 83.9, "med": 30.97, "q1": 23.05, "q3": 43.1}, {"t": "2024-11-09", "min": 20.85, "max": 115.38, "med": 38.85, "q1": 33.79, "q3": 42.0}, {"t": "2024-11-10", "min": 25.9, "max": 113.46, "med": 45.42, "q1": 41.79, "q3": 50.64}, {"t": "2024-11-11", "min": 10.97, "max": 65.73, "med": 32.45, "q1": 23.24, "q3": 41.0}, {"t": "2024-11-12", "min": 21.18, "max": 113.82, "med": 47.59, "q1": 39.72, "q3": 56.95}, {"t": "2024-11-13", "min": 5.59, "max": 85.08, "med": 28.33, "q1": 22.28, "q3": 42.64}, {"t": "2024-11-14", "min": 10.51, "max": 61.1, "med": 23.36, "q1": 20.27, "q3": 30.14}, {"t": "2024-11-15", "min": 19.18, "max": 75.18, "med": 40.44, "q1": 31.74, "q3": 47.15}, {"t": "2024-11-16", "min": 20.32, "max": 94.28, "med": 42.08, "q1": 38.61, "q3": 48.51}, {"t": "2024-11-17", "min": 3.46, "max": 69.33, "med": 33.67, "q1": 26.45, "q3": 42.73}, {"t": "2024-11-18", "min": 0.48, "max": 163.49, "med": 29.29, "q1": 16.89, "q3": 39.0}, {"t": "2024-11-19", "min": 0.67, "max": 110.72, "med": 29.87, "q1": 22.03, "q3": 44.1}, {"t": "2024-11-20", "min": 13.92, "max": 138.28, "med": 38.22, "q1": 32.97, "q3": 49.26}, {"t": "2024-11-21", "min": 27.46, "max": 88.23, "med": 42.15, "q1": 37.67, "q3": 47.92}, {"t": "2024-11-22", "min": 34.74, "max": 238.9, "med": 51.45, "q1": 45.13, "q3": 60.17}, {"t": "2024-11-23", "min": 3.97, "max": 88.54, "med": 35.13, "q1": 22.6, "q3": 44.03}, {"t": "2024-11-24", "min": 18.48, "max": 253.67, "med": 53.35, "q1": 46.21, "q3": 68.41}, {"t": "2024-11-25", "min": 43.49, "max": 285.77, "med": 57.69, "q1": 51.28, "q3": 70.97}, {"t": "2024-11-26", "min": 39.28, "max": 232.72, "med": 52.92, "q1": 50.03, "q3": 59.92}, {"t": "2024-11-27", "min": 8.97, "max": 269.54, "med": 29.64, "q1": 23.36, "q3": 37.18}, {"t": "2024-11-28", "min": 5.38, "max": 202.59, "med": 27.87, "q1": 21.13, "q3": 32.95}, {"t": "2024-11-29", "min": 0.0, "max": 143.72, "med": 1.22, "q1": 0.0, "q3": 4.46}, {"t": "2024-11-30", "min": 0.0, "max": 148.66, "med": 0.0, "q1": 0.0, "q3": 1.3}, {"t": "2024-12-01", "min": 0.0, "max": 102.41, "med": 12.9, "q1": 2.67, "q3": 33.38}, {"t": "2024-12-02", "min": 0.0, "max": 127.44, "med": 9.78, "q1": 4.46, "q3": 22.5}, {"t": "2024-12-03", "min": 0.0, "max": 255.95, "med": 15.7, "q1": 5.03, "q3": 26.09}, {"t": "2024-12-04", "min": 0.0, "max": 78.79, "med": 13.59, "q1": 3.92, "q3": 30.72}, {"t": "2024-12-05", "min": 0.0, "max": 372.0, "med": 32.58, "q1": 13.14, "q3": 45.72}, {"t": "2024-12-06", "min": 0.0, "max": 292.69, "med": 24.13, "q1": 13.31, "q3": 36.59}, {"t": "2024-12-07", "min": 0.0, "max": 140.46, "med": 3.82, "q1": 1.0, "q3": 13.97}, {"t": "2024-12-08", "min": 0.0, "max": 261.0, "med": 3.05, "q1": 1.35, "q3": 5.23}, {"t": "2024-12-09", "min": 0.0, "max": 287.14, "med": 1.0, "q1": 0.0, "q3": 4.05}, {"t": "2024-12-10", "min": 0.0, "max": 242.54, "med": 1.76, "q1": 0.0, "q3": 7.72}, {"t": "2024-12-11", "min": 0.0, "max": 182.97, "med": 4.93, "q1": 1.56, "q3": 16.02}, {"t": "2024-12-12", "min": 0.0, "max": 77.44, "med": 4.87, "q1": 1.0, "q3": 15.49}, {"t": "2024-12-13", "min": 0.0, "max": 300.05, "med": 36.9, "q1": 27.04, "q3": 48.82}, {"t": "2024-12-14", "min": 5.13, "max": 365.97, "med": 25.59, "q1": 17.59, "q3": 32.33}, {"t": "2024-12-15", "min": 0.0, "max": 147.79, "med": 16.41, "q1": 2.92, "q3": 27.6}, {"t": "2024-12-16", "min": 0.0, "max": 271.82, "med": 21.9, "q1": 3.74, "q3": 30.79}, {"t": "2024-12-17", "min": 0.0, "max": 142.1, "med": 19.55, "q1": 7.72, "q3": 30.44}, {"t": "2024-12-18", "min": 0.0, "max": 221.74, "med": 8.69, "q1": 0.93, "q3": 27.64}, {"t": "2024-12-19", "min": 0.0, "max": 220.38, "med": 5.74, "q1": 0.5, "q3": 21.0}, {"t": "2024-12-20", "min": 0.0, "max": 314.26, "med": 0.25, "q1": 0.0, "q3": 4.67}, {"t": "2024-12-21", "min": 0.0, "max": 137.31, "med": 2.72, "q1": 0.0, "q3": 15.94}, {"t": "2024-12-22", "min": 0.0, "max": 145.36, "med": 14.94, "q1": 2.59, "q3": 30.87}, {"t": "2024-12-23", "min": 0.0, "max": 109.82, "med": 3.28, "q1": 0.0, "q3": 15.56}, {"t": "2024-12-24", "min": 0.0, "max": 89.82, "med": 1.28, "q1": 0.0, "q3": 6.08}, {"t": "2024-12-25", "min": 0.0, "max": 219.9, "med": 9.44, "q1": 1.23, "q3": 23.51}, {"t": "2024-12-26", "min": 0.0, "max": 253.03, "med": 2.97, "q1": 0.0, "q3": 20.0}, {"t": "2024-12-27", "min": 0.0, "max": 661.72, "med": 6.85, "q1": 2.06, "q3": 19.07}, {"t": "2024-12-28", "min": 0.0, "max": 239.03, "med": 8.21, "q1": 1.57, "q3": 18.79}, {"t": "2024-12-29", "min": 0.0, "max": 80.18, "med": 0.86, "q1": 0.0, "q3": 6.14}, {"t": "2024-12-30", "min": 0.0, "max": 125.9, "med": 34.31, "q1": 21.85, "q3": 42.91}, {"t": "2024-12-31", "min": 10.23, "max": 391.08, "med": 29.38, "q1": 21.82, "q3": 49.85}, {"t": "2025-01-01", "min": 0.0, "max": 651.95, "med": 28.44, "q1": 4.41, "q3": 46.21}, {"t": "2025-01-02", "min": 0.0, "max": 278.27, "med": 20.67, "q1": 7.15, "q3": 38.06}, {"t": "2025-01-03", "min": 0.0, "max": 175.36, "med": 4.84, "q1": 0.56, "q3": 17.64}, {"t": "2025-01-04", "min": 0.0, "max": 284.72, "med": 7.87, "q1": 2.24, "q3": 20.28}, {"t": "2025-01-05", "min": 0.0, "max": 106.05, "med": 8.38, "q1": 4.08, "q3": 22.95}, {"t": "2025-01-06", "min": 0.0, "max": 483.74, "med": 33.01, "q1": 16.26, "q3": 44.77}, {"t": "2025-01-07", "min": 12.72, "max": 135.15, "med": 34.44, "q1": 27.46, "q3": 39.54}, {"t": "2025-01-08", "min": 0.0, "max": 295.14, "med": 29.44, "q1": 9.72, "q3": 49.1}, {"t": "2025-01-09", "min": 0.0, "max": 282.77, "med": 19.89, "q1": 10.0, "q3": 28.05}, {"t": "2025-01-10", "min": 0.0, "max": 169.33, "med": 18.91, "q1": 4.44, "q3": 29.14}, {"t": "2025-01-11", "min": 0.0, "max": 207.85, "med": 12.28, "q1": 0.53, "q3": 28.92}, {"t": "2025-01-12", "min": 0.0, "max": 389.08, "med": 1.18, "q1": 0.0, "q3": 13.49}, {"t": "2025-01-13", "min": 0.0, "max": 251.18, "med": 6.05, "q1": 0.56, "q3": 16.96}, {"t": "2025-01-14", "min": 0.0, "max": 84.9, "med": 6.03, "q1": 3.23, "q3": 8.51}, {"t": "2025-01-15", "min": 0.0, "max": 158.38, "med": 15.5, "q1": 4.59, "q3": 36.72}, {"t": "2025-01-16", "min": 2.74, "max": 41.95, "med": 14.15, "q1": 9.64, "q3": 17.98}, {"t": "2025-01-20", "min": 0.0, "max": 60.23, "med": 3.41, "q1": 1.0, "q3": 12.77}, {"t": "2025-01-21", "min": 0.0, "max": 124.77, "med": 11.58, "q1": 2.69, "q3": 36.64}, {"t": "2025-01-22", "min": 0.0, "max": 243.46, "med": 17.23, "q1": 4.46, "q3": 41.64}, {"t": "2025-01-23", "min": 0.0, "max": 84.72, "med": 10.13, "q1": 2.02, "q3": 23.95}, {"t": "2025-01-24", "min": 0.0, "max": 368.23, "med": 8.36, "q1": 3.62, "q3": 24.4}, {"t": "2025-01-25", "min": 0.0, "max": 84.49, "med": 5.23, "q1": 1.67, "q3": 15.03}, {"t": "2025-01-26", "min": 0.0, "max": 187.08, "med": 2.04, "q1": 0.0, "q3": 10.02}, {"t": "2025-01-27", "min": 0.0, "max": 463.69, "med": 20.5, "q1": 9.51, "q3": 34.92}, {"t": "2025-01-28", "min": 0.0, "max": 113.85, "med": 33.94, "q1": 19.43, "q3": 43.72}, {"t": "2025-01-29", "min": 3.79, "max": 158.15, "med": 21.27, "q1": 16.32, "q3": 27.9}, {"t": "2025-01-30", "min": 3.92, "max": 114.77, "med": 37.51, "q1": 31.82, "q3": 44.36}, {"t": "2025-01-31", "min": 7.72, "max": 413.28, "med": 53.64, "q1": 41.87, "q3": 73.14}, {"t": "2025-02-01", "min": 0.71, "max": 235.15, "med": 43.54, "q1": 31.62, "q3": 49.82}, {"t": "2025-02-02", "min": 25.05, "max": 181.03, "med": 40.77, "q1": 33.9, "q3": 47.08}, {"t": "2025-02-03", "min": 27.74, "max": 151.21, "med": 47.62, "q1": 42.35, "q3": 54.19}, {"t": "2025-02-04", "min": 30.41, "max": 185.15, "med": 46.22, "q1": 40.1, "q3": 53.62}, {"t": "2025-02-05", "min": 23.79, "max": 272.36, "med": 36.64, "q1": 31.79, "q3": 45.74}, {"t": "2025-02-06", "min": 5.28, "max": 156.13, "med": 33.4, "q1": 27.79, "q3": 40.46}, {"t": "2025-02-07", "min": 2.79, "max": 164.26, "med": 21.18, "q1": 17.82, "q3": 27.56}, {"t": "2025-02-08", "min": 3.49, "max": 100.46, "med": 15.9, "q1": 6.85, "q3": 26.33}, {"t": "2025-02-09", "min": 0.0, "max": 237.0, "med": 7.56, "q1": 5.18, "q3": 20.23}, {"t": "2025-02-10", "min": 0.42, "max": 419.69, "med": 9.18, "q1": 6.13, "q3": 23.38}, {"t": "2025-02-11", "min": 0.0, "max": 495.67, "med": 19.82, "q1": 8.74, "q3": 38.36}, {"t": "2025-02-12", "min": 0.0, "max": 824.87, "med": 11.15, "q1": 3.69, "q3": 33.04}, {"t": "2025-02-13", "min": 0.0, "max": 352.59, "med": 27.54, "q1": 17.35, "q3": 39.51}, {"t": "2025-02-14", "min": 4.74, "max": 215.79, "med": 44.47, "q1": 32.72, "q3": 54.0}, {"t": "2025-02-15", "min": 7.87, "max": 191.38, "med": 34.15, "q1": 18.38, "q3": 41.85}, {"t": "2025-02-16", "min": 8.61, "max": 162.33, "med": 43.49, "q1": 38.38, "q3": 49.08}, {"t": "2025-02-17", "min": 1.12, "max": 169.33, "med": 33.97, "q1": 25.38, "q3": 44.87}, {"t": "2025-02-18", "min": 19.02, "max": 167.72, "med": 43.67, "q1": 38.18, "q3": 51.59}, {"t": "2025-02-19", "min": 3.67, "max": 123.46, "med": 39.44, "q1": 28.33, "q3": 49.49}, {"t": "2025-02-20", "min": 3.36, "max": 207.97, "med": 25.12, "q1": 14.33, "q3": 36.03}, {"t": "2025-02-21", "min": 0.03, "max": 47.18, "med": 14.72, "q1": 6.4, "q3": 23.67}, {"t": "2025-02-22", "min": 0.0, "max": 148.41, "med": 43.31, "q1": 17.82, "q3": 57.5}, {"t": "2025-02-24", "min": 22.74, "max": 321.95, "med": 45.9, "q1": 33.29, "q3": 75.0}, {"t": "2025-02-25", "min": 2.31, "max": 153.91, "med": 34.04, "q1": 21.36, "q3": 54.99}, {"t": "2025-02-26", "min": 0.0, "max": 200.92, "med": 39.65, "q1": 27.18, "q3": 49.05}, {"t": "2025-02-27", "min": 0.0, "max": 112.62, "med": 31.05, "q1": 13.94, "q3": 51.29}, {"t": "2025-02-28", "min": 0.0, "max": 571.59, "med": 11.67, "q1": 3.32, "q3": 30.26}, {"t": "2025-03-01", "min": 0.56, "max": 60.92, "med": 24.59, "q1": 15.63, "q3": 34.88}, {"t": "2025-03-02", "min": 0.0, "max": 117.95, "med": 25.9, "q1": 6.64, "q3": 33.18}, {"t": "2025-03-03", "min": 1.41, "max": 389.41, "med": 28.22, "q1": 14.67, "q3": 38.56}, {"t": "2025-03-04", "min": 0.0, "max": 136.49, "med": 39.7, "q1": 30.72, "q3": 48.51}, {"t": "2025-03-05", "min": 0.0, "max": 147.62, "med": 19.41, "q1": 5.77, "q3": 32.96}, {"t": "2025-03-06", "min": 0.0, "max": 74.69, "med": 16.36, "q1": 7.6, "q3": 27.72}, {"t": "2025-03-07", "min": 0.54, "max": 197.74, "med": 34.04, "q1": 24.86, "q3": 49.42}, {"t": "2025-03-08", "min": 5.09, "max": 305.56, "med": 43.51, "q1": 34.13, "q3": 56.96}, {"t": "2025-03-09", "min": 0.33, "max": 169.18, "med": 40.17, "q1": 24.18, "q3": 48.77}, {"t": "2025-03-10", "min": 3.41, "max": 132.38, "med": 26.03, "q1": 17.79, "q3": 40.9}, {"t": "2025-03-11", "min": 3.56, "max": 121.26, "med": 34.1, "q1": 23.46, "q3": 43.21}, {"t": "2025-03-12", "min": 6.87, "max": 113.15, "med": 31.95, "q1": 23.7, "q3": 40.54}, {"t": "2025-03-13", "min": 10.51, "max": 241.05, "med": 38.61, "q1": 29.54, "q3": 46.64}, {"t": "2025-03-14", "min": 2.04, "max": 223.44, "med": 43.47, "q1": 32.74, "q3": 57.4}, {"t": "2025-03-15", "min": 0.0, "max": 183.03, "med": 24.54, "q1": 11.59, "q3": 37.44}, {"t": "2025-03-16", "min": 0.0, "max": 94.95, "med": 24.53, "q1": 19.13, "q3": 35.09}, {"t": "2025-03-17", "min": 0.0, "max": 404.62, "med": 35.21, "q1": 8.36, "q3": 46.03}, {"t": "2025-03-18", "min": 0.0, "max": 155.15, "med": 15.82, "q1": 8.82, "q3": 22.51}, {"t": "2025-03-19", "min": 0.0, "max": 668.05, "med": 9.0, "q1": 3.46, "q3": 32.4}, {"t": "2025-03-20", "min": 0.0, "max": 499.59, "med": 7.44, "q1": 1.36, "q3": 24.46}, {"t": "2025-03-21", "min": 1.15, "max": 444.82, "med": 27.15, "q1": 19.28, "q3": 41.56}, {"t": "2025-03-22", "min": 0.0, "max": 371.85, "med": 5.15, "q1": 0.37, "q3": 37.1}, {"t": "2025-03-23", "min": 0.0, "max": 258.77, "med": 22.23, "q1": 4.87, "q3": 33.1}, {"t": "2025-03-24", "min": 1.74, "max": 162.87, "med": 22.06, "q1": 12.49, "q3": 34.15}, {"t": "2025-03-25", "min": 1.82, "max": 404.51, "med": 29.18, "q1": 14.74, "q3": 40.28}, {"t": "2025-03-26", "min": 4.63, "max": 303.02, "med": 40.58, "q1": 16.01, "q3": 49.56}, {"t": "2025-03-27", "min": 4.21, "max": 182.05, "med": 31.03, "q1": 23.31, "q3": 35.74}, {"t": "2025-03-28", "min": 0.0, "max": 57.85, "med": 11.51, "q1": 3.9, "q3": 31.26}, {"t": "2025-03-29", "min": 0.0, "max": 42.79, "med": 0.0, "q1": 0.0, "q3": 0.0}, {"t": "2025-03-30", "min": 0.0, "max": 60.69, "med": 1.02, "q1": 0.0, "q3": 7.59}, {"t": "2025-03-31", "min": 0.0, "max": 57.0, "med": 2.23, "q1": 0.0, "q3": 8.8}, {"t": "2025-04-01", "min": 0.0, "max": 98.0, "med": 12.0, "q1": 0.0, "q3": 20.27}, {"t": "2025-04-02", "min": 0.0, "max": 81.81, "med": 19.86, "q1": 1.71, "q3": 29.0}, {"t": "2025-04-03", "min": 0.0, "max": 286.18, "med": 15.85, "q1": 4.71, "q3": 23.59}, {"t": "2025-04-04", "min": 0.0, "max": 465.0, "med": 17.14, "q1": 4.0, "q3": 37.15}, {"t": "2025-04-05", "min": 1.14, "max": 84.59, "med": 29.08, "q1": 18.28, "q3": 39.42}, {"t": "2025-04-06", "min": 0.0, "max": 74.48, "med": 17.61, "q1": 4.87, "q3": 32.08}, {"t": "2025-04-07", "min": 0.0, "max": 312.14, "med": 7.23, "q1": 2.74, "q3": 18.73}, {"t": "2025-04-08", "min": 2.0, "max": 64.36, "med": 11.69, "q1": 8.26, "q3": 18.72}, {"t": "2025-04-09", "min": 0.0, "max": 62.74, "med": 24.26, "q1": 10.23, "q3": 31.9}, {"t": "2025-04-10", "min": 0.0, "max": 76.48, "med": 34.9, "q1": 13.92, "q3": 45.13}, {"t": "2025-04-11", "min": 0.0, "max": 96.21, "med": 18.44, "q1": 6.58, "q3": 25.04}, {"t": "2025-04-12", "min": 2.9, "max": 218.46, "med": 25.95, "q1": 18.52, "q3": 34.78}, {"t": "2025-04-13", "min": 0.38, "max": 236.21, "med": 25.69, "q1": 17.72, "q3": 36.96}, {"t": "2025-04-14", "min": 0.0, "max": 158.91, "med": 31.27, "q1": 17.73, "q3": 36.27}, {"t": "2025-04-15", "min": 0.0, "max": 184.79, "med": 24.77, "q1": 17.02, "q3": 40.15}, {"t": "2025-04-16", "min": 0.0, "max": 344.85, "med": 21.72, "q1": 5.77, "q3": 38.11}, {"t": "2025-04-17", "min": 0.0, "max": 351.03, "med": 36.26, "q1": 23.53, "q3": 41.31}, {"t": "2025-04-18", "min": 0.33, "max": 347.82, "med": 22.33, "q1": 17.32, "q3": 32.95}, {"t": "2025-04-19", "min": 0.0, "max": 190.64, "med": 26.0, "q1": 14.26, "q3": 32.36}, {"t": "2025-04-20", "min": 0.0, "max": 312.49, "med": 18.77, "q1": 8.21, "q3": 33.15}, {"t": "2025-04-21", "min": 0.0, "max": 163.92, "med": 34.36, "q1": 23.79, "q3": 48.36}, {"t": "2025-04-22", "min": 0.0, "max": 763.0, "med": 34.86, "q1": 11.92, "q3": 56.0}, {"t": "2025-04-23", "min": 0.0, "max": 636.9, "med": 23.54, "q1": 4.44, "q3": 42.54}, {"t": "2025-04-24", "min": 0.0, "max": 173.13, "med": 27.77, "q1": 8.44, "q3": 42.72}, {"t": "2025-04-25", "min": 0.61, "max": 177.13, "med": 27.36, "q1": 19.61, "q3": 35.08}, {"t": "2025-04-26", "min": 0.0, "max": 260.92, "med": 25.38, "q1": 10.05, "q3": 37.04}, {"t": "2025-04-27", "min": 0.41, "max": 308.08, "med": 31.33, "q1": 17.2, "q3": 46.9}, {"t": "2025-04-28", "min": 2.08, "max": 468.44, "med": 31.82, "q1": 13.77, "q3": 48.31}, {"t": "2025-04-29", "min": 0.0, "max": 518.85, "med": 27.31, "q1": 14.13, "q3": 39.49}, {"t": "2025-04-30", "min": 2.02, "max": 161.08, "med": 31.1, "q1": 19.48, "q3": 46.03}, {"t": "2025-05-01", "min": 1.0, "max": 223.56, "med": 39.85, "q1": 18.96, "q3": 51.96}, {"t": "2025-05-02", "min": 22.38, "max": 85.23, "med": 39.1, "q1": 33.31, "q3": 47.33}, {"t": "2025-05-03", "min": 19.64, "max": 120.87, "med": 38.13, "q1": 30.74, "q3": 46.55}, {"t": "2025-05-04", "min": 2.31, "max": 186.51, "med": 26.42, "q1": 13.32, "q3": 38.77}, {"t": "2025-05-05", "min": 0.0, "max": 122.36, "med": 19.78, "q1": 8.26, "q3": 31.05}, {"t": "2025-05-06", "min": 0.0, "max": 245.33, "med": 13.28, "q1": 5.09, "q3": 25.21}, {"t": "2025-05-07", "min": 0.0, "max": 196.95, "med": 25.9, "q1": 8.92, "q3": 41.72}, {"t": "2025-05-08", "min": 8.78, "max": 401.44, "med": 42.85, "q1": 31.62, "q3": 55.92}, {"t": "2025-05-09", "min": 0.0, "max": 170.62, "med": 31.92, "q1": 11.15, "q3": 52.72}, {"t": "2025-05-10", "min": 1.18, "max": 481.56, "med": 38.03, "q1": 29.85, "q3": 50.06}, {"t": "2025-05-11", "min": 15.97, "max": 275.08, "med": 37.45, "q1": 28.01, "q3": 66.23}, {"t": "2025-05-12", "min": 1.0, "max": 214.26, "med": 29.23, "q1": 17.59, "q3": 45.36}, {"t": "2025-05-13", "min": 6.23, "max": 190.77, "med": 35.59, "q1": 25.92, "q3": 45.28}, {"t": "2025-05-14", "min": 4.95, "max": 319.41, "med": 38.11, "q1": 24.69, "q3": 49.41}, {"t": "2025-05-15", "min": 5.0, "max": 334.15, "med": 37.79, "q1": 26.55, "q3": 50.42}, {"t": "2025-05-16", "min": 3.79, "max": 189.82, "med": 20.9, "q1": 15.05, "q3": 34.04}, {"t": "2025-05-17", "min": 6.0, "max": 205.08, "med": 33.54, "q1": 26.97, "q3": 43.69}, {"t": "2025-05-18", "min": 8.56, "max": 260.61, "med": 24.44, "q1": 19.92, "q3": 32.04}, {"t": "2025-05-19", "min": 10.67, "max": 89.51, "med": 32.61, "q1": 21.74, "q3": 41.23}, {"t": "2025-05-20", "min": 8.15, "max": 171.44, "med": 25.51, "q1": 18.29, "q3": 37.64}, {"t": "2025-05-21", "min": 10.59, "max": 171.49, "med": 27.0, "q1": 21.0, "q3": 34.24}, {"t": "2025-05-22", "min": 22.77, "max": 345.56, "med": 37.32, "q1": 32.13, "q3": 44.88}, {"t": "2025-05-23", "min": 22.46, "max": 109.56, "med": 40.79, "q1": 31.67, "q3": 47.21}, {"t": "2025-05-25", "min": 2.0, "max": 163.49, "med": 33.77, "q1": 27.59, "q3": 47.74}, {"t": "2025-05-26", "min": 3.62, "max": 223.33, "med": 38.28, "q1": 20.35, "q3": 49.51}, {"t": "2025-05-27", "min": 1.38, "max": 193.59, "med": 46.85, "q1": 32.86, "q3": 60.77}, {"t": "2025-05-28", "min": 2.97, "max": 171.54, "med": 37.26, "q1": 27.95, "q3": 50.59}, {"t": "2025-05-29", "min": 0.0, "max": 180.38, "med": 29.56, "q1": 17.07, "q3": 36.28}, {"t": "2025-05-30", "min": 0.44, "max": 149.74, "med": 17.07, "q1": 6.31, "q3": 35.18}, {"t": "2025-05-31", "min": 0.0, "max": 140.77, "med": 18.62, "q1": 3.97, "q3": 33.64}, {"t": "2025-06-01", "min": 0.55, "max": 194.05, "med": 27.23, "q1": 18.02, "q3": 37.4}, {"t": "2025-06-02", "min": 0.37, "max": 311.72, "med": 33.4, "q1": 16.41, "q3": 41.79}, {"t": "2025-06-03", "min": 0.36, "max": 394.51, "med": 32.14, "q1": 18.41, "q3": 49.31}, {"t": "2025-06-04", "min": 0.71, "max": 162.13, "med": 23.29, "q1": 11.36, "q3": 36.74}, {"t": "2025-06-05", "min": 0.0, "max": 156.1, "med": 24.79, "q1": 11.38, "q3": 39.96}, {"t": "2025-06-06", "min": 0.0, "max": 267.45, "med": 17.32, "q1": 5.44, "q3": 36.0}, {"t": "2025-06-07", "min": 4.63, "max": 263.92, "med": 21.05, "q1": 16.92, "q3": 32.46}, {"t": "2025-06-08", "min": 18.07, "max": 206.9, "med": 36.97, "q1": 31.51, "q3": 41.59}, {"t": "2025-06-09", "min": 7.1, "max": 312.23, "med": 24.62, "q1": 17.97, "q3": 36.61}, {"t": "2025-06-10", "min": 1.28, "max": 112.69, "med": 17.67, "q1": 8.55, "q3": 28.18}, {"t": "2025-06-11", "min": 0.0, "max": 106.28, "med": 19.51, "q1": 8.77, "q3": 33.69}, {"t": "2025-06-12", "min": 4.28, "max": 123.54, "med": 19.61, "q1": 10.33, "q3": 32.92}, {"t": "2025-06-13", "min": 5.0, "max": 122.64, "med": 32.04, "q1": 20.41, "q3": 41.46}, {"t": "2025-06-14", "min": 5.21, "max": 247.56, "med": 42.13, "q1": 27.69, "q3": 53.37}, {"t": "2025-06-15", "min": 15.38, "max": 197.79, "med": 41.21, "q1": 35.78, "q3": 45.64}, {"t": "2025-06-16", "min": 5.31, "max": 298.2, "med": 30.77, "q1": 18.35, "q3": 39.97}, {"t": "2025-06-17", "min": 0.0, "max": 261.79, "med": 20.79, "q1": 6.49, "q3": 36.64}, {"t": "2025-06-18", "min": 0.36, "max": 145.05, "med": 37.64, "q1": 18.87, "q3": 51.67}, {"t": "2025-06-19", "min": 21.72, "max": 167.28, "med": 42.86, "q1": 30.26, "q3": 54.9}, {"t": "2025-06-21", "min": 14.74, "max": 181.13, "med": 28.1, "q1": 23.35, "q3": 34.0}, {"t": "2025-06-22", "min": 2.31, "max": 203.72, "med": 24.42, "q1": 17.6, "q3": 36.97}, {"t": "2025-06-23", "min": 6.54, "max": 137.63, "med": 26.26, "q1": 20.28, "q3": 36.04}, {"t": "2025-06-24", "min": 5.95, "max": 180.49, "med": 16.14, "q1": 10.19, "q3": 28.62}, {"t": "2025-06-25", "min": 2.9, "max": 363.31, "med": 24.46, "q1": 14.24, "q3": 38.24}, {"t": "2025-06-26", "min": 3.44, "max": 212.72, "med": 21.88, "q1": 16.14, "q3": 30.24}, {"t": "2025-06-27", "min": 4.49, "max": 125.59, "med": 23.49, "q1": 18.02, "q3": 35.03}, {"t": "2025-06-28", "min": 2.92, "max": 215.92, "med": 22.36, "q1": 15.82, "q3": 36.13}, {"t": "2025-06-29", "min": 1.14, "max": 323.14, "med": 10.05, "q1": 5.0, "q3": 30.56}, {"t": "2025-06-30", "min": 0.15, "max": 216.23, "med": 17.48, "q1": 6.19, "q3": 26.18}, {"t": "2025-07-01", "min": 4.18, "max": 182.79, "med": 28.95, "q1": 16.05, "q3": 42.45}, {"t": "2025-07-02", "min": 3.13, "max": 161.54, "med": 15.51, "q1": 8.41, "q3": 36.86}, {"t": "2025-07-03", "min": 0.0, "max": 159.15, "med": 10.6, "q1": 3.72, "q3": 24.54}, {"t": "2025-07-04", "min": 0.41, "max": 207.21, "med": 10.56, "q1": 5.62, "q3": 30.31}, {"t": "2025-07-05", "min": 2.1, "max": 357.26, "med": 19.82, "q1": 14.67, "q3": 33.36}, {"t": "2025-07-06", "min": 0.0, "max": 375.77, "med": 19.72, "q1": 7.24, "q3": 32.4}, {"t": "2025-07-07", "min": 17.55, "max": 271.45, "med": 34.49, "q1": 30.18, "q3": 46.69}, {"t": "2025-07-08", "min": 12.72, "max": 211.15, "med": 29.79, "q1": 24.36, "q3": 39.0}, {"t": "2025-07-09", "min": 4.08, "max": 168.46, "med": 18.2, "q1": 13.14, "q3": 27.69}, {"t": "2025-07-10", "min": 1.31, "max": 150.72, "med": 8.91, "q1": 5.13, "q3": 25.97}, {"t": "2025-07-11", "min": 5.54, "max": 194.38, "med": 37.63, "q1": 22.01, "q3": 53.17}, {"t": "2025-07-12", "min": 11.13, "max": 209.38, "med": 41.77, "q1": 26.45, "q3": 60.78}, {"t": "2025-07-13", "min": 20.69, "max": 276.27, "med": 36.81, "q1": 26.86, "q3": 50.47}, {"t": "2025-07-14", "min": 16.55, "max": 1222.64, "med": 33.82, "q1": 25.69, "q3": 47.97}, {"t": "2025-07-15", "min": 2.56, "max": 170.92, "med": 21.03, "q1": 9.27, "q3": 40.54}, {"t": "2025-07-16", "min": 4.3, "max": 195.9, "med": 27.58, "q1": 19.67, "q3": 40.49}, {"t": "2025-07-17", "min": 2.33, "max": 229.03, "med": 31.51, "q1": 16.18, "q3": 42.05}, {"t": "2025-07-18", "min": 0.68, "max": 281.05, "med": 33.59, "q1": 19.73, "q3": 46.85}, {"t": "2025-07-19", "min": 1.41, "max": 155.59, "med": 29.15, "q1": 18.2, "q3": 39.36}, {"t": "2025-07-20", "min": 2.13, "max": 299.49, "med": 34.51, "q1": 25.74, "q3": 51.5}, {"t": "2025-07-21", "min": 8.56, "max": 215.97, "med": 54.28, "q1": 35.44, "q3": 94.05}, {"t": "2025-07-22", "min": 10.97, "max": 122.36, "med": 35.09, "q1": 24.76, "q3": 43.28}, {"t": "2025-07-23", "min": 15.05, "max": 165.36, "med": 42.85, "q1": 30.92, "q3": 47.92}, {"t": "2025-07-24", "min": 14.82, "max": 223.62, "med": 26.56, "q1": 23.23, "q3": 33.67}, {"t": "2025-07-25", "min": 7.18, "max": 141.38, "med": 19.05, "q1": 13.17, "q3": 31.26}, {"t": "2025-07-26", "min": 12.13, "max": 236.08, "med": 31.36, "q1": 20.41, "q3": 38.76}, {"t": "2025-07-27", "min": 8.64, "max": 220.03, "med": 29.85, "q1": 23.46, "q3": 40.56}, {"t": "2025-07-28", "min": 0.0, "max": 142.41, "med": 7.76, "q1": 1.15, "q3": 28.31}, {"t": "2025-07-29", "min": 0.0, "max": 162.62, "med": 4.18, "q1": 1.29, "q3": 20.56}, {"t": "2025-07-30", "min": 0.0, "max": 93.97, "med": 3.72, "q1": 1.07, "q3": 19.3}, {"t": "2025-07-31", "min": 0.0, "max": 79.77, "med": 4.18, "q1": 1.2, "q3": 19.2}, {"t": "2025-08-01", "min": 0.0, "max": 205.82, "med": 28.97, "q1": 6.97, "q3": 45.13}, {"t": "2025-08-02", "min": 3.38, "max": 266.1, "med": 41.05, "q1": 28.19, "q3": 49.46}, {"t": "2025-08-03", "min": 17.97, "max": 211.15, "med": 35.42, "q1": 28.49, "q3": 45.23}, {"t": "2025-08-04", "min": 11.79, "max": 213.59, "med": 29.36, "q1": 22.01, "q3": 43.22}, {"t": "2025-08-05", "min": 5.31, "max": 256.87, "med": 27.08, "q1": 19.07, "q3": 40.15}, {"t": "2025-08-06", "min": 3.56, "max": 377.05, "med": 36.15, "q1": 22.97, "q3": 46.37}, {"t": "2025-08-07", "min": 5.72, "max": 289.1, "med": 31.82, "q1": 20.97, "q3": 44.17}, {"t": "2025-08-08", "min": 18.46, "max": 218.51, "med": 36.78, "q1": 27.38, "q3": 49.64}, {"t": "2025-08-09", "min": 21.46, "max": 229.03, "med": 37.6, "q1": 30.82, "q3": 51.41}, {"t": "2025-08-10", "min": 19.14, "max": 371.44, "med": 33.13, "q1": 27.94, "q3": 43.22}, {"t": "2025-08-11", "min": 7.44, "max": 261.67, "med": 24.85, "q1": 20.51, "q3": 31.95}, {"t": "2025-08-12", "min": 10.59, "max": 147.31, "med": 26.1, "q1": 19.8, "q3": 35.06}, {"t": "2025-08-13", "min": 6.44, "max": 205.54, "med": 24.94, "q1": 16.54, "q3": 38.49}, {"t": "2025-08-14", "min": 2.87, "max": 126.13, "med": 17.67, "q1": 9.58, "q3": 27.33}, {"t": "2025-08-15", "min": 7.87, "max": 232.15, "med": 30.18, "q1": 18.2, "q3": 47.15}, {"t": "2025-08-16", "min": 8.33, "max": 2286.71, "med": 32.82, "q1": 19.87, "q3": 42.21}, {"t": "2025-08-17", "min": 13.08, "max": 106.41, "med": 36.08, "q1": 29.45, "q3": 46.15}, {"t": "2025-08-18", "min": 9.26, "max": 215.79, "med": 40.2, "q1": 20.44, "q3": 47.74}, {"t": "2025-08-19", "min": 15.33, "max": 103.18, "med": 33.28, "q1": 24.28, "q3": 43.63}, {"t": "2025-08-20", "min": 18.89, "max": 291.36, "med": 32.82, "q1": 27.74, "q3": 43.35}, {"t": "2025-08-21", "min": 21.05, "max": 151.62, "med": 40.28, "q1": 33.58, "q3": 53.37}, {"t": "2025-08-22", "min": 20.1, "max": 180.74, "med": 44.54, "q1": 31.53, "q3": 55.38}, {"t": "2025-08-23", "min": 27.87, "max": 179.08, "med": 47.23, "q1": 37.92, "q3": 52.44}, {"t": "2025-08-24", "min": 27.87, "max": 215.85, "med": 43.94, "q1": 37.46, "q3": 50.67}, {"t": "2025-08-25", "min": 21.79, "max": 228.44, "med": 31.67, "q1": 27.36, "q3": 37.69}, {"t": "2025-08-26", "min": 14.41, "max": 183.05, "med": 28.58, "q1": 23.41, "q3": 34.04}, {"t": "2025-08-27", "min": 0.0, "max": 314.58, "med": 2.38, "q1": 0.92, "q3": 11.12}, {"t": "2025-08-28", "min": 0.0, "max": 159.36, "med": 7.21, "q1": 1.41, "q3": 26.87}, {"t": "2025-08-29", "min": 0.0, "max": 236.95, "med": 18.48, "q1": 6.62, "q3": 32.85}, {"t": "2025-08-30", "min": 0.41, "max": 203.05, "med": 30.69, "q1": 13.64, "q3": 39.72}, {"t": "2025-08-31", "min": 11.95, "max": 397.62, "med": 39.33, "q1": 31.31, "q3": 46.85}, {"t": "2025-09-01", "min": 11.97, "max": 357.77, "med": 33.54, "q1": 26.51, "q3": 43.38}, {"t": "2025-09-02", "min": 19.41, "max": 396.59, "med": 35.4, "q1": 27.67, "q3": 48.41}, {"t": "2025-09-03", "min": 17.97, "max": 203.49, "med": 27.82, "q1": 23.08, "q3": 40.74}, {"t": "2025-09-04", "min": 18.07, "max": 161.13, "med": 33.08, "q1": 26.67, "q3": 43.44}, {"t": "2025-09-05", "min": 11.72, "max": 128.74, "med": 31.77, "q1": 23.51, "q3": 38.64}, {"t": "2025-09-06", "min": 6.26, "max": 164.15, "med": 29.77, "q1": 18.2, "q3": 44.77}, {"t": "2025-09-07", "min": 5.49, "max": 125.26, "med": 18.43, "q1": 11.67, "q3": 29.54}, {"t": "2025-09-08", "min": 0.15, "max": 79.64, "med": 15.97, "q1": 6.23, "q3": 22.65}, {"t": "2025-09-09", "min": 0.0, "max": 112.1, "med": 5.97, "q1": 3.26, "q3": 18.54}, {"t": "2025-09-10", "min": 0.44, "max": 126.95, "med": 21.56, "q1": 6.92, "q3": 37.56}, {"t": "2025-09-11", "min": 1.0, "max": 151.33, "med": 15.94, "q1": 6.74, "q3": 28.77}, {"t": "2025-09-12", "min": 2.04, "max": 231.21, "med": 27.26, "q1": 19.36, "q3": 39.4}, {"t": "2025-09-13", "min": 3.1, "max": 244.44, "med": 19.14, "q1": 9.44, "q3": 31.51}, {"t": "2025-09-14", "min": 1.69, "max": 119.05, "med": 12.49, "q1": 8.26, "q3": 22.41}, {"t": "2025-09-15", "min": 4.97, "max": 185.62, "med": 21.46, "q1": 16.48, "q3": 28.77}, {"t": "2025-09-16", "min": 5.26, "max": 222.74, "med": 18.37, "q1": 9.97, "q3": 32.53}, {"t": "2025-09-17", "min": 4.23, "max": 252.21, "med": 19.14, "q1": 10.85, "q3": 29.33}, {"t": "2025-09-18", "min": 0.63, "max": 216.33, "med": 24.33, "q1": 11.51, "q3": 42.08}, {"t": "2025-09-19", "min": 4.3, "max": 219.79, "med": 22.08, "q1": 11.56, "q3": 38.67}, {"t": "2025-09-20", "min": 5.72, "max": 201.67, "med": 21.85, "q1": 16.0, "q3": 32.09}, {"t": "2025-09-21", "min": 2.67, "max": 161.33, "med": 17.82, "q1": 9.53, "q3": 32.6}, {"t": "2025-09-22", "min": 1.67, "max": 497.72, "med": 39.0, "q1": 23.12, "q3": 50.56}, {"t": "2025-09-23", "min": 4.84, "max": 218.67, "med": 42.9, "q1": 20.2, "q3": 51.14}, {"t": "2025-09-24", "min": 10.9, "max": 315.13, "med": 32.46, "q1": 25.97, "q3": 46.11}, {"t": "2025-09-25", "min": 8.41, "max": 162.38, "med": 35.77, "q1": 23.41, "q3": 43.38}, {"t": "2025-09-26", "min": 6.85, "max": 112.18, "med": 28.47, "q1": 19.94, "q3": 37.9}, {"t": "2025-09-27", "min": 6.33, "max": 222.36, "med": 23.42, "q1": 16.0, "q3": 35.2}, {"t": "2025-09-28", "min": 9.53, "max": 1374.28, "med": 23.49, "q1": 17.64, "q3": 47.28}, {"t": "2025-09-29", "min": 2.38, "max": 125.18, "med": 21.95, "q1": 18.3, "q3": 28.83}, {"t": "2025-09-30", "min": 5.31, "max": 341.87, "med": 31.79, "q1": 19.97, "q3": 39.69}, {"t": "2025-10-01", "min": 10.69, "max": 106.77, "med": 29.09, "q1": 23.69, "q3": 39.97}, {"t": "2025-10-02", "min": 0.38, "max": 246.18, "med": 32.69, "q1": 18.38, "q3": 40.18}, {"t": "2025-10-03", "min": 1.72, "max": 86.82, "med": 21.08, "q1": 8.28, "q3": 32.13}, {"t": "2025-10-04", "min": 4.23, "max": 431.41, "med": 26.46, "q1": 17.69, "q3": 37.15}, {"t": "2025-10-05", "min": 13.03, "max": 340.33, "med": 32.08, "q1": 23.97, "q3": 43.0}, {"t": "2025-10-06", "min": 10.49, "max": 253.13, "med": 32.74, "q1": 22.0, "q3": 47.85}, {"t": "2025-10-07", "min": 1.72, "max": 149.9, "med": 24.79, "q1": 9.36, "q3": 38.59}, {"t": "2025-10-08", "min": 0.0, "max": 210.74, "med": 20.3, "q1": 4.96, "q3": 32.47}, {"t": "2025-10-09", "min": 0.0, "max": 158.38, "med": 8.36, "q1": 3.51, "q3": 21.23}, {"t": "2025-10-10", "min": 0.0, "max": 100.56, "med": 7.33, "q1": 4.15, "q3": 20.36}, {"t": "2025-10-11", "min": 4.43, "max": 196.62, "med": 18.73, "q1": 11.36, "q3": 34.78}, {"t": "2025-10-12", "min": 2.27, "max": 384.79, "med": 15.91, "q1": 9.49, "q3": 22.49}, {"t": "2025-10-13", "min": 1.08, "max": 163.38, "med": 10.53, "q1": 5.59, "q3": 32.38}, {"t": "2025-10-14", "min": 3.28, "max": 130.38, "med": 17.43, "q1": 8.63, "q3": 24.83}, {"t": "2025-10-15", "min": 3.21, "max": 73.69, "med": 11.1, "q1": 7.08, "q3": 20.92}, {"t": "2025-10-17", "min": 3.72, "max": 58.05, "med": 8.31, "q1": 6.83, "q3": 16.52}, {"t": "2025-10-18", "min": 3.1, "max": 46.85, "med": 18.1, "q1": 10.67, "q3": 25.77}, {"t": "2025-10-19", "min": 0.0, "max": 48.46, "med": 18.23, "q1": 4.62, "q3": 31.92}, {"t": "2025-10-20", "min": 6.44, "max": 49.51, "med": 25.03, "q1": 16.89, "q3": 33.59}, {"t": "2025-10-21", "min": 5.23, "max": 54.0, "med": 29.88, "q1": 24.74, "q3": 36.21}, {"t": "2025-10-22", "min": 14.9, "max": 69.2, "med": 33.21, "q1": 28.26, "q3": 42.92}, {"t": "2025-10-23", "min": 7.05, "max": 87.74, "med": 34.83, "q1": 30.14, "q3": 47.58}, {"t": "2025-10-24", "min": 11.54, "max": 66.45, "med": 24.79, "q1": 20.14, "q3": 33.64}, {"t": "2025-10-25", "min": 9.64, "max": 57.77, "med": 29.72, "q1": 24.64, "q3": 34.38}, {"t": "2025-10-26", "min": 7.26, "max": 84.82, "med": 27.15, "q1": 17.69, "q3": 36.72}, {"t": "2025-10-27", "min": 18.14, "max": 59.54, "med": 33.31, "q1": 27.04, "q3": 39.42}, {"t": "2025-10-28", "min": 15.31, "max": 42.36, "med": 25.9, "q1": 22.23, "q3": 31.29}, {"t": "2025-10-29", "min": 3.03, "max": 48.38, "med": 27.92, "q1": 16.26, "q3": 32.14}, {"t": "2025-10-30", "min": 0.54, "max": 31.21, "med": 8.85, "q1": 6.05, "q3": 14.0}, {"t": "2025-10-31", "min": 1.82, "max": 188.62, "med": 13.56, "q1": 8.31, "q3": 20.05}, {"t": "2025-11-01", "min": 5.97, "max": 58.69, "med": 21.13, "q1": 13.59, "q3": 27.63}, {"t": "2025-11-02", "min": 2.46, "max": 84.79, "med": 31.54, "q1": 18.51, "q3": 44.67}, {"t": "2025-11-03", "min": 3.82, "max": 43.56, "med": 20.82, "q1": 12.41, "q3": 26.79}, {"t": "2025-11-09", "min": 0.0, "max": 44.1, "med": 19.32, "q1": 7.29, "q3": 30.37}, {"t": "2025-11-10", "min": 3.54, "max": 87.74, "med": 16.54, "q1": 10.67, "q3": 28.38}, {"t": "2025-11-12", "min": 0.69, "max": 28.23, "med": 9.47, "q1": 6.56, "q3": 16.68}, {"t": "2025-11-13", "min": 0.0, "max": 17.43, "med": 0.0, "q1": 0.0, "q3": 0.73}, {"t": "2025-11-14", "min": 0.0, "max": 21.41, "med": 0.0, "q1": 0.0, "q3": 0.56}, {"t": "2025-11-15", "min": 0.0, "max": 97.08, "med": 4.26, "q1": 0.68, "q3": 12.97}, {"t": "2025-11-16", "min": 0.0, "max": 36.11, "med": 0.0, "q1": 0.0, "q3": 3.79}, {"t": "2025-11-17", "min": 0.0, "max": 24.95, "med": 1.0, "q1": 0.0, "q3": 2.82}, {"t": "2025-11-18", "min": 0.0, "max": 324.69, "med": 1.23, "q1": 0.0, "q3": 5.85}, {"t": "2025-11-19", "min": 0.0, "max": 45.41, "med": 4.21, "q1": 0.93, "q3": 11.54}, {"t": "2025-11-20", "min": 0.0, "max": 60.23, "med": 19.2, "q1": 4.55, "q3": 27.49}, {"t": "2025-11-21", "min": 0.0, "max": 62.62, "med": 23.32, "q1": 16.54, "q3": 37.31}, {"t": "2025-11-22", "min": 12.36, "max": 152.9, "med": 28.99, "q1": 24.51, "q3": 33.72}, {"t": "2025-11-24", "min": 0.0, "max": 21.77, "med": 6.41, "q1": 2.49, "q3": 11.18}, {"t": "2025-11-25", "min": 0.0, "max": 29.31, "med": 0.5, "q1": 0.0, "q3": 3.33}, {"t": "2025-11-26", "min": 0.0, "max": 42.95, "med": 0.83, "q1": 0.0, "q3": 4.54}, {"t": "2025-11-27", "min": 0.0, "max": 37.18, "med": 0.52, "q1": 0.0, "q3": 1.82}, {"t": "2025-11-28", "min": 0.0, "max": 32.31, "med": 0.0, "q1": 0.0, "q3": 0.37}, {"t": "2025-11-29", "min": 0.0, "max": 30.08, "med": 0.0, "q1": 0.0, "q3": 1.21}, {"t": "2025-11-30", "min": 0.0, "max": 64.64, "med": 4.95, "q1": 1.79, "q3": 7.62}, {"t": "2025-12-01", "min": 0.0, "max": 36.51, "med": 1.29, "q1": 0.0, "q3": 3.6}, {"t": "2025-12-02", "min": 0.0, "max": 159.26, "med": 9.5, "q1": 2.5, "q3": 18.67}, {"t": "2025-12-03", "min": 0.0, "max": 46.44, "med": 8.69, "q1": 4.46, "q3": 16.72}, {"t": "2025-12-04", "min": 0.0, "max": 27.13, "med": 5.14, "q1": 2.4, "q3": 8.88}, {"t": "2025-12-05", "min": 0.0, "max": 49.56, "med": 16.92, "q1": 6.69, "q3": 29.08}, {"t": "2025-12-06", "min": 0.0, "max": 40.77, "med": 15.59, "q1": 5.64, "q3": 21.97}, {"t": "2025-12-07", "min": 0.0, "max": 31.9, "med": 1.56, "q1": 0.47, "q3": 3.49}, {"t": "2025-12-08", "min": 0.0, "max": 29.79, "med": 0.23, "q1": 0.0, "q3": 2.1}, {"t": "2025-12-09", "min": 0.0, "max": 39.03, "med": 4.18, "q1": 2.13, "q3": 7.67}, {"t": "2025-12-10", "min": 0.0, "max": 50.46, "med": 3.01, "q1": 1.0, "q3": 5.77}, {"t": "2025-12-11", "min": 0.0, "max": 17.3, "med": 2.21, "q1": 0.64, "q3": 4.51}, {"t": "2025-12-12", "min": 0.0, "max": 8.97, "med": 3.04, "q1": 1.77, "q3": 4.46}, {"t": "2025-12-13", "min": 2.97, "max": 12836.1, "med": 13.13, "q1": 7.1, "q3": 20.43}, {"t": "2025-12-14", "min": 5.36, "max": 151.54, "med": 25.68, "q1": 20.29, "q3": 30.59}, {"t": "2025-12-15", "min": 0.0, "max": 140.44, "med": 6.05, "q1": 3.69, "q3": 11.54}, {"t": "2025-12-16", "min": 0.0, "max": 66.03, "med": 5.41, "q1": 2.18, "q3": 17.82}, {"t": "2025-12-17", "min": 0.0, "max": 126.0, "med": 7.64, "q1": 1.85, "q3": 32.36}, {"t": "2025-12-18", "min": 23.95, "max": 95.72, "med": 39.26, "q1": 32.04, "q3": 45.87}, {"t": "2025-12-19", "min": 9.33, "max": 117.77, "med": 37.36, "q1": 30.41, "q3": 52.38}, {"t": "2025-12-20", "min": 6.87, "max": 50.56, "med": 35.78, "q1": 25.53, "q3": 43.01}, {"t": "2025-12-21", "min": 3.79, "max": 43.46, "med": 12.83, "q1": 8.0, "q3": 22.74}, {"t": "2026-01-02", "min": 2.77, "max": 38.03, "med": 9.26, "q1": 6.85, "q3": 18.13}, {"t": "2026-01-03", "min": 0.0, "max": 52.59, "med": 8.03, "q1": 1.0, "q3": 28.69}, {"t": "2026-01-04", "min": 0.0, "max": 239.14, "med": 1.17, "q1": 0.0, "q3": 12.92}, {"t": "2026-01-05", "min": 0.0, "max": 285.49, "med": 0.61, "q1": 0.0, "q3": 1.93}, {"t": "2026-01-06", "min": 0.0, "max": 18.05, "med": 0.5, "q1": 0.0, "q3": 3.36}, {"t": "2026-01-07", "min": 0.0, "max": 50.18, "med": 1.51, "q1": 0.53, "q3": 4.21}, {"t": "2026-01-08", "min": 0.0, "max": 31.9, "med": 5.65, "q1": 0.08, "q3": 16.72}, {"t": "2026-01-09", "min": 0.0, "max": 33.74, "med": 2.36, "q1": 0.71, "q3": 4.87}, {"t": "2026-01-10", "min": 0.0, "max": 42.92, "med": 2.86, "q1": 1.31, "q3": 4.99}, {"t": "2026-01-11", "min": 0.0, "max": 47.08, "med": 17.92, "q1": 4.92, "q3": 26.97}, {"t": "2026-01-12", "min": 7.18, "max": 66.61, "med": 25.05, "q1": 19.82, "q3": 38.0}, {"t": "2026-01-13", "min": 4.43, "max": 93.77, "med": 25.36, "q1": 16.82, "q3": 30.29}, {"t": "2026-01-14", "min": 1.23, "max": 43.79, "med": 18.64, "q1": 11.32, "q3": 23.62}, {"t": "2026-01-15", "min": 0.0, "max": 50.0, "med": 11.87, "q1": 6.62, "q3": 21.49}, {"t": "2026-01-16", "min": 0.0, "max": 46.28, "med": 18.51, "q1": 13.31, "q3": 27.24}, {"t": "2026-01-17", "min": 0.0, "max": 58.64, "med": 17.78, "q1": 5.09, "q3": 25.18}, {"t": "2026-01-18", "min": 0.5, "max": 52.44, "med": 10.44, "q1": 6.59, "q3": 18.73}, {"t": "2026-01-19", "min": 0.0, "max": 25.87, "med": 0.0, "q1": 0.0, "q3": 2.37}, {"t": "2026-01-20", "min": 0.0, "max": 28.72, "med": 2.49, "q1": 0.0, "q3": 8.05}, {"t": "2026-01-21", "min": 0.0, "max": 43.69, "med": 1.12, "q1": 0.0, "q3": 2.67}, {"t": "2026-01-22", "min": 0.0, "max": 47.89, "med": 7.38, "q1": 1.45, "q3": 20.19}, {"t": "2026-01-23", "min": 6.59, "max": 191.9, "med": 21.82, "q1": 18.55, "q3": 25.62}, {"t": "2026-01-24", "min": 10.15, "max": 54.79, "med": 36.61, "q1": 25.31, "q3": 45.14}, {"t": "2026-01-25", "min": 24.28, "max": 112.59, "med": 40.03, "q1": 31.17, "q3": 48.04}, {"t": "2026-01-26", "min": 4.03, "max": 77.31, "med": 18.86, "q1": 9.41, "q3": 35.21}, {"t": "2026-01-27", "min": 7.26, "max": 70.38, "med": 32.29, "q1": 26.77, "q3": 43.28}, {"t": "2026-01-28", "min": 2.38, "max": 55.64, "med": 13.74, "q1": 9.58, "q3": 20.77}, {"t": "2026-01-29", "min": 15.05, "max": 74.73, "med": 40.69, "q1": 29.95, "q3": 49.32}, {"t": "2026-01-30", "min": 0.0, "max": 859.69, "med": 22.15, "q1": 4.54, "q3": 31.12}, {"t": "2026-01-31", "min": 0.0, "max": 25.67, "med": 4.41, "q1": 2.33, "q3": 7.41}, {"t": "2026-02-01", "min": 0.0, "max": 8.13, "med": 0.0, "q1": 0.0, "q3": 1.0}, {"t": "2026-02-03", "min": 0.0, "max": 235.21, "med": 0.0, "q1": 0.0, "q3": 1.41}, {"t": "2026-02-04", "min": 0.0, "max": 3312.49, "med": 0.0, "q1": 0.0, "q3": 1.36}, {"t": "2026-02-05", "min": 0.0, "max": 17.77, "med": 1.33, "q1": 0.0, "q3": 3.41}, {"t": "2026-02-06", "min": 0.0, "max": 47.0, "med": 1.95, "q1": 0.0, "q3": 4.92}, {"t": "2026-02-07", "min": 2.59, "max": 43.21, "med": 13.99, "q1": 8.74, "q3": 22.59}, {"t": "2026-02-08", "min": 20.74, "max": 37.38, "med": 27.38, "q1": 24.64, "q3": 30.1}, {"t": "2026-02-10", "min": 0.0, "max": 28.82, "med": 0.0, "q1": 0.0, "q3": 0.28}, {"t": "2026-02-11", "min": 0.0, "max": 43.72, "med": 4.43, "q1": 0.0, "q3": 8.59}, {"t": "2026-02-14", "min": 0.0, "max": 36.59, "med": 0.83, "q1": 0.0, "q3": 2.92}, {"t": "2026-02-15", "min": 0.0, "max": 56.97, "med": 1.73, "q1": 0.0, "q3": 4.46}, {"t": "2026-02-16", "min": 0.0, "max": 33.26, "med": 1.43, "q1": 0.0, "q3": 3.1}, {"t": "2026-02-17", "min": 5.59, "max": 118.33, "med": 19.77, "q1": 15.0, "q3": 33.15}, {"t": "2026-02-18", "min": 0.92, "max": 187.85, "med": 20.18, "q1": 8.46, "q3": 24.54}, {"t": "2026-02-19", "min": 0.0, "max": 47.31, "med": 4.36, "q1": 2.46, "q3": 10.74}, {"t": "2026-02-20", "min": 21.67, "max": 68.05, "med": 31.42, "q1": 28.64, "q3": 35.4}, {"t": "2026-02-21", "min": 0.0, "max": 158.74, "med": 5.7, "q1": 2.79, "q3": 12.23}, {"t": "2026-02-22", "min": 0.0, "max": 47.54, "med": 3.38, "q1": 0.31, "q3": 10.53}, {"t": "2026-02-23", "min": 0.0, "max": 30.15, "med": 1.33, "q1": 0.21, "q3": 3.21}, {"t": "2026-02-24", "min": 0.0, "max": 9.56, "med": 0.9, "q1": 0.0, "q3": 2.35}, {"t": "2026-02-25", "min": 0.0, "max": 33.69, "med": 0.64, "q1": 0.0, "q3": 2.62}, {"t": "2026-02-27", "min": 1.56, "max": 4999.0, "med": 14.57, "q1": 10.62, "q3": 4999.0}, {"t": "2026-03-01", "min": 0.0, "max": 4999.0, "med": 11.68, "q1": 6.15, "q3": 26.94}, {"t": "2026-03-02", "min": 0.0, "max": 25.95, "med": 7.81, "q1": 3.68, "q3": 16.38}, {"t": "2026-03-03", "min": 0.0, "max": 110.54, "med": 10.08, "q1": 5.5, "q3": 25.33}, {"t": "2026-03-04", "min": 0.0, "max": 75.64, "med": 16.76, "q1": 9.46, "q3": 24.41}, {"t": "2026-03-05", "min": 0.0, "max": 34.56, "med": 1.92, "q1": 1.0, "q3": 9.02}, {"t": "2026-03-06", "min": 0.64, "max": 42.82, "med": 12.1, "q1": 6.87, "q3": 21.11}, {"t": "2026-03-07", "min": 0.49, "max": 58.33, "med": 13.49, "q1": 6.18, "q3": 25.08}, {"t": "2026-03-08", "min": 3.18, "max": 187.56, "med": 10.92, "q1": 6.72, "q3": 19.28}, {"t": "2026-03-09", "min": 6.79, "max": 42.56, "med": 12.72, "q1": 10.4, "q3": 16.6}, {"t": "2026-03-10", "min": 0.13, "max": 25.28, "med": 7.9, "q1": 3.79, "q3": 10.18}, {"t": "2026-03-11", "min": 0.0, "max": 25.62, "med": 0.81, "q1": 0.0, "q3": 2.09}, {"t": "2026-03-12", "min": 0.0, "max": 49.33, "med": 0.45, "q1": 0.0, "q3": 1.97}, {"t": "2026-03-13", "min": 0.0, "max": 22.28, "med": 3.0, "q1": 1.59, "q3": 4.67}, {"t": "2026-03-14", "min": 1.31, "max": 78.77, "med": 22.23, "q1": 4.15, "q3": 33.58}, {"t": "2026-03-15", "min": 11.49, "max": 43.49, "med": 20.1, "q1": 18.89, "q3": 25.67}];
+const ts=RAW.map(d=>new Date(d.t).getTime());
+const med=RAW.map(d=>Math.min(d.med,CAP));
+const maxV=RAW.map(d=>Math.min(d.max,CAP));
+const q1=RAW.map(d=>Math.min(d.q1,CAP));
+const q3=RAW.map(d=>Math.min(d.q3,CAP));
+const offlineDate=new Date('2026-03-15').getTime();
+const regDate=new Date('2026-04-01').getTime();
+
+const zonesPlugin={
+  id:'zones',
+  beforeDraw(chart){
+    const{ctx,chartArea:ca,scales:{x,y}}=chart;if(!ca)return;
+    ctx.save();ctx.rect(ca.left,ca.top,ca.width,ca.height);ctx.clip();
+    const isDk=document.documentElement.getAttribute('data-theme')!=='light';
+    const za=isDk?[.07,.08,.09,.10,.11,.14]:[.08,.10,.12,.14,.16,.18];
+    [[0,12,`rgba(74,222,128,${za[0]})`],[12,35.4,`rgba(250,204,21,${za[1]})`],[35.4,55.4,`rgba(251,146,60,${za[2]})`],[55.4,150.4,`rgba(249,115,22,${za[3]})`],[150.4,250.4,`rgba(220,38,38,${za[4]})`],[250.4,CAP,`rgba(126,34,206,${za[5]})`]].forEach(([lo,hi,col])=>{ctx.fillStyle=col;ctx.fillRect(ca.left,y.getPixelForValue(hi),ca.width,y.getPixelForValue(lo)-y.getPixelForValue(hi))});
+    const sepC=isDk?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.08)';
+    [12,35.4,55.4,150.4,250.4].forEach(v=>{ctx.strokeStyle=sepC;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ca.left,y.getPixelForValue(v));ctx.lineTo(ca.right,y.getPixelForValue(v));ctx.stroke()});
+    ctx.strokeStyle='rgba(74,222,128,0.9)';ctx.lineWidth=1.5;ctx.setLineDash([7,5]);const wy=y.getPixelForValue(15);ctx.beginPath();ctx.moveTo(ca.left,wy);ctx.lineTo(ca.right,wy);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(74,222,128,0.9)';ctx.font='bold 10px system-ui';ctx.fillText('WHO 15',ca.left+6,wy-5);
+    ctx.restore()
+  },
+  afterDraw(chart){
+    const{ctx,chartArea:ca,scales:{x,y}}=chart;if(!ca)return;
+    ctx.save();ctx.rect(ca.left,ca.top,ca.width,ca.height);ctx.clip();
+    const cs=getComputedStyle(document.documentElement);
+    const xOff=x.getPixelForValue(offlineDate);
+    if(xOff<ca.right){ctx.fillStyle=cs.getPropertyValue('--bg')!=='#f5f6fa'?'rgba(0,0,0,0.25)':'rgba(0,0,0,0.06)';ctx.fillRect(xOff,ca.top,ca.right-xOff,ca.height);ctx.fillStyle=cs.getPropertyValue('--bg')!=='#f5f6fa'?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.25)';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText('NO DATA',xOff+(ca.right-xOff)/2,ca.top+ca.height*0.2)}
+    const isDk2=document.documentElement.getAttribute('data-theme')!=='light';
+    const bbg=isDk2?'rgba(10,12,20,0.92)':'rgba(255,255,255,0.95)';
+    function rr(cx,x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.lineTo(x+w-r,y);cx.quadraticCurveTo(x+w,y,x+w,y+r);cx.lineTo(x+w,y+h-r);cx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);cx.lineTo(x+r,y+h);cx.quadraticCurveTo(x,y+h,x,y+h-r);cx.lineTo(x,y+r);cx.quadraticCurveTo(x,y,x+r,y);cx.closePath()}
+    function vL(dt,color,lines,side){const px=x.getPixelForValue(dt);if(px<ca.left||px>ca.right)return;ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(px,ca.top);ctx.lineTo(px,ca.bottom);ctx.stroke();ctx.setLineDash([]);const fs=9;ctx.font=`bold ${fs}px system-ui`;const mw=Math.max(...lines.map(l=>ctx.measureText(l).width));const p=5,lh=13,bw=mw+p*2,bh=lines.length*lh+p*2;const bx=side==='left'?px-bw-3:px+3,by=ca.top+14;ctx.fillStyle=bbg;rr(ctx,bx,by,bw,bh,3);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=1;rr(ctx,bx,by,bw,bh,3);ctx.stroke();ctx.fillStyle=color;ctx.textAlign='left';lines.forEach((l,i)=>ctx.fillText(l,bx+p,by+p+fs+i*lh))}
+    vL(offlineDate,'rgba(248,113,113,0.9)',['SENSOR','OFFLINE'],'left');
+    vL(regDate,'rgba(251,191,36,0.9)',['WASTE BAN','Apr 1'],'right');
+    ctx.restore()
+  }
+};
+new Chart(document.getElementById('histChart'),{type:'line',plugins:[zonesPlugin],data:{labels:ts,datasets:[
+  {data:maxV,borderColor:'rgba(248,113,113,0.6)',backgroundColor:'transparent',borderWidth:1,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:'#f87171',fill:false,tension:.2,order:3},
+  {data:q3,borderColor:'transparent',backgroundColor:'rgba(96,165,250,0.25)',borderWidth:0,pointRadius:0,fill:'+1',tension:.3,order:2},
+  {data:q1,borderColor:'transparent',backgroundColor:'transparent',borderWidth:0,pointRadius:0,fill:false,tension:.3,order:2},
+  {data:med,borderColor:'#60a5fa',backgroundColor:'transparent',borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#60a5fa',fill:false,tension:.3,order:1},
+]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(8,10,18,0.97)',titleColor:'#e2e6f0',bodyColor:'#8891aa',borderColor:'#2e3550',borderWidth:1,padding:12,titleFont:{size:13,weight:'bold'},bodyFont:{size:12},callbacks:{title(items){const r=RAW[items[0].dataIndex];return new Date(r.t+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'long',day:'numeric'})},label(item){const r=RAW[item.dataIndex];if(item.datasetIndex===3){let c=r.med>55.5?' · UNHEALTHY':r.med>35.5?' · USG':r.med>25?' · >WHO 24hr':r.med>15?' · >WHO annual':'';return` Median: ${r.med.toFixed(1)} µg/m³${c}`}if(item.datasetIndex===0){const n=r.max>=CAP?` (actual: ${r.max.toFixed(0)})`:'';return` Max: ${Math.min(r.max,CAP).toFixed(0)} µg/m³${n}`}return null},filter:i=>i.datasetIndex===0||i.datasetIndex===3}}},scales:{x:{type:'time',time:{unit:'month',displayFormats:{month:"MMM ''yy"}},grid:{color:'rgba(255,255,255,0.05)'},border:{color:'#252b3d'},ticks:{color:'#6b7494',font:{size:11},maxTicksLimit:10}},y:{min:0,max:CAP,grid:{color:'rgba(255,255,255,0.06)'},border:{color:'#252b3d'},ticks:{color:'#6b7494',font:{size:11},callback:v=>v+''},title:{display:true,text:'PM2.5 µg/m³',color:'#6b7494',font:{size:11}}}}}});
+</script>
+</body>
+</html><!-- deployed 1776137500 -->
