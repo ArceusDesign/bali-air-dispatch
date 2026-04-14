@@ -6,6 +6,15 @@
   ],
   "headers": [
     {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Vercel-Id", "value": "" },
+        { "key": "Server", "value": "nginx" },
+        { "key": "X-Powered-By", "value": "" },
+        { "key": "X-Robots-Tag", "value": "noarchive" }
+      ]
+    },
+    {
       "source": "/api/live",
       "headers": [
         { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=7200" },
