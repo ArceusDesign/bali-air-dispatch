@@ -282,57 +282,19 @@ tbody tr:hover td{background:var(--hover-td)}
   <div class="section" id="live">
     <div class="section-label">Section 2</div>
     <h2>Live Data Snapshot — What Bali's Air Looks Like Right Now</h2>
-    <p>The following readings were verified on <strong>April 13, 2026</strong> from multiple independent sources. These are point-in-time readings — air quality varies by hour, weather, and proximity to pollution sources.</p>
-    <p style="font-size:11px;color:var(--faint);margin-bottom:16px">⏱ Data snapshot taken April 13, 2026. Updated periodically — check sources directly for the latest readings.</p>
+    <p>Live readings from multiple independent sources across Bali. Data is refreshed automatically every 2 hours from PurpleAir, AQICN, and IQAir APIs.</p>
+    <p style="font-size:11px;color:var(--faint);margin-bottom:16px" id="liveTimestamp">⏱ Loading live data...</p>
 
     <h3>Current Readings Across Bali</h3>
-    <div class="snap-grid">
-      <div class="snap-card aqi-mod">
-        <div class="snap-loc">Denpasar (Dajan Tangluk)</div>
-        <div class="snap-src">IQAir · Private sensor</div>
-        <div class="snap-aqi">AQI 26</div>
-        <div class="snap-cat">Moderate</div>
-        <div class="snap-pm">PM2.5 dominant</div>
-      </div>
-      <div class="snap-card aqi-mod">
-        <div class="snap-loc">Ubud</div>
-        <div class="snap-src">IQAir · Private sensor</div>
-        <div class="snap-aqi">AQI 28</div>
-        <div class="snap-cat">Moderate</div>
-        <div class="snap-pm">PM2.5 dominant</div>
-      </div>
-      <div class="snap-card aqi-mod">
-        <div class="snap-loc">Seminyak</div>
-        <div class="snap-src">IQAir · Private sensor</div>
-        <div class="snap-aqi">AQI 26</div>
-        <div class="snap-cat">Moderate</div>
-        <div class="snap-pm">PM2.5 dominant</div>
-      </div>
-      <div class="snap-card aqi-mod">
-        <div class="snap-loc">Badung Sempidi</div>
-        <div class="snap-src">AQICN · KLHK Government</div>
-        <div class="snap-aqi">AQI 44</div>
-        <div class="snap-cat">Moderate</div>
-        <div class="snap-pm">PM2.5: 29 µg/m³ · O3: 44</div>
-      </div>
-      <div class="snap-card aqi-good">
-        <div class="snap-loc">Jimbaran (South Bali)</div>
-        <div class="snap-src">PurpleAir · Community</div>
-        <div class="snap-aqi">AQI 3</div>
-        <div class="snap-cat">Good</div>
-        <div class="snap-pm">PM2.5: ~0.6 µg/m³ · 7-day avg: 0.9</div>
-      </div>
-      <div class="snap-card aqi-mod">
-        <div class="snap-loc">Klungkung (East Bali)</div>
-        <div class="snap-src">PurpleAir · Community</div>
-        <div class="snap-aqi">AQI 72</div>
-        <div class="snap-cat">Moderate</div>
-        <div class="snap-pm">PM2.5: ~22 µg/m³ · 7-day avg: 25.7</div>
+    <div class="snap-grid" id="liveGrid">
+      <!-- Populated by JS from /api/live -->
+      <div class="snap-card" style="grid-column:1/-1;text-align:center;padding:32px;color:var(--faint);font-size:13px">
+        Loading live readings from PurpleAir, AQICN, and IQAir...
       </div>
     </div>
 
-    <div class="callout-blue callout">
-      <strong>Key observation:</strong> The government's own active sensor at Badung Sempidi is currently reading PM2.5 of 29 µg/m³ — above the WHO 24-hour guideline of 25 µg/m³. IQAir private sensors across the Denpasar–Ubud corridor confirm AQI readings in the Moderate range. Meanwhile, coastal Jimbaran shows clean air, demonstrating that air quality varies significantly across the island. This reinforces the need for more localised monitoring.
+    <div class="callout-blue callout" id="liveObservation">
+      <strong>Key observation:</strong> Live data is loading. Once data arrives, this section will summarize the current air quality picture across Bali.
     </div>
 
     <h3>PurpleAir 7-Day Trend — Klungkung (East Bali)</h3>
@@ -754,6 +716,98 @@ function cycleTheme(){
   window.matchMedia('(prefers-color-scheme:light)').addEventListener('change',()=>{
     if(themes[themeIdx]==='auto')applyTheme('auto');
   });
+})();
+
+// ── Live Data Fetcher ──
+(async function loadLiveData() {
+  const grid = document.getElementById('liveGrid');
+  const tsEl = document.getElementById('liveTimestamp');
+  const obsEl = document.getElementById('liveObservation');
+
+  try {
+    const resp = await fetch('/api/live');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    // Timestamp
+    const updated = new Date(data.ts);
+    tsEl.textContent = `⏱ Live data · Last synced: ${updated.toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'})} · Auto-refreshes every 2 hours`;
+
+    if (!data.stations || data.stations.length === 0) {
+      grid.innerHTML = '<div class="snap-card" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--faint)">No stations returned. Check sources directly.</div>';
+      return;
+    }
+
+    // Sort: Government first, then by PM2.5 descending (worst first)
+    const sorted = data.stations.sort((a, b) => {
+      if (a.type.includes('Government') && !b.type.includes('Government')) return -1;
+      if (!a.type.includes('Government') && b.type.includes('Government')) return 1;
+      return (b.pm25 || 0) - (a.pm25 || 0);
+    });
+
+    // Render cards
+    grid.innerHTML = sorted.map(s => {
+      const pm = s.pm25;
+      const pmStr = pm != null ? `${pm} µg/m³` : '—';
+      const aqiStr = s.aqi != null ? `AQI ${s.aqi}` : '';
+      const estNote = s.pm25_estimated ? ' (est.)' : '';
+
+      // PM2.5-based color class
+      let clsName = 'aqi-good';
+      if (pm > 55.4) clsName = 'aqi-unh';
+      else if (pm > 35.4) clsName = 'aqi-usg';
+      else if (pm > 12) clsName = 'aqi-mod';
+
+      // Badge for WHO comparison
+      let badge = '';
+      if (pm != null) {
+        if (pm > 250.4) badge = '<span class="badge badge-purple" style="font-size:9px;margin-top:6px;display:inline-block">HAZARDOUS</span>';
+        else if (pm > 150.4) badge = '<span class="badge badge-red" style="font-size:9px;margin-top:6px;display:inline-block">VERY UNHEALTHY</span>';
+        else if (pm > 55.4) badge = '<span class="badge badge-orange" style="font-size:9px;margin-top:6px;display:inline-block">UNHEALTHY</span>';
+        else if (pm > 35.4) badge = '<span class="badge badge-orange" style="font-size:9px;margin-top:6px;display:inline-block">USG</span>';
+        else if (pm > 25) badge = '<span class="badge badge-yellow" style="font-size:9px;margin-top:6px;display:inline-block">ABOVE WHO 24HR</span>';
+        else if (pm > 15) badge = '<span class="badge badge-yellow" style="font-size:9px;margin-top:6px;display:inline-block">ABOVE WHO ANNUAL</span>';
+        else if (pm > 12) badge = '<span class="badge badge-green" style="font-size:9px;margin-top:6px;display:inline-block">MODERATE</span>';
+        else badge = '<span class="badge badge-green" style="font-size:9px;margin-top:6px;display:inline-block">GOOD</span>';
+      }
+
+      return `<div class="snap-card ${clsName}">
+        <div class="snap-loc">${s.name}</div>
+        <div class="snap-src">${s.source} · ${s.type}</div>
+        <div class="snap-aqi" style="margin-top:8px">PM2.5: ${pmStr}${estNote}</div>
+        <div class="snap-cat">${s.category}</div>
+        ${aqiStr ? `<div class="snap-pm">${aqiStr}</div>` : ''}
+        ${badge}
+      </div>`;
+    }).join('');
+
+    // Build observation callout
+    const withPm = sorted.filter(s => s.pm25 != null);
+    const aboveWho24 = withPm.filter(s => s.pm25 > 25);
+    const aboveWhoAn = withPm.filter(s => s.pm25 > 15);
+    const govStations = withPm.filter(s => s.type.includes('Government'));
+    const avgPm = withPm.length ? (withPm.reduce((s,x)=>s+x.pm25,0)/withPm.length).toFixed(1) : '—';
+
+    let obsHtml = '<strong>Key observation:</strong> ';
+    if (govStations.length > 0) {
+      const gov = govStations[0];
+      obsHtml += `The government sensor at ${gov.name.split('(')[0].trim()} is reading PM2.5 of ${gov.pm25} µg/m³${gov.pm25 > 25 ? ' — above the WHO 24-hour guideline of 25' : ''}. `;
+    }
+    obsHtml += `Across ${withPm.length} stations reporting, the average PM2.5 is ${avgPm} µg/m³. `;
+    if (aboveWho24.length > 0) {
+      obsHtml += `<strong>${aboveWho24.length} of ${withPm.length} stations</strong> currently exceed the WHO 24-hour guideline. `;
+    }
+    obsHtml += 'Air quality varies significantly by location — reinforcing the need for more localised monitoring.';
+    obsEl.innerHTML = obsHtml;
+
+  } catch (e) {
+    tsEl.textContent = '⏱ Unable to fetch live data. Showing cached snapshot from April 13, 2026.';
+    grid.innerHTML = `<div class="snap-card" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--faint)">
+      Live data temporarily unavailable. <a href="https://www.iqair.com/id/air-quality-map" target="_blank" style="color:var(--blue)">Check IQAir</a> or
+      <a href="https://nafas.com/id-en" target="_blank" style="color:var(--blue)">Nafas</a> directly.
+    </div>`;
+    obsEl.innerHTML = '<strong>Live data unavailable.</strong> Please check the sources listed below for current readings.';
+  }
 })();
 </script>
 </body>
