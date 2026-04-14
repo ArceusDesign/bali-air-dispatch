@@ -56,8 +56,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 #topnav a{color:var(--faint);text-decoration:none;padding:3px 8px;border-radius:4px;transition:.15s}
 #topnav a:hover{color:var(--text);background:var(--hover-bg)}
 /* Theme toggle */
-.theme-toggle{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:16px;width:32px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;padding:0;line-height:1}
+.theme-toggle{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;padding:0;line-height:1;font-family:system-ui}
 .theme-toggle:hover{border-color:var(--blue);color:var(--text)}
+.theme-toggle svg{width:14px;height:14px;fill:currentColor}
 
 .lang-select{margin-left:auto;position:relative}
 .lang-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12px;padding:4px 10px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.15s}
@@ -221,11 +222,11 @@ tbody tr:hover td{background:var(--hover-td)}
   <a href="#monitoring">Monitoring</a>
   <a href="#action">What's Needed</a>
   <a href="#check-now" style="color:var(--green);font-weight:600">Check Air Now ↗</a>
-  <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn" title="Toggle light/dark mode">🌙</button>
   <div class="lang-select">
     <button class="lang-btn" onclick="document.getElementById('langMenu').classList.toggle('open')" id="langBtn"><span class="flag">🌐</span> <span id="langLabel">English</span> ▾</button>
     <div class="lang-menu" id="langMenu"></div>
   </div>
+  <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn" title="Toggle light/dark mode"><svg viewBox="0 0 24 24"><path id="themeIcon" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg></button>
 </nav>
 
 <div class="page">
@@ -586,16 +587,13 @@ tbody tr:hover td{background:var(--hover-td)}
 
   <!-- FOOTER -->
   <div class="doc-footer">
-    This brief was compiled from publicly available data by concerned Bali residents advocating for better air quality monitoring. All claims can be independently verified using the links provided.
-    <br><br>
     <strong style="color:var(--muted)">Data sources:</strong> AQICN/GAIA network, PurpleAir API, IQAir, KLHK ISPU portal · Historical sensor: Kerobokan-Umalas-Fusion, North Kuta, Badung Regency · 469 days, 900–1,200+ readings/day
-    <br><strong style="color:var(--muted)">Live snapshot verified:</strong> April 13, 2026 from publicly accessible platforms
-    <br><strong style="color:var(--muted)">Live data sources:</strong> PurpleAir API, AQICN API, Airly API (Nafas sensors), OpenAQ API, IQAir API · Auto-refreshed hourly
+    <br><strong style="color:var(--muted)">Live data:</strong> PurpleAir API, AQICN API, Airly API (Nafas sensors), OpenAQ API, IQAir API · Auto-refreshed hourly
     <br><strong style="color:var(--muted)">Last updated:</strong> April 14, 2026
     <br><br>
-    <strong style="color:var(--muted)">Contact:</strong> <a href="mailto:baliair@protonmail.com" style="color:var(--blue)">baliair@protonmail.com</a> — for data requests, corrections, sensor partnerships, or media inquiries
+    <strong style="color:var(--muted)">Open source</strong> <a href="mailto:baliair@protonmail.com" style="color:var(--blue)">baliair@protonmail.com</a>
     <br><br>
-    <em>This page contains no tracking, no cookies, and no analytics. It is hosted for public information purposes.</em>
+    This page is hosted for public information purposes and contains no tracking, no cookies, and no analytics. This brief was compiled from publicly available data by concerned Bali residents advocating for better air quality monitoring. All claims can be independently verified using the links provided.
   </div>
 
 </div>
@@ -651,13 +649,17 @@ Object.entries(LANGS).forEach(([code,{flag,name}])=>{const btn=document.createEl
 document.addEventListener('click',e=>{if(!e.target.closest('.lang-select'))menuEl.classList.remove('open')});
 
 const headingT={
+  '.doc-header h1':{id:'Kesenjangan Pemantauan Kualitas Udara Bali',fr:'Les Lacunes du Suivi de la Qualité de l\'Air à Bali',de:'Balis Luftqualitäts-Überwachungslücke',zh:'巴厘岛空气质量监测差距',ja:'バリ島の大気質モニタリングの欠如',ko:'발리 대기질 모니터링 격차',ru:'Пробелы в Мониторинге Качества Воздуха на Бали'},
   '#summary h2':{id:'Ringkasan: Yang Kami Ketahui',fr:'Résumé : Ce Que Nous Savons',de:'Zusammenfassung: Was Wir Wissen',zh:'摘要：我们所知道的',ja:'概要：わかっていること',ko:'요약: 우리가 아는 것',ru:'Обзор: Что Мы Знаем'},
   '#live h2':{id:'Data Langsung — Udara Bali Saat Ini',fr:'Données en Direct — L\'Air de Bali Maintenant',de:'Live-Daten — Balis Luft Jetzt',zh:'实时数据——巴厘岛空气现状',ja:'ライブデータ——バリの空気の現状',ko:'실시간 데이터 — 현재 발리 공기',ru:'Данные в Реальном Времени'},
-  '#historical h2':{id:'Data Historis: 469 Hari PM2.5 Kerobokan',fr:'Données Historiques : 469 Jours de PM2.5',de:'Historische Daten: 469 Tage PM2.5',zh:'历史数据：469天PM2.5记录',ja:'過去データ：469日のPM2.5記録',ko:'과거 데이터: 469일간의 PM2.5',ru:'Исторические Данные: 469 Дней PM2.5'},
+  '#chart-section h2':{id:'469 Hari Data — Divisualisasikan',fr:'469 Jours de Données — Visualisées',de:'469 Tage Daten — Visualisiert',zh:'469天的数据——可视化',ja:'469日のデータ — 可視化',ko:'469일의 데이터 — 시각화',ru:'469 Дней Данных — Визуализация'},
   '#regulation h2':{id:'Perubahan Regulasi 1 April',fr:'Le Changement de Réglementation du 1er Avril',de:'Die Verordnungsänderung vom 1. April',zh:'4月1日法规变更',ja:'4月1日の規制変更',ko:'4월 1일 규정 변경',ru:'Изменение Регулирования 1 Апреля'},
-  '#monitoring h2':{id:'Infrastruktur Pemantauan Bali',fr:'L\'Infrastructure de Surveillance à Bali',de:'Balis Überwachungsinfrastruktur',zh:'巴厘岛监测基础设施',ja:'バリ島のモニタリング体制',ko:'발리 모니터링 인프라',ru:'Мониторинговая Инфраструктура Бали'},
+  '#monitoring h2':{id:'Infrastruktur Pemantauan Bali Saat Ini',fr:'L\'Infrastructure de Surveillance Actuelle à Bali',de:'Balis Aktuelle Überwachungsinfrastruktur',zh:'巴厘岛当前监测基础设施',ja:'バリ島の現在のモニタリング体制',ko:'발리의 현재 모니터링 인프라',ru:'Текущая Инфраструктура Мониторинга Бали'},
   '#action h2':{id:'Yang Dibutuhkan: Pemantauan yang Lebih Baik',fr:'Ce Qui Est Nécessaire : Un Meilleur Suivi',de:'Was Gebraucht Wird: Bessere Überwachung',zh:'需要什么：更好的监测',ja:'必要なこと：より良いモニタリング',ko:'필요한 것: 더 나은 모니터링',ru:'Что Нужно: Лучший Мониторинг'},
+  '#health h2':{id:'Memahami PM2.5',fr:'Comprendre les PM2.5',de:'PM2.5 Verstehen',zh:'了解PM2.5',ja:'PM2.5を理解する',ko:'PM2.5 이해하기',ru:'Понимание PM2.5'},
   '#check-now h2':{id:'Cek Kualitas Udara Bali Sekarang',fr:'Vérifiez la Qualité de l\'Air à Bali',de:'Balis Luftqualität Jetzt Prüfen',zh:'立即查看巴厘岛空气质量',ja:'バリの大気質を今すぐ確認',ko:'지금 발리 대기질 확인',ru:'Проверьте Воздух на Бали Сейчас'},
+  '#historical h2':{id:'Data Historis: Yang Ditunjukkan Catatan',fr:'Données Historiques : Ce que Montrent les Archives',de:'Historische Daten: Was die Aufzeichnungen Zeigen',zh:'历史数据：记录显示了什么',ja:'過去データ：記録が示すもの',ko:'과거 데이터: 기록이 보여주는 것',ru:'Исторические Данные: Что Показывают Записи'},
+  '#glossary h2':{id:'Glosarium',fr:'Glossaire',de:'Glossar',zh:'术语表',ja:'用語集',ko:'용어집',ru:'Глоссарий'},
 };
 const originals={};
 Object.keys(headingT).forEach(sel=>{const el=document.querySelector(sel);if(el)originals[sel]=el.innerHTML});
@@ -668,11 +670,25 @@ function setLang(lang){
   Object.entries(headingT).forEach(([sel,texts])=>{const el=document.querySelector(sel);if(!el)return;el.innerHTML=texts[lang]||originals[sel]||el.innerHTML});
   menuEl.querySelectorAll('.lang-opt').forEach((btn,i)=>btn.classList.toggle('active',Object.keys(LANGS)[i]===lang));
   menuEl.classList.remove('open');
+  // Update URL with lang param (shareable links)
+  const url = new URL(window.location);
+  if (lang === 'en') { url.searchParams.delete('lang'); } else { url.searchParams.set('lang', lang); }
+  history.replaceState(null, '', url);
 }
+// Load language from URL param on page load
+(function(){
+  const urlLang = new URLSearchParams(window.location.search).get('lang');
+  if (urlLang && LANGS[urlLang]) setLang(urlLang);
+})();
 
 // ── Theme toggle ──
 const themes = ['auto','light','dark'];
-const icons = {auto:'⚙️',light:'☀️',dark:'🌙'};
+// SVG paths: moon (dark), sun (light), auto (half)
+const iconPaths = {
+  dark:'M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z',
+  light:'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42',
+  auto:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 5v14a7 7 0 0 1 0-14z'
+};
 let themeIdx = 0;
 
 function getSystemTheme(){return window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark'}
@@ -680,7 +696,7 @@ function getSystemTheme(){return window.matchMedia('(prefers-color-scheme:light)
 function applyTheme(t){
   const effective = t === 'auto' ? getSystemTheme() : t;
   document.documentElement.setAttribute('data-theme', effective);
-  document.getElementById('themeBtn').textContent = icons[t];
+  document.getElementById('themeIcon').setAttribute('d', iconPaths[t]);
   // Update chart colors
   const chart = Chart.instances[0];
   if(chart){
