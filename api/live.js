@@ -1,6 +1,8 @@
 // Vercel Serverless Function — fetches live air quality data server-side
 // API keys are stored in Vercel environment variables, never exposed to the browser
-// Sources: PurpleAir, AQICN, IQAir, Airly (Nafas sensors), OpenAQ (AirGradient)
+// Sources: PurpleAir, AQICN, IQAir, Airly, OpenAQ (AirGradient)
+// Note: this is the legacy Vercel version. The deployed function is /functions/api/live.js
+// (Cloudflare Pages). The Pages version has an additional Nafas source; this one does not.
 
 export default async function handler(req, res) {
   const PURPLEAIR_KEY = process.env.PURPLEAIR_API_KEY;

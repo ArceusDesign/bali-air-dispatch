@@ -8,3 +8,6 @@ node_modules/
 .vercel/
 .vercel
 .wrangler/
+.claude/
+# local-only wrangler config with real D1 id (see D1-SETUP.md)
+wrangler.local.toml

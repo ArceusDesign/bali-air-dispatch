@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bali Air Quality — Live Monitor (v2 Preview)</title>
+<meta name="description" content="Map-first live air quality dashboard for Bali, with wind overlay and station detail panel.">
+<meta name="robots" content="noindex, nofollow">
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+
+<!-- leaflet-velocity (wind particle overlay) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.10.2/dist/leaflet-velocity.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.10.2/dist/leaflet-velocity.min.js"></script>
+
+<!-- Chart.js for mini panel chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root,[data-theme="dark"]{
+  --bg:#0b0d14;--bg2:#12151f;--bg3:#181c28;--panel:#10131c;
+  --border:#222840;--border2:#2e3450;
+  --text:#e4e8f0;--muted:#8891aa;--faint:#545a78;
+  --red:#f87171;--orange:#fb923c;--yellow:#fbbf24;--green:#4ade80;--blue:#60a5fa;--purple:#a78bfa;
+  --nav-bg:rgba(11,13,20,0.88);
+  --shadow:0 16px 48px rgba(0,0,0,0.55);
+  --panel-shadow:-12px 0 40px rgba(0,0,0,0.45);
+}
+[data-theme="light"]{
+  --bg:#f4f5f9;--bg2:#ffffff;--bg3:#eaecf3;--panel:#ffffff;
+  --border:#d8dce6;--border2:#c0c6d4;
+  --text:#161925;--muted:#4a5068;--faint:#7a809a;
+  --red:#dc2626;--orange:#ea580c;--yellow:#a16207;--green:#16a34a;--blue:#2563eb;--purple:#7c3aed;
+  --nav-bg:rgba(244,245,249,0.9);
+  --shadow:0 8px 24px rgba(0,0,0,0.1);
+  --panel-shadow:-8px 0 24px rgba(0,0,0,0.1);
+}
+html,body{height:100%}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;font-size:15px;transition:background .3s,color .3s;overflow-x:hidden}
+
+/* Nav */
+#topnav{position:sticky;top:0;z-index:1200;background:var(--nav-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;gap:10px;align-items:center;font-size:13px}
+#topnav a{color:var(--faint);text-decoration:none;padding:4px 10px;border-radius:5px;transition:.15s}
+#topnav a:hover{color:var(--text);background:var(--bg3)}
+.nav-title{font-weight:700;color:var(--text);font-size:14px;margin-right:auto;letter-spacing:-0.01em}
+.nav-title .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:8px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pill{font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:var(--bg3);color:var(--muted);padding:2px 7px;border-radius:10px;border:1px solid var(--border)}
+.theme-toggle{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:.15s}
+.theme-toggle:hover{border-color:var(--blue);color:var(--text)}
+.theme-toggle svg{width:14px;height:14px;fill:currentColor}
+
+/* MAP HERO */
+.map-hero{position:relative;width:100%;height:calc(100vh - 50px);min-height:560px;max-height:900px;background:var(--bg3);overflow:hidden}
+#map{width:100%;height:100%;background:var(--bg3)}
+
+/* Dark-mode tile filter */
+[data-theme="dark"] .leaflet-tile-pane{filter:brightness(0.55) contrast(1.2) saturate(0.4) hue-rotate(195deg) invert(0.92)}
+[data-theme="dark"] .leaflet-container{background:#0e1118}
+
+/* Leaflet chrome restyle */
+.leaflet-control-zoom{border:none!important;box-shadow:var(--shadow)!important;border-radius:8px!important;overflow:hidden}
+.leaflet-control-zoom a{background:var(--bg2)!important;color:var(--text)!important;border-color:var(--border)!important;width:32px!important;height:32px!important;line-height:32px!important;font-size:17px!important}
+.leaflet-control-zoom a:hover{background:var(--bg3)!important}
+.leaflet-control-attribution{background:rgba(255,255,255,0.04)!important;color:var(--faint)!important;font-size:10px!important;backdrop-filter:blur(8px);padding:2px 6px!important}
+.leaflet-control-attribution a{color:var(--muted)!important}
+[data-theme="dark"] .leaflet-control-attribution{background:rgba(0,0,0,0.5)!important}
+
+/* AQI marker */
+.aqi-marker{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff;border-radius:50%;border:2.5px solid rgba(255,255,255,0.85);box-shadow:0 4px 14px rgba(0,0,0,0.35),0 0 0 1px rgba(0,0,0,0.1);cursor:pointer;transition:transform .15s ease-out,box-shadow .15s;font-family:-apple-system,system-ui,sans-serif;letter-spacing:-0.02em}
+.aqi-marker:hover{transform:scale(1.15);box-shadow:0 8px 22px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.2);z-index:1000!important}
+.aqi-marker.selected{transform:scale(1.25);box-shadow:0 0 0 4px rgba(96,165,250,0.5),0 8px 22px rgba(0,0,0,0.5);z-index:1001!important}
+.aqi-marker.pulse::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid currentColor;opacity:0;animation:ringPulse 2.4s ease-out infinite}
+@keyframes ringPulse{0%{transform:scale(0.8);opacity:0.8}100%{transform:scale(1.8);opacity:0}}
+.mk-good{background:#4ade80;color:#0a2712}
+.mk-mod{background:#fbbf24;color:#3d2a04}
+.mk-usg{background:#fb923c;color:#3a1a04}
+.mk-unh{background:#ef4444;color:#fff}
+.mk-vunh{background:#b91c1c;color:#fff}
+.mk-haz{background:#7c2d5a;color:#fff}
+
+/* FLOATING OVERLAYS */
+.overlay-card{position:absolute;background:var(--bg2);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:500}
+[data-theme="dark"] .overlay-card{background:rgba(18,21,31,0.88)}
+[data-theme="light"] .overlay-card{background:rgba(255,255,255,0.92)}
+
+/* Search + status (top-left) */
+.map-hud{position:absolute;top:16px;left:16px;z-index:500;display:flex;flex-direction:column;gap:10px;max-width:320px}
+.hud-title{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:10px 14px 6px}
+.hud-stat{padding:8px 14px 12px;border-top:1px solid var(--border);display:flex;gap:12px;font-size:11px;color:var(--faint)}
+.hud-stat b{color:var(--text);font-weight:700}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite;margin-right:5px}
+.hud-search{padding:10px 14px;border-bottom:1px solid var(--border)}
+.hud-search input{width:100%;background:transparent;border:none;color:var(--text);font-size:13px;outline:none;font-family:inherit}
+.hud-search input::placeholder{color:var(--faint)}
+
+/* Layer controls (top-right) */
+.map-layers{position:absolute;top:16px;right:16px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.layer-btn{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);transition:.15s;min-width:150px;box-shadow:var(--shadow);backdrop-filter:blur(10px)}
+[data-theme="dark"] .layer-btn{background:rgba(18,21,31,0.88)}
+[data-theme="light"] .layer-btn{background:rgba(255,255,255,0.92)}
+.layer-btn:hover{border-color:var(--blue);color:var(--text)}
+.layer-btn .sw{width:30px;height:16px;border-radius:9px;background:var(--bg3);position:relative;flex-shrink:0;transition:.2s}
+.layer-btn .sw::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--faint);transition:.2s}
+.layer-btn.on .sw{background:var(--blue)}
+.layer-btn.on .sw::after{transform:translateX(14px);background:#fff}
+.layer-btn .ic{width:14px;height:14px;color:var(--faint)}
+.layer-btn.on .ic{color:var(--blue)}
+
+/* AQI Legend (bottom-right) */
+.legend{position:absolute;bottom:24px;right:16px;z-index:500;padding:14px 16px;min-width:220px}
+.legend-title{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.legend-grad{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:8px}
+.legend-grad>div{flex:1}
+.legend-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums}
+.legend-rows{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);gap:3px;flex-direction:column}
+.legend.expanded .legend-rows{display:flex}
+.legend-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+.legend-row .sw{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.legend-more{font-size:10px;color:var(--faint);cursor:pointer;margin-top:6px;text-decoration:underline;text-underline-offset:2px}
+.legend-more:hover{color:var(--text)}
+
+/* Wind-source caption (bottom-left) */
+.wind-cap{position:absolute;bottom:24px;left:16px;z-index:500;padding:8px 12px;font-size:10px;color:var(--muted);display:none;align-items:center;gap:8px}
+.wind-cap.on{display:flex}
+.wind-cap .arrow{width:14px;height:14px;border:1.5px solid var(--blue);border-radius:50%;position:relative;display:inline-flex;align-items:center;justify-content:center;color:var(--blue);font-size:9px}
+
+/* STATION DETAIL SLIDE-IN PANEL */
+.side-panel{position:fixed;top:50px;right:-440px;width:420px;height:calc(100vh - 50px);background:var(--panel);border-left:1px solid var(--border);box-shadow:var(--panel-shadow);z-index:1100;transition:right .35s cubic-bezier(0.33,1,0.68,1);overflow-y:auto;overflow-x:hidden}
+.side-panel.open{right:0}
+@media(max-width:560px){.side-panel{width:100%;right:-100%}}
+.panel-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;z-index:2}
+.panel-close:hover{color:var(--text);border-color:var(--red)}
+.panel-hero{padding:28px 24px 20px;background:linear-gradient(180deg,var(--bg3) 0%,var(--panel) 100%);border-bottom:1px solid var(--border);position:relative}
+.panel-hero::before{content:'';position:absolute;inset:0;opacity:0.5;pointer-events:none;background:radial-gradient(ellipse at top right,var(--panel-accent,transparent) 0%,transparent 60%)}
+.panel-src{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.panel-name{font-size:22px;font-weight:800;color:var(--text);line-height:1.2;letter-spacing:-0.02em;margin-bottom:6px}
+.panel-loc{font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums}
+.panel-reading{padding:24px;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;border-bottom:1px solid var(--border)}
+.panel-big{font-size:64px;font-weight:900;line-height:1;letter-spacing:-0.04em;font-variant-numeric:tabular-nums}
+.panel-unit{font-size:12px;color:var(--faint);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-top:4px}
+.panel-cat{font-size:14px;font-weight:700;letter-spacing:0.01em}
+.panel-cat-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+
+/* color classes for panel text */
+.pc-good{color:#4ade80}
+.pc-mod{color:#fbbf24}
+.pc-usg{color:#fb923c}
+.pc-unh{color:#ef4444}
+.pc-vunh{color:#dc2626}
+.pc-haz{color:#a78bfa}
+[data-theme="light"] .pc-good{color:#16a34a}
+[data-theme="light"] .pc-mod{color:#a16207}
+[data-theme="light"] .pc-usg{color:#c2410c}
+[data-theme="light"] .pc-unh{color:#dc2626}
+
+.panel-section{padding:18px 24px;border-bottom:1px solid var(--border)}
+.panel-section h4{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.panel-rows{display:grid;grid-template-columns:1fr auto;row-gap:6px;column-gap:16px;font-size:12.5px}
+.panel-rows .k{color:var(--faint)}
+.panel-rows .v{color:var(--text);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.panel-compare{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:10.5px;padding:5px 9px;border-radius:14px;background:var(--bg3);color:var(--muted);border:1px solid var(--border);font-weight:600}
+.chip b{color:var(--text)}
+.chip.warn{background:rgba(251,146,60,0.1);color:var(--orange);border-color:rgba(251,146,60,0.3)}
+.chip.bad{background:rgba(239,68,68,0.1);color:var(--red);border-color:rgba(239,68,68,0.3)}
+
+.spark{height:120px}
+.panel-link{display:block;padding:14px 24px;font-size:12px;color:var(--blue);text-align:center;border-top:1px solid var(--border);text-decoration:none}
+.panel-link:hover{background:var(--bg3)}
+
+/* CONTENT BELOW MAP */
+.below{max-width:1240px;margin:0 auto;padding:40px 24px 80px}
+.section-hd{display:flex;align-items:baseline;gap:12px;margin-bottom:18px;border-bottom:1px solid var(--border);padding-bottom:10px}
+.section-hd h2{font-size:18px;font-weight:800;letter-spacing:-0.01em;color:var(--text)}
+.section-hd .kicker{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint)}
+.section-hd .meta{margin-left:auto;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+.summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
+@media(max-width:720px){.summary-strip{grid-template-columns:repeat(2,1fr)}}
+.strip-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;position:relative;overflow:hidden}
+.strip-lab{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.strip-val{font-size:30px;font-weight:900;letter-spacing:-0.02em;line-height:1;font-variant-numeric:tabular-nums;margin-bottom:6px}
+.strip-note{font-size:11px;color:var(--faint);line-height:1.4}
+
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:32px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:14px 16px;cursor:pointer;transition:.15s;position:relative}
+.card:hover{border-color:var(--blue);transform:translateY(-2px)}
+.card-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-src{font-size:10px;color:var(--faint);margin-bottom:8px;letter-spacing:0.04em;text-transform:uppercase}
+.card-pm{font-size:26px;font-weight:900;line-height:1;margin-bottom:3px;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
+.card-cat{font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+.card-meta{font-size:10px;color:var(--faint);margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+.c-good .card-pm,.c-good .card-cat{color:#4ade80}
+.c-mod .card-pm,.c-mod .card-cat{color:#fbbf24}
+.c-usg .card-pm,.c-usg .card-cat{color:#fb923c}
+.c-unh .card-pm,.c-unh .card-cat{color:#ef4444}
+.c-vunh .card-pm,.c-vunh .card-cat{color:#dc2626}
+.c-haz .card-pm,.c-haz .card-cat{color:#a78bfa}
+[data-theme="light"] .c-good .card-pm,[data-theme="light"] .c-good .card-cat{color:#16a34a}
+[data-theme="light"] .c-mod .card-pm,[data-theme="light"] .c-mod .card-cat{color:#a16207}
+
+.footer{font-size:11px;color:var(--faint);line-height:1.7;border-top:1px solid var(--border);padding-top:18px;margin-top:40px}
+.footer a{color:var(--blue);text-decoration:none}
+.footer a:hover{text-decoration:underline}
+
+/* "Preview" banner */
+.preview-banner{background:linear-gradient(90deg,#8b5cf6,#ec4899);color:#fff;text-align:center;padding:6px 12px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<div class="preview-banner">Preview v2 — Not deployed · local review only</div>
+
+<nav id="topnav">
+  <div class="nav-title"><span class="dot"></span>Bali Air Monitor</div>
+  <span class="pill" id="pill-status">Connecting…</span>
+  <a href="/">Brief</a>
+  <a href="#overview">Overview</a>
+  <a href="#stations">Stations</a>
+  <button class="theme-toggle" onclick="cycleTheme()" id="themeBtn" title="Toggle theme"><svg viewBox="0 0 24 24"><path id="themeIcon" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg></button>
+</nav>
+
+<!-- MAP HERO -->
+<section class="map-hero">
+  <div id="map"></div>
+
+  <!-- HUD (top-left) -->
+  <div class="map-hud">
+    <div class="overlay-card">
+      <div class="hud-title">Bali Air Quality Network</div>
+      <div class="hud-search">
+        <input type="text" id="hudSearch" placeholder="Search a station…" autocomplete="off">
+      </div>
+      <div class="hud-stat">
+        <span><span class="live-dot"></span><b id="hudCount">—</b> live</span>
+        <span><b id="hudWorst">—</b> worst</span>
+        <span><b id="hudAvg">—</b> median</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Layers (top-right) -->
+  <div class="map-layers">
+    <button class="layer-btn on" id="btnStations" onclick="toggleStations()">
+      <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+      <span style="flex:1">Stations</span>
+      <span class="sw"></span>
+    </button>
+    <button class="layer-btn" id="btnWind" onclick="toggleWind()">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h14a3 3 0 1 1-3 3"/><path d="M3 16h8"/></svg>
+      <span style="flex:1">Wind</span>
+      <span class="sw"></span>
+    </button>
+  </div>
+
+  <!-- Legend (bottom-right) -->
+  <div class="overlay-card legend" id="legend">
+    <div class="legend-title">PM2.5 · µg/m³</div>
+    <div class="legend-grad">
+      <div style="background:#4ade80"></div>
+      <div style="background:#fbbf24"></div>
+      <div style="background:#fb923c"></div>
+      <div style="background:#ef4444"></div>
+      <div style="background:#b91c1c"></div>
+      <div style="background:#7c2d5a"></div>
+    </div>
+    <div class="legend-labels"><span>0</span><span>12</span><span>35</span><span>55</span><span>150</span><span>250+</span></div>
+    <div class="legend-rows">
+      <div class="legend-row"><span class="sw" style="background:#4ade80"></span>Good · 0–12</div>
+      <div class="legend-row"><span class="sw" style="background:#fbbf24"></span>Moderate · 12.1–35.4</div>
+      <div class="legend-row"><span class="sw" style="background:#fb923c"></span>Unhealthy for sensitive · 35.5–55.4</div>
+      <div class="legend-row"><span class="sw" style="background:#ef4444"></span>Unhealthy · 55.5–150.4</div>
+      <div class="legend-row"><span class="sw" style="background:#b91c1c"></span>Very unhealthy · 150.5–250.4</div>
+      <div class="legend-row"><span class="sw" style="background:#7c2d5a"></span>Hazardous · 250.5+</div>
+    </div>
+    <div class="legend-more" onclick="document.getElementById('legend').classList.toggle('expanded')">Show breakdown ▾</div>
+  </div>
+
+  <!-- Wind caption (bottom-left, shown when wind on) -->
+  <div class="overlay-card wind-cap" id="windCap">
+    <span class="arrow">↗</span>
+    Wind at 10m · Open-Meteo · now
+  </div>
+</section>
+
+<!-- STATION DETAIL SLIDE PANEL -->
+<aside class="side-panel" id="panel" aria-hidden="true">
+  <button class="panel-close" onclick="closePanel()" aria-label="Close">×</button>
+  <div id="panelBody">
+    <div class="panel-hero">
+      <div class="panel-src">—</div>
+      <div class="panel-name">—</div>
+      <div class="panel-loc">—</div>
+    </div>
+  </div>
+</aside>
+
+<!-- CONTENT BELOW MAP -->
+<main class="below">
+
+  <section id="overview" class="section">
+    <div class="section-hd">
+      <span class="kicker">01</span>
+      <h2>Live overview</h2>
+      <span class="meta" id="tsMeta">—</span>
+    </div>
+    <div class="summary-strip" id="summaryStrip">
+      <div class="strip-box"><div class="strip-lab">Live sensors</div><div class="strip-val" id="s-live">—</div><div class="strip-note">across 4 platforms</div></div>
+      <div class="strip-box"><div class="strip-lab">Median PM2.5</div><div class="strip-val" id="s-median">—</div><div class="strip-note">µg/m³ across network</div></div>
+      <div class="strip-box"><div class="strip-lab">Worst reading</div><div class="strip-val" id="s-worst">—</div><div class="strip-note" id="s-worst-note">—</div></div>
+      <div class="strip-box"><div class="strip-lab">Above WHO 24h</div><div class="strip-val" id="s-whoN">—</div><div class="strip-note">stations over 15 µg/m³</div></div>
+    </div>
+  </section>
+
+  <section id="stations" class="section">
+    <div class="section-hd">
+      <span class="kicker">02</span>
+      <h2>Stations</h2>
+      <span class="meta">click a card or map pin for detail</span>
+    </div>
+    <div class="cards-grid" id="cardsGrid">
+      <div class="card" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--faint);cursor:default">Loading stations from /api/live …</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-hd">
+      <span class="kicker">03</span>
+      <h2>About this map</h2>
+    </div>
+    <p style="font-size:13px;color:var(--muted);line-height:1.65;max-width:740px">
+      Markers show current PM2.5 (µg/m³) from every monitor in Bali we can reach. Colors follow US EPA breakpoints.
+      Wind layer (when enabled) shows 10&nbsp;m surface wind from Open-Meteo — useful for understanding which direction
+      smoke from a fire would drift. Map is locked to Bali; scroll and pan freely, click a pin to open full detail.
+    </p>
+    <p style="font-size:11px;color:var(--faint);margin-top:14px">
+      Sources: PurpleAir · AQICN / KLHK · IQAir contributors · Airly / Nafas · OpenAQ / AirGradient (historical).
+      Wind data © Open-Meteo. Map tiles © OpenStreetMap contributors.
+    </p>
+  </section>
+
+  <footer class="footer">
+    Anonymous public-interest project · no ads · no tracking · no accounts · source data is attributed.
+    <br>Preview build — not public.
+  </footer>
+</main>
+
+<script>
+// ---------- THEME ----------
+const THEMES=['dark','light'];
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('theme-v2',t)}catch(e){}}
+function cycleTheme(){const cur=document.documentElement.getAttribute('data-theme')||'dark';setTheme(cur==='dark'?'light':'dark');}
+(function(){try{const saved=localStorage.getItem('theme-v2');if(saved)setTheme(saved);else setTheme('dark')}catch(e){setTheme('dark')}})();
+
+// ---------- API BASE ----------
+// Use live production endpoint when previewing locally (file:// or localhost).
+const API_BASE = (location.hostname === 'baliair.pages.dev' || location.hostname.endsWith('.pages.dev'))
+  ? '' : 'https://baliair.pages.dev';
+
+// ---------- MAP ----------
+const BALI_BOUNDS = L.latLngBounds([-8.9, 114.35], [-8.0, 115.75]);
+const map = L.map('map', {
+  center: [-8.48, 115.12],
+  zoom: 10,
+  minZoom: 9,
+  maxZoom: 16,
+  maxBounds: BALI_BOUNDS.pad(0.02),
+  maxBoundsViscosity: 1.0,
+  zoomControl: true,
+  attributionControl: true
+});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> · © <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+map.fitBounds(BALI_BOUNDS,{padding:[20,20]});
+
+// ---------- AQI HELPERS ----------
+function catFor(pm){
+  if(pm==null)return {cls:'good',label:'—',health:'No data reported.'};
+  if(pm<=12) return {cls:'good',label:'Good',health:'Air quality is satisfactory; little to no risk.'};
+  if(pm<=35.4) return {cls:'mod',label:'Moderate',health:'Acceptable; unusually sensitive people may be affected.'};
+  if(pm<=55.4) return {cls:'usg',label:'Unhealthy for Sensitive',health:'Sensitive groups (children, elderly, asthma) should limit outdoor exertion.'};
+  if(pm<=150.4) return {cls:'unh',label:'Unhealthy',health:'Everyone may experience effects; sensitive groups should avoid outdoor exertion.'};
+  if(pm<=250.4) return {cls:'vunh',label:'Very Unhealthy',health:'Health alert: serious effects for everyone.'};
+  return {cls:'haz',label:'Hazardous',health:'Emergency conditions; entire population affected.'};
+}
+function catColor(cls){return {good:'#4ade80',mod:'#fbbf24',usg:'#fb923c',unh:'#ef4444',vunh:'#b91c1c',haz:'#7c2d5a'}[cls]||'#8891aa'}
+
+// ---------- STATE ----------
+let stations = [];
+let markers = {};
+let stationsLayer = L.layerGroup().addTo(map);
+let selectedId = null;
+let windLayer = null;
+let windOn = false;
+let stationsOn = true;
+
+// ---------- FETCH ----------
+async function loadLive(){
+  try{
+    const r = await fetch(API_BASE + '/api/live',{cache:'no-cache'});
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    stations = data.stations || [];
+    renderAll(data);
+  }catch(e){
+    console.warn('live fetch failed',e);
+    document.getElementById('pill-status').textContent = 'Live unreachable';
+    document.getElementById('cardsGrid').innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--faint);cursor:default">Could not reach /api/live — open this preview while online to see live data.</div>';
+  }
+}
+
+function renderAll(data){
+  // --- markers ---
+  stationsLayer.clearLayers();
+  markers = {};
+  stations.forEach(s=>{
+    if(s.lat==null||s.lon==null)return;
+    const c = catFor(s.pm25);
+    const worst = (data.stations||[]).reduce((a,b)=>((b.pm25??0)>(a.pm25??0)?b:a),{pm25:-1});
+    const isWorst = s.id===worst.id;
+    const size = 40 + Math.min(18, Math.round((s.pm25||0)/8));
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="aqi-marker mk-${c.cls} ${isWorst?'pulse':''}" style="width:${size}px;height:${size}px;font-size:${size>=48?14:12}px" data-sid="${s.id}">${s.pm25!=null?Math.round(s.pm25):'·'}</div>`,
+      iconSize: [size,size],
+      iconAnchor: [size/2,size/2]
+    });
+    const mk = L.marker([s.lat,s.lon],{icon,riseOnHover:true});
+    mk.on('click',()=>openPanel(s.id));
+    mk.addTo(stationsLayer);
+    markers[s.id] = mk;
+  });
+
+  // --- overview strip ---
+  const pms = stations.map(s=>s.pm25).filter(v=>v!=null).sort((a,b)=>a-b);
+  const median = pms.length ? (pms.length%2 ? pms[(pms.length-1)/2] : (pms[pms.length/2-1]+pms[pms.length/2])/2) : null;
+  const worst = stations.reduce((a,b)=>((b.pm25??-1)>(a.pm25??-1)?b:a),{pm25:-1});
+  const overWho = stations.filter(s=>s.pm25!=null && s.pm25>15).length;
+  document.getElementById('s-live').textContent = stations.length;
+  document.getElementById('s-median').textContent = median!=null?median.toFixed(1):'—';
+  document.getElementById('s-worst').textContent = worst.pm25>0?worst.pm25.toFixed(1):'—';
+  document.getElementById('s-worst-note').textContent = worst.pm25>0?(worst.name||'').split(' (')[0]:'—';
+  document.getElementById('s-whoN').textContent = overWho;
+
+  // --- HUD ---
+  document.getElementById('hudCount').textContent = stations.length;
+  document.getElementById('hudWorst').textContent = worst.pm25>0?worst.pm25.toFixed(1):'—';
+  document.getElementById('hudAvg').textContent = median!=null?median.toFixed(1):'—';
+  document.getElementById('pill-status').textContent = 'Live · ' + stations.length + ' sensors';
+  document.getElementById('tsMeta').textContent = 'Synced ' + new Date(data.ts).toLocaleString();
+
+  // --- cards ---
+  const cg = document.getElementById('cardsGrid');
+  cg.innerHTML = '';
+  const sorted = [...stations].sort((a,b)=>(b.pm25??-1)-(a.pm25??-1));
+  sorted.forEach(s=>{
+    const c = catFor(s.pm25);
+    const div = document.createElement('div');
+    div.className = 'card c-'+c.cls;
+    div.innerHTML = `
+      <div class="card-src">${s.source}</div>
+      <div class="card-name">${(s.name||'').split(' (')[0]}</div>
+      <div class="card-pm" style="margin-top:8px">${s.pm25!=null?s.pm25.toFixed(1):'—'}</div>
+      <div class="card-cat">${c.label}</div>
+      <div class="card-meta">${s.type||''}${s.pm25_estimated?' · est.':''}</div>
+    `;
+    div.onclick = ()=>{ openPanel(s.id); map.flyTo([s.lat,s.lon],13,{duration:.8}); };
+    cg.appendChild(div);
+  });
+}
+
+// ---------- PANEL ----------
+function openPanel(id){
+  const s = stations.find(x=>x.id===id);
+  if(!s) return;
+  selectedId = id;
+  const c = catFor(s.pm25);
+  const panel = document.getElementById('panel');
+  const body = document.getElementById('panelBody');
+  const color = catColor(c.cls);
+
+  // compare lines
+  const whoAnnual = 5, whoDaily = 15;
+  const xAnnual = s.pm25!=null? (s.pm25/whoAnnual).toFixed(1):'—';
+  const xDaily = s.pm25!=null? (s.pm25/whoDaily).toFixed(1):'—';
+  const tsLocal = s.lastSeen ? new Date(s.lastSeen).toLocaleString() : '—';
+
+  body.innerHTML = `
+    <div class="panel-hero" style="--panel-accent:${color}22">
+      <div class="panel-src">${s.source}${s.type?' · '+s.type:''}</div>
+      <div class="panel-name">${s.name||'Unnamed station'}</div>
+      <div class="panel-loc">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}</div>
+    </div>
+    <div class="panel-reading">
+      <div>
+        <div class="panel-big pc-${c.cls}">${s.pm25!=null?s.pm25.toFixed(1):'—'}</div>
+        <div class="panel-unit">µg/m³ · PM2.5${s.pm25_estimated?' (est.)':''}</div>
+      </div>
+      <div>
+        <div class="panel-cat pc-${c.cls}">${c.label}</div>
+        <div class="panel-cat-sub">${c.health}</div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h4>WHO comparison</h4>
+      <div class="panel-compare">
+        <span class="chip ${s.pm25>whoAnnual?'warn':''} ${s.pm25>whoAnnual*3?'bad':''}"><b>${xAnnual}×</b> annual guideline (5)</span>
+        <span class="chip ${s.pm25>whoDaily?'warn':''} ${s.pm25>whoDaily*2?'bad':''}"><b>${xDaily}×</b> 24-hour limit (15)</span>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h4>Details</h4>
+      <div class="panel-rows">
+        <div class="k">Source</div><div class="v">${s.source}</div>
+        <div class="k">Type</div><div class="v">${s.type||'—'}</div>
+        <div class="k">AQI</div><div class="v">${s.aqi!=null?s.aqi:'—'}</div>
+        <div class="k">Last seen</div><div class="v">${tsLocal}</div>
+        <div class="k">Coordinates</div><div class="v">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}</div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h4>Nearby fires & context</h4>
+      <p style="font-size:12px;color:var(--muted);margin:0">
+        Switch the <b>Wind</b> layer on (top-right) to see which way surface wind is carrying smoke at this station right now.
+        Cross-reference with NASA FIRMS fire detections to locate active burns upwind.
+      </p>
+    </div>
+    <a class="panel-link" href="${s.source==='PurpleAir'?'https://map.purpleair.com':s.source==='IQAir'?'https://www.iqair.com/indonesia/bali':s.source==='AQICN'?'https://aqicn.org/city/indonesia/bali/':'#'}" target="_blank" rel="noopener noreferrer">View on ${s.source} ↗</a>
+  `;
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden','false');
+
+  // highlight marker
+  Object.values(markers).forEach(m=>{
+    const el = m.getElement()?.querySelector('.aqi-marker');
+    if(el) el.classList.remove('selected');
+  });
+  const sel = markers[id]?.getElement()?.querySelector('.aqi-marker');
+  if(sel) sel.classList.add('selected');
+}
+function closePanel(){
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('panel').setAttribute('aria-hidden','true');
+  selectedId = null;
+  Object.values(markers).forEach(m=>{
+    const el = m.getElement()?.querySelector('.aqi-marker');
+    if(el) el.classList.remove('selected');
+  });
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
+
+// ---------- LAYER TOGGLES ----------
+function toggleStations(){
+  stationsOn = !stationsOn;
+  const btn = document.getElementById('btnStations');
+  if(stationsOn){ stationsLayer.addTo(map); btn.classList.add('on'); }
+  else { map.removeLayer(stationsLayer); btn.classList.remove('on'); }
+}
+async function toggleWind(){
+  const btn = document.getElementById('btnWind');
+  const cap = document.getElementById('windCap');
+  if(windOn){
+    if(windLayer){ map.removeLayer(windLayer); windLayer=null; }
+    btn.classList.remove('on'); cap.classList.remove('on'); windOn = false;
+    return;
+  }
+  btn.style.opacity=0.6;
+  try{
+    const wind = await buildWindField();
+    if(!wind){ throw new Error('wind unavailable'); }
+    windLayer = L.velocityLayer({
+      displayValues:false,
+      data: wind,
+      maxVelocity: 10,
+      velocityScale: 0.009,
+      particleAge: 75,
+      lineWidth: 1.2,
+      particleMultiplier: 1/220,
+      colorScale: ['rgba(148,163,255,0.45)','rgba(148,163,255,0.7)','rgba(200,190,255,0.9)','rgba(255,255,255,0.95)']
+    });
+    windLayer.addTo(map);
+    btn.classList.add('on'); cap.classList.add('on'); windOn = true;
+  }catch(e){
+    console.warn('wind failed',e);
+    cap.classList.add('on');
+    cap.querySelector('span').nextSibling.textContent = ' Wind data unavailable';
+  }finally{
+    btn.style.opacity=1;
+  }
+}
+
+// Build a leaflet-velocity compatible grid by calling Open-Meteo for a coarse Bali grid
+async function buildWindField(){
+  const la1=-8.05, la2=-8.9, lo1=114.4, lo2=115.75;
+  const nx=8, ny=8;
+  const dx=(lo2-lo1)/(nx-1), dy=(la1-la2)/(ny-1);
+  const lats=[],lons=[];
+  for(let iy=0;iy<ny;iy++) for(let ix=0;ix<nx;ix++){
+    lats.push((la1 - iy*dy).toFixed(3));
+    lons.push((lo1 + ix*dx).toFixed(3));
+  }
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats.join(',')}&longitude=${lons.join(',')}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('open-meteo ' + r.status);
+  const arr = await r.json();
+  const points = Array.isArray(arr) ? arr : [arr];
+  if(points.length !== nx*ny) throw new Error('grid size mismatch');
+  const u=[],v=[];
+  points.forEach(p=>{
+    const spd = p.current?.wind_speed_10m ?? 0;
+    const dir = p.current?.wind_direction_10m ?? 0;
+    // meteorological direction = from-direction (degrees). Convert to u/v (towards).
+    const rad = (dir + 180) * Math.PI/180;
+    u.push(spd * Math.sin(rad));
+    v.push(spd * Math.cos(rad));
+  });
+  const refTime = new Date().toISOString();
+  return [
+    { header: { parameterCategory:2, parameterNumber:2, nx, ny, lo1, la1, lo2, la2, dx, dy, refTime }, data: u },
+    { header: { parameterCategory:2, parameterNumber:3, nx, ny, lo1, la1, lo2, la2, dx, dy, refTime }, data: v }
+  ];
+}
+
+// ---------- SEARCH ----------
+document.getElementById('hudSearch').addEventListener('input',e=>{
+  const q=e.target.value.toLowerCase().trim();
+  if(!q) return;
+  const m = stations.find(s=>(s.name||'').toLowerCase().includes(q) || (s.source||'').toLowerCase().includes(q));
+  if(m){ map.flyTo([m.lat,m.lon],13,{duration:.8}); }
+});
+document.getElementById('hudSearch').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    const q=e.target.value.toLowerCase().trim();
+    const m = stations.find(s=>(s.name||'').toLowerCase().includes(q));
+    if(m) openPanel(m.id);
+  }
+});
+
+// ---------- BOOT ----------
+loadLive();
+setInterval(loadLive, 5*60*1000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,3 @@
+# /monitor used to be the live map page. The map is now the homepage.
+/monitor  /  301
+/monitor.html  /  301

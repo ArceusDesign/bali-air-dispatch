@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bali Air Dispatch — Dispatches</title>
+<meta name="description" content="Three dispatches on Bali's air — the community record, the single government sensor, and the seven tons of river waste pulled from Denpasar each day since the 1 April rule.">
+<meta name="referrer" content="no-referrer">
+<link rel="preload" as="style" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --paper:#f3ece0;
+  --paper-dark:#eae1d1;
+  --ink:#14110d;
+  --ink-soft:#34302a;
+  --ink-faint:#6a635a;
+  --rule:#2b2620;
+  --hairline:#c0b9a8;
+  --crimson:#8b1a1a;
+  --ochre:#a7742e;
+  --forest:#355e3b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{
+  font-family:"Source Serif 4",Georgia,serif;
+  font-optical-sizing:auto;
+  font-size:16px;line-height:1.55;
+  padding:0 0 80px 0;
+}
+.wrap{max-width:1320px;margin:0 auto;padding:0 32px}
+@media(max-width:720px){.wrap{padding:0 18px}}
+
+/* subtle grain — identical to brief.html */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.35;
+}
+
+/* ===== MASTHEAD ===== */
+.masthead{border-bottom:3px double var(--rule);padding:22px 0 18px 0;position:relative}
+.masthead-top{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+  padding-bottom:10px;border-bottom:1px solid var(--hairline);
+}
+.masthead-top .r{text-align:right}
+.nameplate{text-align:center;padding:28px 0 18px 0}
+.nameplate h1{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;
+  font-size:clamp(52px,8.6vw,132px);line-height:.92;letter-spacing:-.015em;color:var(--ink);
+}
+.nameplate .sub{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(16px,2vw,22px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em;
+}
+.folio{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+  padding-top:10px;border-top:1px solid var(--hairline);
+}
+.folio .c{text-align:center;letter-spacing:.22em}
+.folio .r{text-align:right}
+
+/* ===== NAV BAR ===== */
+.navbar{
+  border-bottom:1px solid var(--rule);padding:12px 0;margin-top:0;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  display:flex;justify-content:center;gap:32px;flex-wrap:wrap;
+}
+.navbar a{color:var(--ink);text-decoration:none}
+.navbar a:hover{color:var(--crimson)}
+.navbar a.on{color:var(--crimson);border-bottom:1px solid var(--crimson);padding-bottom:4px;margin-bottom:-5px}
+
+/* ===== BULLETIN ===== */
+.bulletin{
+  margin:26px 0 10px 0;padding:10px 14px;
+  background:var(--crimson);color:var(--paper);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  display:flex;justify-content:space-between;gap:16px;
+}
+.bulletin .tag{font-weight:700}
+.bulletin .when{opacity:.85}
+
+/* ===== COLLECTION LEAD ===== */
+.collect-lead{
+  padding:40px 0 28px;border-bottom:1px solid var(--rule);
+  display:grid;grid-template-columns:2.1fr 1fr;gap:44px;align-items:start;
+}
+@media(max-width:900px){.collect-lead{grid-template-columns:1fr;gap:26px}}
+.deck-kicker{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--crimson);margin-bottom:14px;
+}
+.collect-title{
+  font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144,"SOFT" 0;
+  font-size:clamp(44px,6.2vw,86px);line-height:.96;letter-spacing:-.022em;color:var(--ink);
+}
+.collect-title em{font-style:italic;font-weight:500}
+.collect-deck{
+  margin-top:22px;
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(20px,2vw,26px);line-height:1.4;color:var(--ink-soft);
+}
+.byline{
+  margin-top:28px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);
+  display:flex;gap:22px;flex-wrap:wrap;
+}
+.byline span+span::before{content:"·";margin-right:22px;color:var(--hairline)}
+
+/* TOC sidebar */
+.toc{border-left:1px solid var(--rule);padding-left:30px}
+.toc .head{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-soft);
+  border-bottom:1px solid var(--hairline);padding-bottom:10px;margin-bottom:18px;
+}
+.toc ol{list-style:none;counter-reset:t;padding:0;margin:0}
+.toc ol li{
+  counter-increment:t;padding:14px 0;border-bottom:1px dotted var(--hairline);
+  position:relative;padding-left:56px;
+}
+.toc ol li:last-child{border-bottom:none}
+.toc ol li::before{
+  content:"§ "counter(t,upper-roman);position:absolute;left:0;top:16px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.22em;color:var(--crimson);font-weight:600;
+}
+.toc ol li a{color:var(--ink);text-decoration:none;display:block}
+.toc ol li a:hover{color:var(--crimson)}
+.toc ol li .t{
+  font-family:"Fraunces",serif;font-weight:700;font-size:18px;line-height:1.15;letter-spacing:-.005em;
+  margin-bottom:4px;
+}
+.toc ol li .t em{font-style:italic;font-weight:500}
+.toc ol li .m{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+}
+
+/* ===== CHAPTER / DISPATCH ===== */
+.chapter{padding:60px 0 28px;border-top:3px double var(--rule);margin-top:18px;scroll-margin-top:12px}
+.chapter-head{
+  display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:baseline;
+  border-bottom:1px solid var(--rule);padding-bottom:14px;margin-bottom:30px;
+}
+.chapter-no{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--crimson);
+  border:1px solid var(--crimson);padding:6px 12px;
+}
+.chapter-title{
+  font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144,"SOFT" 10;
+  font-size:clamp(34px,4.4vw,62px);line-height:.98;letter-spacing:-.02em;
+}
+.chapter-title em{font-style:italic;font-weight:500;color:var(--crimson)}
+.chapter-meta{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+  text-align:right;
+}
+@media(max-width:720px){
+  .chapter-head{grid-template-columns:1fr;gap:10px}
+  .chapter-meta{text-align:left}
+}
+.chapter-lede{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(19px,2.1vw,24px);line-height:1.42;color:var(--ink-soft);
+  max-width:880px;margin-bottom:26px;
+}
+.chapter-body{display:grid;grid-template-columns:repeat(2,1fr);gap:38px}
+@media(max-width:900px){.chapter-body{grid-template-columns:1fr}}
+.chapter-body p{margin-bottom:16px}
+.chapter-body p strong{font-weight:700;color:var(--ink)}
+.chapter-body p.first::first-letter{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:78px;line-height:.82;float:left;padding:8px 12px 0 0;color:var(--crimson);
+}
+
+/* ===== FIGURE BOX (numbers cluster) ===== */
+.figure-box{
+  border:1px solid var(--rule);background:var(--paper-dark);
+  padding:28px 30px;margin:24px 0;position:relative;
+}
+.figure-box::after{
+  content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:3px;background:var(--crimson);
+}
+.figure-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+@media(max-width:720px){.figure-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+.figure-cell{border-right:1px solid var(--hairline);padding-right:22px}
+.figure-cell:last-child{border-right:none;padding-right:0}
+@media(max-width:720px){.figure-cell{border-right:none;border-bottom:1px solid var(--hairline);padding-bottom:14px}.figure-cell:nth-last-child(-n+2){border-bottom:none}}
+.figure-cell .n{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:54px;line-height:1;color:var(--crimson);letter-spacing:-.02em;
+}
+.figure-cell .n small{font-size:22px;color:var(--ink-soft);font-weight:500}
+.figure-cell .l{margin-top:10px;font-size:13px;line-height:1.45;color:var(--ink-soft)}
+
+/* ===== PULL QUOTE ===== */
+.pull{
+  grid-column:span 2;
+  border-top:3px double var(--rule);border-bottom:3px double var(--rule);
+  padding:42px 0;margin:28px 0;text-align:center;
+}
+@media(max-width:900px){.pull{grid-column:span 1}}
+.pull blockquote{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:500;
+  font-size:clamp(26px,3.4vw,42px);line-height:1.2;color:var(--ink);
+  max-width:900px;margin:0 auto;
+}
+.pull cite{
+  display:block;margin-top:18px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-style:normal;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+}
+
+/* ===== COMPARISON TABLE ===== */
+.cmp-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin:14px 0}
+.cmp-table th,.cmp-table td{padding:14px 16px;text-align:left;border-bottom:1px solid var(--hairline)}
+.cmp-table th{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:500;
+  font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+  border-bottom:2px solid var(--rule);
+}
+.cmp-table td.big{font-family:"Fraunces",serif;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.cmp-table tr.highlight td{background:var(--paper-dark);color:var(--crimson)}
+.cmp-table tr.highlight td.big{color:var(--crimson)}
+
+/* ===== SOURCES LIST ===== */
+.sources{
+  margin-top:30px;padding:22px 24px;background:var(--paper-dark);border:1px solid var(--hairline);
+  font-family:"Source Serif 4",Georgia,serif;font-size:13.5px;line-height:1.6;color:var(--ink-soft);
+}
+.sources h4{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson);margin-bottom:10px;font-weight:600;
+}
+.sources ol{padding-left:24px;margin:0}
+.sources ol li{margin-bottom:6px}
+.sources a{color:var(--ink);border-bottom:1px dotted var(--hairline);text-decoration:none;word-break:break-word}
+.sources a:hover{color:var(--crimson);border-color:var(--crimson)}
+.sources em{font-style:italic;color:var(--ink-faint)}
+
+/* ===== CALL ===== */
+.call{
+  border-top:3px double var(--rule);border-bottom:3px double var(--rule);
+  padding:52px 0;margin:40px 0 0;text-align:center;
+}
+.call .kicker{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--crimson);margin-bottom:18px;
+}
+.call h2{
+  font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144;
+  font-size:clamp(36px,5vw,64px);line-height:1.04;letter-spacing:-.02em;
+  max-width:960px;margin:0 auto;
+}
+.call h2 em{font-style:italic;font-weight:500;color:var(--crimson)}
+.call p{
+  max-width:760px;margin:22px auto 0;
+  font-family:"Fraunces",serif;font-style:italic;font-size:19px;line-height:1.55;color:var(--ink-soft);
+}
+.call .cta{display:inline-flex;gap:24px;margin-top:32px;flex-wrap:wrap;justify-content:center}
+.call .cta a{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ink);border:1px solid var(--rule);background:var(--paper);
+  padding:14px 22px;text-decoration:none;transition:background .15s,color .15s;
+}
+.call .cta a:hover{background:var(--crimson);color:var(--paper);border-color:var(--crimson)}
+.call .cta a.primary{background:var(--rule);color:var(--paper)}
+.call .cta a.primary:hover{background:var(--crimson);border-color:var(--crimson)}
+
+/* ===== FOOTER ===== */
+.foot{padding:40px 0 0 0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:var(--ink-soft);line-height:1.8;text-transform:uppercase}
+.foot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px}
+@media(max-width:720px){.foot-grid{grid-template-columns:repeat(2,1fr)}}
+.foot h4{font-family:"Fraunces",serif;font-weight:700;font-size:15px;text-transform:none;letter-spacing:0;margin-bottom:10px;color:var(--ink)}
+.foot a{color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted var(--hairline)}
+.foot a:hover{color:var(--crimson);border-color:var(--crimson)}
+.foot .mail{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;color:var(--ink);
+  font-size:13px;letter-spacing:.02em;padding:4px 8px;margin-left:-8px;
+  border-bottom:1px dotted var(--hairline);cursor:text;user-select:all;-webkit-user-select:all;display:inline-block;
+}
+.foot .mail:hover{color:var(--crimson);border-color:var(--crimson)}
+.foot .mail-note{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;color:var(--ink-faint);text-transform:uppercase;margin-top:6px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- MASTHEAD -->
+  <header class="masthead">
+    <div class="masthead-top">
+      <div>Published since April · 2026</div>
+      <div>Bali Air Dispatch</div>
+      <div class="r">Anonymous, non-commercial</div>
+    </div>
+    <div class="nameplate">
+      <h1>Bali&nbsp;Air&nbsp;Dispatch</h1>
+      <div class="sub">Three dispatches from the unmonitored island.</div>
+    </div>
+    <div class="folio">
+      <div>Edition XVII</div>
+      <div class="c">Friday, 17 April 2026</div>
+      <div class="r">Circulated anonymously</div>
+    </div>
+  </header>
+
+  <!-- NAV -->
+  <nav class="navbar">
+    <a href="/">Live Monitor</a>
+    <a href="/brief">Evidence Brief</a>
+    <a href="/articles" class="on">Dispatches</a>
+    <a href="/appendix">Appendix</a>
+  </nav>
+
+  <!-- BULLETIN -->
+  <div class="bulletin">
+    <div class="tag">Bulletin · Dispatches</div>
+    <div>Three readings from the unmonitored island — filed 16–17 April 2026</div>
+    <div class="when">Last updated 17.iv.2026</div>
+  </div>
+
+  <!-- COLLECTION LEAD -->
+  <section class="collect-lead">
+    <div>
+      <div class="deck-kicker">Dispatch collection · April 2026</div>
+      <h1 class="collect-title">Three readings from the <em>unmonitored island</em>.</h1>
+      <p class="collect-deck">A community sensor logged four hundred and sixty-nine days of Bali's breath before it fell silent. One government monitor sits idle for 4.4 million residents. And since the first of April, seven tons of waste a day have been pulled from Denpasar's rivers — while the smoke in the alleys rises without an instrument to record it.</p>
+      <div class="byline">
+        <span>Anonymous public-interest reporting</span>
+        <span>Data · AQICN, BPS, CREA 2024, Denpasar PUPR, Sungai Watch</span>
+        <span>Correspondence · baliair@protonmail.com</span>
+      </div>
+    </div>
+
+    <aside class="toc">
+      <div class="head">In this collection</div>
+      <ol>
+        <li><a href="#dispatch-1">
+          <div class="t">Two in three days, the air <em>exceeds</em> the daily guideline.</div>
+          <div class="m">§ I · 5-minute read · air quality</div>
+        </a></li>
+        <li><a href="#dispatch-2">
+          <div class="t">One government sensor for an island of <em>4.4 million</em>.</div>
+          <div class="m">§ II · 4-minute read · infrastructure</div>
+        </a></li>
+        <li><a href="#dispatch-3">
+          <div class="t">Seven tons of river waste a day, and <em>no air data to match</em>.</div>
+          <div class="m">§ III · 5-minute read · waste &amp; air</div>
+        </a></li>
+      </ol>
+    </aside>
+  </section>
+
+  <!-- ===========================================================
+       DISPATCH I — Two in three days
+       =========================================================== -->
+  <section class="chapter" id="dispatch-1">
+    <div class="chapter-head">
+      <div class="chapter-no">Dispatch · I</div>
+      <div class="chapter-title">Two in three days, the <em>daily guideline</em> is exceeded.</div>
+      <div class="chapter-meta">Filed · 16 April 2026<br>Approx. 5-minute read</div>
+    </div>
+    <p class="chapter-lede">A community sensor in Kerobokan logged four hundred and sixty-nine days of Bali's breath before it fell silent on 15 March — and on roughly two in three of them, the twenty-four-hour reading was above the line the World Health Organization now sets for a single day's exposure.</p>
+
+    <div class="chapter-body">
+      <div>
+        <p class="first">The only long-running public record of Bali's air is a single community instrument on the back of a house in Kerobokan. It is a GAIA A12 laser-scatter sensor, corrected by the AQICN network, and since November 2024 it has posted a daily median to a page almost no one reads. Across its 469 days of operation, the mean reading reached 21.9&nbsp;µg/m³ of PM2.5 — more than four times the World Health Organization's annual guideline of 5&nbsp;µg/m³.</p>
+        <p>On roughly two of every three days of that record, the daily median was above the 15&nbsp;µg/m³ ceiling the WHO set for a single day's exposure. On the fifteenth of March 2026, without announcement, the sensor fell silent.</p>
+        <p>The WHO's 2021 global air-quality guidelines lowered the twenty-four-hour PM2.5 threshold from the 25&nbsp;µg/m³ it had set in 2005 to 15. The tightening reflected a body of epidemiological evidence that had, in the intervening decade, continued to tie moderate exposure to cardiovascular and respiratory harm. <strong>Indonesia's</strong> national ambient standard, codified in Peraturan Pemerintah 22 of 2021, remained at 55&nbsp;µg/m³. Under domestic law, most of Bali's bad-air days are still formally <em>normal</em>.</p>
+      </div>
+
+      <div>
+        <p>There are two difficulties with the Kerobokan record. The first is the instrument itself. A laser-scatter sensor — however carefully corrected against a reference-grade monitor — is at the absolute end an indicator rather than a regulatory finding. Its numbers carry a slack of perhaps a few micrograms per cubic metre in either direction.</p>
+        <p>The second difficulty is the harder one. No one has built a reference-grade record against which the community figure could be checked. The island has one such government instrument — in Denpasar — and through 2025 it reported sporadically, and then not at all. (See Dispatch II.)</p>
+        <p>Indonesia's population-weighted annual PM2.5 in 2024, according to IQAir's <em>World Air Quality Report</em>, was 35.5&nbsp;µg/m³, ranking the country fifteenth in the world. Bali's annual mean sits lower than Jakarta's. It is not the worst air in the country. But the 5&nbsp;µg/m³ guideline was written at that level for a reason — and on an island that sells its climate as the product, two-thirds of days above 15 is a number that deserves to be recorded. The Kerobokan sensor was, at the time of writing, the only one keeping count.</p>
+      </div>
+
+      <!-- FIGURE -->
+      <div class="figure-box" style="grid-column:span 2">
+        <div class="figure-grid">
+          <div class="figure-cell">
+            <div class="n">469</div>
+            <div class="l">Days of continuous daily median PM2.5 reporting from the Kerobokan sensor, 21 Nov 2024 – 15 Mar 2026.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">21.9<small> µg/m³</small></div>
+            <div class="l">Mean daily median across the 469-day record. The WHO annual guideline is 5&nbsp;µg/m³; the 24-hour ceiling is 15.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">~68<small>%</small></div>
+            <div class="l">Share of days on which the daily median exceeded the WHO 15&nbsp;µg/m³ 24-hour guideline. <em>Dispatch analysis of the AQICN daily feed; raw CSV in Appendix.</em></div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">4.4<small>×</small></div>
+            <div class="l">Mean daily reading as a multiple of the WHO 5&nbsp;µg/m³ annual guideline. Indonesia's national standard remains 55.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pull">
+        <blockquote>"The sensor did not log pollution events, in any dramatic sense. What it logged was a baseline."</blockquote>
+        <cite>Dispatch I · field note</cite>
+      </div>
+
+      <div>
+        <p>What does <em>two in three days</em> mean, lived? It means that a child born in Kerobokan on the day the sensor began breathing the Bali average has, by her first birthday, received roughly twice the WHO-recommended annual dose. It means that on any given week of her life, four of its days will meet the short-term ceiling an international body considers a line of public-health consequence — and three of those four will exceed it.</p>
+        <p>That is, it is worth saying plainly, a very Indonesian number, and a not-particularly-bad one by the standards of Southeast Asia. It is also the number that is, at the moment, the only one the island is keeping.</p>
+        <p><strong>Record</strong> is the quiet thing that is absent. When the Denpasar government sensor reports, it publishes an hourly AQI and a twenty-four-hour PM2.5 reading; when it does not, there is nothing on the national ISPU dashboard for the island. And on the one private long-record available, the daily guideline has been routinely exceeded for a year and a half.</p>
+      </div>
+
+      <div>
+        <p>A laser-scatter sensor, again, is not a regulatory instrument. The Kerobokan data is an indicator. Its 68 % figure is a <em>Dispatch</em> analysis of AQICN's public daily feed, and the raw CSV sits alongside this page in the Appendix so that anyone with a spreadsheet can reproduce it. The sensor is not reference-grade. That is the whole problem. For the island of Bali, in April of 2026, <em>this is the best long-running public record that exists.</em></p>
+        <p>The instrument that should have been standing beside it — the government station in Denpasar, designed and maintained for exactly this purpose — has not posted to the ISPU portal in months. That is the subject of the next dispatch.</p>
+      </div>
+
+      <!-- SOURCES -->
+      <div class="sources" style="grid-column:span 2">
+        <h4>Sources · Dispatch I</h4>
+        <ol>
+          <li>Kerobokan (Umalas / Fusion) community sensor — GAIA-class laser-scatter unit, AQICN network. <a href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" rel="noopener">aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali</a>. Raw daily feed downloadable via the AQICN data platform.</li>
+          <li>World Health Organization, <em>WHO global air quality guidelines: particulate matter, ozone, nitrogen dioxide, sulfur dioxide and carbon monoxide</em> (2021). <a href="https://www.who.int/publications/i/item/9789240034228" rel="noopener">who.int/publications/i/item/9789240034228</a>. The 2021 revision lowered the short-term PM2.5 guideline from 25&nbsp;µg/m³ (2005) to 15.</li>
+          <li>IQAir, <em>2024 World Air Quality Report</em> — Indonesia's population-weighted annual PM2.5 was 35.5&nbsp;µg/m³. <a href="https://www.iqair.com/world-air-quality-report" rel="noopener">iqair.com/world-air-quality-report</a>.</li>
+          <li>Indonesia ambient air quality standard, Peraturan Pemerintah 22 / 2021 — national 24-hour PM2.5 standard 55&nbsp;µg/m³.</li>
+          <li>The 469-day mean and ≈68 %-of-days-over-15&nbsp;µg/m³ figures are <em>Bali Air Dispatch</em> analyses of the AQICN public daily feed from 21 Nov 2024 through 15 Mar 2026. Raw CSV published in the Appendix for independent reproduction.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===========================================================
+       DISPATCH II — One sensor for 4.4 million
+       =========================================================== -->
+  <section class="chapter" id="dispatch-2">
+    <div class="chapter-head">
+      <div class="chapter-no">Dispatch · II</div>
+      <div class="chapter-title">One government sensor for an island of <em>4.4&nbsp;million</em>.</div>
+      <div class="chapter-meta">Filed · 16 April 2026<br>Approx. 4-minute read</div>
+    </div>
+    <p class="chapter-lede">Bali's projected 2025 population is 4.46&nbsp;million. The number of KLHK reference-grade PM2.5 monitors serving it on the national ISPU portal is one — and it has not reported in months.</p>
+
+    <div class="chapter-body">
+      <div>
+        <p class="first">Bali's projected 2025 population, according to BPS Statistics Indonesia, is 4.46&nbsp;million. The number of KLHK reference-grade PM2.5 monitors serving that population, indexed on the national ISPU portal, is <strong>one</strong>. That sensor, at Denpasar Lumintang on Jalan Mulawarman, reported sporadically through 2025 and, as of the first quarter of 2026, has not appeared on the portal in months.</p>
+        <p>Jakarta, for comparison, operates 10 reference-grade sensors and some 110 low-cost community monitors through its DKI programme, according to the 2024 <em>Indonesia Air Quality</em> report from the Centre for Research on Energy and Clean Air. Hong Kong runs 18 fixed stations for 7.5&nbsp;million residents; London more than 100 continuous sites on its Local Air Quality Network. Bangkok's PCD runs 70 standard stations.</p>
+        <p>On a per-capita basis — government reference-grade sensors per million residents — Bali runs at roughly 0.2. Jakarta at 11. London at 11. Hong Kong at 2.4. Bangkok at about 4.5.</p>
+      </div>
+
+      <div>
+        <p>The CREA report, in its summary of provincial coverage outside of Jakarta, described <em>"a significant coverage gap beyond the city limits into other satellite cities."</em> Bali is one of those gaps. The Denpasar Lumintang station is not, let it be said, a failure of engineering. It is operated by the Environmental Laboratory Unit of the city's Environmental Health and Cleanliness Service under the national ISPUNet programme; when it runs, it publishes hourly AQI and 24-hour PM2.5 readings in the international format.</p>
+        <p>Its absence is not an absence of capacity. It is, at the moment, an absence of continuity.</p>
+        <p>There is a temptation — shown more often in conversations with officials than with residents — to treat community sensors (AQICN, Nafas, AirGradient, PurpleAir) as a substitute for government ones. The difficulty with the substitution is not that the private data is bad. It is that public record requires public accountability, and public accountability requires instruments whose calibration, maintenance, and placement are the responsibility of a body whose legitimacy the public can address.</p>
+      </div>
+
+      <div class="figure-box" style="grid-column:span 2">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson);margin-bottom:14px;font-weight:600">Fig. II-a · Government reference-grade PM2.5 stations per million residents</div>
+        <table class="cmp-table" style="margin:0">
+          <thead>
+            <tr><th>City / province</th><th>Population</th><th>Gov. reference sensors</th><th>Per million</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Jakarta DKI</strong></td><td>~10.6 m</td><td>10 reference + 110 low-cost</td><td class="big">11.0</td></tr>
+            <tr><td><strong>London</strong></td><td>~9.0 m</td><td>100+ LAQN continuous</td><td class="big">11.1</td></tr>
+            <tr><td><strong>Bangkok</strong></td><td>~15.5 m metro</td><td>70 PCD standard</td><td class="big">4.5</td></tr>
+            <tr><td><strong>Hong Kong</strong></td><td>~7.5 m</td><td>18 EPD fixed</td><td class="big">2.4</td></tr>
+            <tr class="highlight"><td><strong>Bali</strong></td><td>4.46 m (BPS 2025)</td><td>1 KLHK ISPU — not reporting</td><td class="big">0.2</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:14px;font-family:'Source Serif 4',serif;font-size:12.5px;line-height:1.55;color:var(--ink-soft);font-style:italic">Reference-grade government instruments only. Community and private sensors (AQICN, Nafas, AirGradient, PurpleAir) are not included. Sources in the footer of this dispatch.</p>
+      </div>
+
+      <div class="pull">
+        <blockquote>"A significant coverage gap beyond the city limits into other satellite cities."</blockquote>
+        <cite>Centre for Research on Energy and Clean Air · Indonesia Air Quality 2024</cite>
+      </div>
+
+      <div>
+        <p>When the Denpasar Lumintang instrument is running, it speaks. When it is not, the island's official record is silent — not because there are no pollutants to measure, but because there is no government instrument to measure them with. The community data, as Dispatch I set out, is the best long-running public record in the absence of the government one. It is an imperfect stand-in. An archipelago of seventeen thousand islands cannot be air-quality-measured by inference.</p>
+        <p>The proposal — it is not a new one — is modest. A handful of reference-grade monitors at Denpasar, Ubud, Canggu, Seminyak, Nusa Dua and either Singaraja or Amed. A public dashboard on the ISPU portal, updated hourly, with a clean CSV backlog for researchers. An annual uptime report, on the London LAQN model. A budget line in the provincial Dinas Lingkungan Hidup that protects these instruments from the routine budgetary losses that have taken down the Denpasar unit.</p>
+      </div>
+
+      <div>
+        <p>None of this is expensive. A continental-scale reference monitor — a BAM-1020 or equivalent — is on the order of US$15,000–25,000 per unit, with annual maintenance measured in thousands, not millions. Five units across the island, and a dashboard: the kind of line-item that rounds to zero on a provincial budget.</p>
+        <p>The only thing standing between the island and the record it does not yet have is a choice to begin keeping it. The next dispatch, on what has happened since the first of April, is an argument for why that choice matters now and not later.</p>
+      </div>
+
+      <div class="sources" style="grid-column:span 2">
+        <h4>Sources · Dispatch II</h4>
+        <ol>
+          <li>BPS Statistics Indonesia, <em>Provinsi Bali Dalam Angka 2025</em> — projected population ≈ 4,464,900. <a href="https://bali.bps.go.id/en/publication/2025/02/28/c1546258bf024478ec028d7f/provinsi-bali-dalam-angka-2025.html" rel="noopener">bali.bps.go.id</a>.</li>
+          <li>AQICN Denpasar Lumintang station — the single Bali KLHK node mirrored on AQICN. <a href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" rel="noopener">aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang</a>. KLHK ISPU portal: <a href="https://ispu.menlhk.go.id/webv5/" rel="noopener">ispu.menlhk.go.id</a>.</li>
+          <li>Centre for Research on Energy and Clean Air (CREA), <em>Indonesia Air Quality 2024</em>. <a href="https://energyandcleanair.org/publication/indonesia-air-quality-2024/" rel="noopener">energyandcleanair.org/publication/indonesia-air-quality-2024</a>.</li>
+          <li>Hong Kong EPD — air-quality monitoring network. <a href="https://www.aqhi.gov.hk/en/monitoring-network/air-quality-monitoring-network.html" rel="noopener">aqhi.gov.hk</a>.</li>
+          <li>London Air Quality Network. <a href="https://www.londonair.org.uk/" rel="noopener">londonair.org.uk</a>. Supplemented by ≈350 Breathe London sensors.</li>
+          <li>Thailand PCD, 70 standard monitoring stations, per <em>Frontiers in Environmental Science</em> 2023. <a href="https://www.frontiersin.org/journals/environmental-science/articles/10.3389/fenvs.2023.1237366/full" rel="noopener">frontiersin.org</a>.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===========================================================
+       DISPATCH III — Seven tons a day
+       =========================================================== -->
+  <section class="chapter" id="dispatch-3">
+    <div class="chapter-head">
+      <div class="chapter-no">Dispatch · III</div>
+      <div class="chapter-title">Seven tons of river waste a day, and <em>no air data to match</em>.</div>
+      <div class="chapter-meta">Filed · 17 April 2026<br>Approx. 5-minute read</div>
+    </div>
+    <p class="chapter-lede">Since the 1 April sorted-waste rule, Denpasar's Public Works office has pulled up to seven tons of waste a day from the city's rivers. Open household burning has risen visibly — and no government instrument is publishing an air-quality number against which the rise can be measured.</p>
+
+    <div class="chapter-body">
+      <div>
+        <p class="first">On the first of April 2026 the new Denpasar waste rule took effect: <strong>no sorted waste, no collection</strong>. In Badung regency, the penalty for non-compliance reaches Rp&nbsp;25&nbsp;million and three months' imprisonment. The rule's stated purpose — and it is a good one — is to force the separation stream that will allow the long-troubled Suwung landfill, handling around 1,000 tonnes of mixed waste a day, to stop accepting organics and, eventually, on 1 August, to close.</p>
+        <p>Two weeks in, the consequence was a different one. Denpasar's Public Works and Spatial Planning Office <strong>(PUPR)</strong> reported in mid-April that up to <strong>seven tons</strong> of waste a day were being pulled from the city's rivers by municipal crews — a figure attributed by <em>Hey Bali News</em> to Ketut Ngurah Artha Jaya, the office's head of water resources. Sungai Watch, the river-cleanup organisation that separately processes about three tons of plastic a day at its headquarters, flagged a visible post-1-April surge.</p>
+        <p>And down the gangs of Sanur, Kuta and Canggu, the smoke — the domestic kind, the kind made by burning what ought to have been collected — became a matter of everyday observation. Surfers at Uluwatu posted air-quality-alarmed videos. Community sensors logged US-AQI spikes as high as 150, the threshold at which <em>"unhealthy for everyone"</em> begins.</p>
+      </div>
+
+      <div>
+        <p>Open household burning is a recognised and locally dominant PM2.5 source in Indonesian communities with incomplete collection coverage, according to the Climate &amp; Clean Air Coalition's CLOCC programme for Indonesia. The science is old; the policy mechanism is obvious. Where collection fails, the residue is burned. What is new, and specific to Bali, is that the burning is now rising in the absence of any reference-grade monitoring to characterise it.</p>
+        <p>Governor Wayan Koster, asked about the burning, distinguished between religious ritual and domestic refuse: <em>"If it's wood or bamboo from religious offerings, that's not a problem."</em> Mayor I Gusti Ngurah Jaya Negara of Denpasar declared that there would be <em>"no more community-level burning"</em>, and that existing facilities would absorb the unsorted stream. The infrastructure to do so, at present, is not visibly in place. Nor are the sensors to measure the cost of its absence.</p>
+        <p>Ayu Pawitri of Get Plastic Indonesia, quoted in <em>Hey Bali News</em>, named the structural point: the ban is the right policy; the bottleneck is the missing composting infrastructure, not the rule itself. A sorting rule, without a place for the sorted output to go, produces exactly the post-1-April pattern the island is now seeing.</p>
+      </div>
+
+      <div class="figure-box" style="grid-column:span 2">
+        <div class="figure-grid">
+          <div class="figure-cell">
+            <div class="n">1 Apr<small> 2026</small></div>
+            <div class="l">Denpasar's new rule: <em>no sorted waste, no collection</em>. Badung penalty up to Rp&nbsp;25&nbsp;million &amp; 3 months' imprisonment.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">7<small> tons/day</small></div>
+            <div class="l">River waste pulled from Denpasar's rivers by municipal crews in mid-April 2026, per the city's PUPR. <em>Distinct from Sungai Watch's separate ~3 t/day HQ processing figure.</em></div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">1,000<small> t/day</small></div>
+            <div class="l">Pre-ban Suwung landfill throughput. Organics ≈ two-thirds of Bali's waste stream. Landfill permanent closure scheduled for 1 August 2026.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">150<small> AQI</small></div>
+            <div class="l">Community-sensor peak US-AQI readings from Kuta, Canggu and Uluwatu in the first two weeks of April — the threshold at which "unhealthy for everyone" begins.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pull">
+        <blockquote>"If it's wood or bamboo from religious offerings, that's not a problem."</blockquote>
+        <cite>Governor Wayan Koster · via Hey Bali News, April 2026</cite>
+      </div>
+
+      <div>
+        <p>The correlation between rising burning and the community-sensor PM2.5 spikes is, at the moment, suggestive rather than proven. Community sensors are laser-scatter devices; their absolute numbers carry slack; 150-US-AQI spikes could have other contributing sources — vehicular, construction, agricultural, even Nyepi-adjacent offerings. This is precisely the kind of question a reference-grade government network is designed to settle, by cross-comparing hourly readings at multiple fixed sites. The Denpasar Lumintang station, which could have settled it, has not reported in months.</p>
+        <p>The cost of that absence is the cost of a policy argument that has to be made without numbers. The 1 April rule is defensible on its own terms — organics at Suwung are a genuine problem, the landfill's closure is long overdue — but its early consequences, in the absence of an air-quality record, are a matter of anecdote and photograph rather than fact.</p>
+      </div>
+
+      <div>
+        <p><strong>What this set of dispatches argues for is not new air.</strong> Air, clean or otherwise, is not a negotiable good. What this set of dispatches argues for is a public instrument of record. A half-dozen reference-grade PM2.5 monitors, a dashboard on the national ISPU portal, and a continuity of reporting — these are the preconditions of the kind of evidence-based policy conversation the island needs to have about waste, burning, and the air its residents breathe.</p>
+        <p>The Kerobokan sensor was one citizen's private record, made public at private cost. The Denpasar sensor has been a public record, reported to the public only intermittently. The island of Bali, on the morning these dispatches were filed, has no reference-grade air quality measurement being published to any national portal. That is the shape of the gap. The fix is modest. The cost is small. The moment — with burning rising and the landfill rule still young — is now.</p>
+      </div>
+
+      <div class="sources" style="grid-column:span 2">
+        <h4>Sources · Dispatch III</h4>
+        <ol>
+          <li><em>Hey Bali News</em> — <a href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" rel="noopener">"Bali's Organic Waste Ban Backfires…"</a> The 7-tons-per-day figure is attributed to Ketut Ngurah Artha Jaya, head of water resources, Denpasar PUPR. Distinct from Sungai Watch's separate ~3&nbsp;t/day HQ processing.</li>
+          <li><em>Bali.live</em> — <a href="https://bali.live/p/no-sorting-no-collection-how-balis-waste-collection-rules-changed-from-1-april" rel="noopener">"Bali Won't Collect Unsorted Waste Under New April Rules"</a>. Rule effective 1 Apr 2026; Badung penalties.</li>
+          <li><em>Bloomberg</em>, 15 Apr 2026 — <a href="https://www.bloomberg.com/news/articles/2026-04-15/bali-residents-take-to-burning-trash-as-landfill-rules-change" rel="noopener">"Bali Residents Take to Burning Trash as Landfill Rules Change"</a>. Background on Suwung throughput.</li>
+          <li><em>SCMP</em> / AFP — <a href="https://www.scmp.com/news/asia/southeast-asia/article/3350241/" rel="noopener">scmp.com</a>. Pre-ban Suwung ~1,000 t/day; organics ~two-thirds of Bali's stream.</li>
+          <li>Climate &amp; Clean Air Coalition, CLOCC programme (Indonesia) — <a href="https://www.ccacoalition.org/resources/reducing-open-burning-waste-through-clean-oceans-through-clean-communities-clocc-programme-indonesia" rel="noopener">ccacoalition.org</a>. Open burning as a dominant PM2.5 source in Indonesian communities with incomplete collection.</li>
+          <li><em>The Bali Sun</em> — <a href="https://thebalisun.com/tourists-warned-about-dangerous-air-quality-levels-in-bali/" rel="noopener">thebalisun.com</a>. Community-sensor AQI spikes across Kuta, Canggu, Uluwatu in early April 2026.</li>
+          <li>Sungai Watch cleanups programme — <a href="https://sungai.watch/pages/cleanups" rel="noopener">sungai.watch/pages/cleanups</a>. ~3 tons/day plastic processed at HQ. Separate from Denpasar PUPR's river-clearance figure.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLOSING CALL -->
+  <div class="call">
+    <div class="kicker">Editorial · 17 April 2026</div>
+    <h2>The air is being breathed <em>without record</em>.</h2>
+    <p>A sensor is not a solution. It is a witness. Its absence does not lower the dose the body receives; it lowers only the public's capacity to reason about it. What Bali lacks, in April of 2026, is not clean air — the question of clean air is a different and longer essay — but the means by which its cleanliness, or the failure of it, can be known to the people who breathe it.</p>
+    <div class="cta">
+      <a class="primary" href="/">Open the Live Monitor →</a>
+      <a href="/brief">Evidence Brief →</a>
+      <a href="/appendix">Methodology &amp; Appendix →</a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="foot">
+    <div class="foot-grid">
+      <div>
+        <h4>Contact</h4>
+        <div><span class="mail" tabindex="0">baliair@protonmail.com</span></div>
+        <div class="mail-note">Copy &amp; paste — no mail client will open.</div>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <div>
+          <a href="/">Live Monitor</a><br>
+          <a href="/brief">Evidence Brief</a><br>
+          <a href="/appendix">Appendix &amp; Methodology</a>
+        </div>
+      </div>
+      <div>
+        <h4>Sources</h4>
+        <div>AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU</div>
+      </div>
+      <div>
+        <h4>Rights</h4>
+        <div>Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</div>
+      </div>
+    </div>
+    <div style="margin-top:28px;padding-top:18px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.2em;color:var(--ink-faint)">
+      No trackers · No advertisements · No accounts · No cookies · Circulated anonymously
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

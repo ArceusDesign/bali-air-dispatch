@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preview · Template 3 — Long-form Essay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --parchment:#faf5e8;
+  --parchment-soft:#f3ecd8;
+  --ink:#1a150e;
+  --ink-soft:#3b342a;
+  --ink-faint:#746a5b;
+  --hairline:#c7b99a;
+  --rust:#8a3f20;
+  --green:#3f553a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+html,body{background:var(--parchment);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{
+  font-family:"EB Garamond",Georgia,serif;
+  font-size:19px;line-height:1.65;
+  padding-bottom:120px;
+}
+
+/* subtle paper texture */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' seed='8'/><feColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0 0.03 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  mix-blend-mode:multiply;opacity:.45;
+}
+
+/* ========== NAMEPLATE ========== */
+.nameplate{
+  text-align:center;padding:62px 24px 24px 24px;position:relative;
+}
+.nameplate .ornament{
+  font-family:"Cormorant Garamond",serif;font-size:26px;letter-spacing:.7em;margin-bottom:18px;color:var(--rust);
+}
+.nameplate h1{
+  font-family:"Cormorant Garamond",serif;font-weight:500;font-style:italic;
+  font-size:clamp(44px,5.6vw,84px);line-height:1.05;letter-spacing:.005em;
+  color:var(--ink);
+}
+.nameplate .sub{
+  margin-top:14px;
+  font-family:"EB Garamond",serif;font-size:15px;letter-spacing:.36em;text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.nameplate-rule{
+  max-width:180px;margin:30px auto 0 auto;height:1px;background:var(--hairline);
+}
+.nameplate-dateline{
+  margin-top:16px;text-align:center;
+  font-family:"EB Garamond",serif;font-variant:small-caps;letter-spacing:.16em;
+  color:var(--ink-faint);font-size:13px;
+}
+
+/* ========== BODY CONTAINER ========== */
+.page{max-width:720px;margin:0 auto;padding:0 24px;position:relative}
+
+/* ========== TITLE ========== */
+.title-block{padding:54px 0 32px 0;text-align:center;border-bottom:1px solid var(--hairline)}
+.title-block .kicker{
+  font-family:"EB Garamond",serif;font-variant:small-caps;letter-spacing:.28em;
+  color:var(--rust);font-size:13.5px;margin-bottom:16px;
+}
+.title-block h2{
+  font-family:"Cormorant Garamond",serif;font-weight:400;
+  font-size:clamp(42px,5.4vw,72px);line-height:1.04;letter-spacing:-.005em;
+  color:var(--ink);
+}
+.title-block h2 em{font-style:italic;color:var(--rust)}
+.title-block .byline{
+  margin-top:22px;
+  font-family:"EB Garamond",serif;font-style:italic;font-size:16px;color:var(--ink-soft);
+}
+
+/* ========== ORNAMENTAL SECTION BREAK ========== */
+.ornament-break{
+  text-align:center;padding:24px 0;
+  font-family:"Cormorant Garamond",serif;color:var(--rust);
+  font-size:18px;letter-spacing:1em;
+}
+.ornament-break::before{content:"\2766 \2766 \2766"}
+
+/* ========== LEAD PARAGRAPH ========== */
+.lead-para{
+  padding:34px 0 14px 0;
+  font-size:20px;line-height:1.75;
+}
+.lead-para::first-letter{
+  font-family:"Cormorant Garamond",serif;font-weight:400;
+  font-size:82px;line-height:.8;float:left;padding:14px 12px 0 0;color:var(--rust);
+}
+
+/* ========== BODY PARAGRAPHS ========== */
+.page p{margin-bottom:22px}
+.page p strong{color:var(--ink);font-weight:600}
+.page p em{color:var(--ink-soft)}
+
+/* ========== SUBHEAD ========== */
+.page h3{
+  font-family:"Cormorant Garamond",serif;font-weight:500;font-style:italic;
+  font-size:32px;line-height:1.2;
+  margin:36px 0 14px 0;color:var(--ink);
+  text-align:center;letter-spacing:.005em;
+}
+.page h3::before{
+  content:"\203B";display:block;color:var(--rust);font-size:20px;margin-bottom:8px;font-style:normal;
+}
+
+/* ========== MARGIN NOTES (aside) ========== */
+@media(min-width:1100px){
+  .aside{
+    position:absolute;right:-260px;width:220px;top:0;
+    font-family:"EB Garamond",serif;font-size:14px;line-height:1.5;
+    color:var(--ink-soft);font-style:italic;
+    padding-top:6px;border-top:1px solid var(--hairline);
+  }
+  .aside .lbl{
+    font-variant:small-caps;font-style:normal;letter-spacing:.24em;
+    color:var(--rust);font-size:11px;display:block;margin-bottom:6px;
+  }
+  .has-aside{position:relative}
+}
+@media(max-width:1099px){
+  .aside{
+    border-left:2px solid var(--rust);padding:2px 0 2px 18px;margin:18px 0;
+    font-family:"EB Garamond",serif;font-style:italic;font-size:16px;color:var(--ink-soft);
+  }
+  .aside .lbl{font-variant:small-caps;font-style:normal;letter-spacing:.2em;color:var(--rust);font-size:11px;display:block;margin-bottom:4px}
+}
+
+/* ========== STATS EMBEDDED IN BODY ========== */
+.figure{
+  margin:36px 0;text-align:center;padding:28px 0;
+  border-top:1px solid var(--hairline);border-bottom:1px solid var(--hairline);
+}
+.figure .cap{
+  font-family:"EB Garamond",serif;font-variant:small-caps;letter-spacing:.22em;
+  color:var(--ink-faint);font-size:12px;margin-bottom:14px;
+}
+.figure .big{
+  font-family:"Cormorant Garamond",serif;font-weight:400;font-style:italic;
+  font-size:94px;line-height:.95;color:var(--rust);letter-spacing:-.005em;
+}
+.figure .expl{
+  font-family:"EB Garamond",serif;font-size:16px;color:var(--ink-soft);margin-top:14px;
+  max-width:480px;margin-left:auto;margin-right:auto;line-height:1.5;
+}
+
+/* ========== BLOCK QUOTE ========== */
+.bq{
+  margin:44px auto;max-width:600px;padding:22px 32px;
+  border-left:3px solid var(--rust);border-right:3px solid var(--rust);
+  text-align:center;
+}
+.bq q{
+  font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:400;
+  font-size:28px;line-height:1.3;color:var(--ink);
+  display:block;
+}
+.bq .src{
+  margin-top:14px;font-family:"EB Garamond",serif;font-variant:small-caps;
+  letter-spacing:.22em;color:var(--ink-faint);font-size:12px;
+}
+
+/* ========== INLINE TABLE (small, elegant) ========== */
+.dtl{
+  font-family:"EB Garamond",serif;
+  width:100%;margin:24px 0;border-collapse:collapse;font-size:16.5px;
+}
+.dtl th{
+  font-variant:small-caps;letter-spacing:.2em;font-size:12px;
+  color:var(--ink-faint);text-align:left;
+  padding:10px 8px;border-bottom:1px solid var(--rust);
+}
+.dtl td{
+  padding:10px 8px;border-bottom:1px dotted var(--hairline);
+  vertical-align:baseline;
+}
+.dtl td.num{font-family:"JetBrains Mono",monospace;font-size:14px;text-align:right;color:var(--ink-soft)}
+.dtl td.num.hi{color:var(--rust);font-weight:500}
+.dtl td.st{font-variant:small-caps;letter-spacing:.14em;color:var(--ink-faint);font-size:13px}
+.dtl td.st.off{color:var(--rust)}
+
+/* ========== PAGE FOOTER ========== */
+.colophon{
+  max-width:720px;margin:80px auto 0 auto;padding:48px 24px 0 24px;
+  border-top:1px solid var(--hairline);text-align:center;
+  font-family:"EB Garamond",serif;font-size:15px;color:var(--ink-soft);
+}
+.colophon .lbl{
+  font-variant:small-caps;letter-spacing:.32em;color:var(--rust);font-size:12px;margin-bottom:14px;
+}
+.colophon p{font-style:italic;line-height:1.7;margin-bottom:12px}
+.colophon .links{
+  margin-top:22px;display:flex;gap:22px;justify-content:center;flex-wrap:wrap;
+  font-variant:small-caps;letter-spacing:.2em;font-style:normal;font-size:13px;
+}
+.colophon .links a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rust);padding-bottom:2px}
+.colophon .links a:hover{color:var(--rust)}
+
+</style>
+</head>
+<body>
+
+  <div class="nameplate">
+    <div class="ornament">B  ·  A  ·  Q</div>
+    <h1>The Bali Air Quarterly</h1>
+    <div class="sub">An essay in three parts on what is being measured, and what is not.</div>
+    <div class="nameplate-rule"></div>
+    <div class="nameplate-dateline">Friday, the seventeenth of April, two thousand twenty-six · Ubud, Bali</div>
+  </div>
+
+  <article class="page">
+
+    <!-- TITLE -->
+    <div class="title-block">
+      <div class="kicker">Essay no. one</div>
+      <h2>The Particulate, <em>& the Silence</em></h2>
+      <div class="byline">Filed from Ubud · Correspondence to baliair@protonmail.com</div>
+    </div>
+
+    <div class="ornament-break"></div>
+
+    <!-- LEAD -->
+    <p class="lead-para has-aside">
+      In April of 2026, the provincial government of Bali issued a small regulation with a large effect: the Suwung landfill, for years the island's primary endpoint for organic waste, would stop accepting it. The rule was presented as a step toward better waste management. It was. It was also — in practice, and without the infrastructure to absorb the shift — an invitation to burn.
+      <span class="aside">
+        <span class="lbl">Note I</span>
+        See the Hey Bali News report of late March 2026: seven tonnes of daily waste now entering Bali's rivers, household burning rising in Denpasar and Canggu. The present essay does not attempt to adjudicate cause; it documents what the sensors saw.
+      </span>
+    </p>
+
+    <p>Within weeks, residents across Ubud, Kerobokan, Canggu and Jimbaran reported a visible increase in smoke — at compound edges, along rivers, in the early morning, and at dusk. Such accounts are <em>anecdotes</em>; they are also, individually, unfalsifiable. To ask whether the air is worse than it was is a question for instruments, not impressions.</p>
+
+    <p>What follows is an inventory of the instruments presently in place across the island, of what they say, and — perhaps more importantly — of what, collectively, they cannot.</p>
+
+    <!-- ORNAMENT BREAK -->
+    <div class="ornament-break"></div>
+
+    <!-- SUBHEAD -->
+    <h3>Seven sensors, two networks</h3>
+
+    <p>Public, downloadable historical air quality data for Bali exists for exactly seven sensors, on two open platforms. The AQICN network preserves records for the <strong>Kerobokan community sensor</strong>, which operated from November 2024 until March 2026 and now sits quiet, and for the <strong>Denpasar government KLHK station</strong>, which operated from September 2023 until a sharp, unexplained spike on the 9th of August 2025 and has not reported since. Between them, these two sensors produced just over a thousand days of record.</p>
+
+    <p>OpenAQ preserves histories for three private AirGradient sensors: one in Ubud (Rozendal, 167 days), one at Balangan (26 days), and one at Kopernik in central Ubud (36 days, merged from two co-located units). All three are now offline. Two PurpleAir units in Klungkung and Jimbaran are still reporting — nearly two years of continuous data between them.</p>
+
+    <!-- BIG FIGURE -->
+    <div class="figure">
+      <div class="cap">Kopernik, Ubud · October 2025 – March 2026</div>
+      <div class="big">92%</div>
+      <div class="expl">of the 36 recorded days exceeded the World Health Organization's 2021 guideline for 24-hour PM2.5 exposure (15 µg/m³). The daily mean reached 111 µg/m³ on 26 February 2026, placing the air in the <em>Unhealthy</em> band of the U.S. EPA Air Quality Index.</div>
+    </div>
+
+    <p class="has-aside">
+      One response to such figures is to object: a single sensor cannot speak for a neighbourhood, let alone an island. That is correct. It is also the essay's central point. The problem is not that the numbers are alarming; it is that there are so few of them.
+      <span class="aside">
+        <span class="lbl">Note II</span>
+        There is no multi-year public record for Sanur, for North Bali, or for East Bali outside a handful of resort-adjacent private sensors. The conclusions that follow from the available data are, of necessity, partial.
+      </span>
+    </p>
+
+    <!-- SECTION -->
+    <h3>What the numbers do, and do not, show</h3>
+
+    <p>Across the record, a pattern recurs. The <strong>Kerobokan sensor's mean PM2.5 over 469 days was 21.9 µg/m³</strong> — 4.4 times the WHO annual guideline. Sixty-eight percent of its recorded days exceeded the 24-hour guideline. The Denpasar station, in its own record of 548 days, averaged 15.1 µg/m³; about 40% of days exceeded the 24-hour guideline. The OpenAQ AirGradient sensors, though shorter in tenure, track the same range.</p>
+
+    <table class="dtl">
+      <thead>
+        <tr><th>Sensor</th><th>Days</th><th>Mean</th><th>% &gt; 15</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Kerobokan / Umalas</td><td class="num">469</td><td class="num hi">21.9</td><td class="num hi">68%</td><td class="st off">offline, march '26</td></tr>
+        <tr><td>Denpasar / KLHK</td><td class="num">548</td><td class="num hi">15.1</td><td class="num">~40%</td><td class="st off">offline, august '25</td></tr>
+        <tr><td>Kopernik / Ubud</td><td class="num">36</td><td class="num hi">31.2</td><td class="num hi">92%</td><td class="st off">offline, march '26</td></tr>
+        <tr><td>Ubud / Rozendal</td><td class="num">167</td><td class="num hi">17.8</td><td class="num hi">57%</td><td class="st off">offline, december '25</td></tr>
+        <tr><td>Balangan</td><td class="num">26</td><td class="num hi">15.4</td><td class="num">46%</td><td class="st off">offline, august '25</td></tr>
+        <tr><td>Klungkung / Lumi</td><td class="num">687</td><td class="num">—</td><td class="num">—</td><td class="st">active</td></tr>
+        <tr><td>Jimbaran / Lumi</td><td class="num">728</td><td class="num">—</td><td class="num">—</td><td class="st">active</td></tr>
+      </tbody>
+    </table>
+
+    <p>What one <em>cannot</em> conclude from the above is whether the patterns described are representative of Bali as a whole, or whether particulate concentrations have risen, fallen, or held steady since the April regulation. The record is too thin, the geography too patchy, and the gaps — Sanur, Ubud for the months since December, North Bali at all — too many.</p>
+
+    <!-- BLOCKQUOTE -->
+    <div class="bq">
+      <q>Without distributed monitoring, it is impossible to determine whether the patterns above are representative of the island.</q>
+      <div class="src">Section 09 · Historical Data</div>
+    </div>
+
+    <h3>An argument for more instruments</h3>
+
+    <p>The instruments exist. A consumer-grade PurpleAir sensor costs around USD 229; an AirGradient Open Air costs USD 195. A network of ten such devices, distributed across populated Bali and publishing to an open API, would transform what we are able to say. The cost is small; the institutional will, presently, is absent. <strong>That is the gap this document is here to describe.</strong></p>
+
+    <p>A second essay, forthcoming, will examine what a minimal distributed network would cost to operate, who might host it, and what guarantees of independence such a project would require. For now, the record — incomplete, unevenly distributed, and quietly alarming — is what is public.</p>
+
+    <div class="ornament-break"></div>
+
+  </article>
+
+  <!-- COLOPHON -->
+  <footer class="colophon">
+    <div class="lbl">Colophon</div>
+    <p>This is an independent, anonymous publication. It has no commercial interest, no affiliation with any government or non-governmental organisation, and receives no funding. It exists solely to make publicly available air quality data more legible.</p>
+    <p>All figures cited are drawn directly from the cited APIs and are reproducible from the open data. Queries, corrections, and contributions are warmly received.</p>
+    <div class="links">
+      <a href="/monitor">The Live Map</a>
+      <a href="#">The Registry</a>
+      <a href="mailto:baliair@protonmail.com">Correspondence</a>
+    </div>
+  </footer>
+
+</body>
+</html>

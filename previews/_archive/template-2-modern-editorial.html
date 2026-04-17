@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preview · Template 2 — Modern Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bone:#f8f4ec;          /* soft bone */
+  --bone-soft:#f2ede2;
+  --ink:#191613;
+  --ink-soft:#3a342d;
+  --ink-faint:#7a7165;
+  --rule:#1c1814;
+  --hairline:#d7cebb;
+  --ochre:#b6541f;          /* burnt accent */
+  --teal:#0d5244;           /* deep alt accent */
+  --amber:#c7902a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bone);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{
+  font-family:"Instrument Sans",ui-sans-serif,system-ui,sans-serif;
+  font-size:16px;line-height:1.55;
+  padding-bottom:80px;
+}
+
+.wrap{max-width:1400px;margin:0 auto;padding:0 42px}
+@media(max-width:720px){.wrap{padding:0 20px}}
+
+/* ========== HEADER ========== */
+.top{
+  display:grid;grid-template-columns:auto 1fr auto;gap:28px;align-items:center;
+  padding:20px 0;border-bottom:1px solid var(--rule);
+}
+.logo{
+  font-family:"Instrument Serif",serif;font-weight:400;
+  font-size:26px;line-height:1;letter-spacing:-.01em;
+}
+.logo em{font-style:italic;color:var(--ochre)}
+.top-nav{display:flex;gap:26px;justify-content:center;flex-wrap:wrap}
+.top-nav a{
+  color:var(--ink);text-decoration:none;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding:4px 0;border-bottom:1px solid transparent;transition:.18s;
+}
+.top-nav a:hover{border-color:var(--ochre);color:var(--ochre)}
+.top-right{
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-faint);text-align:right;
+}
+.top-right .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ochre);margin-right:7px;vertical-align:middle;animation:blink 2.4s infinite}
+@keyframes blink{50%{opacity:.3}}
+
+/* ========== HERO ========== */
+.hero{padding:88px 0 70px 0;position:relative}
+.hero .meta{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);
+  margin-bottom:32px;
+  display:grid;grid-template-columns:auto 1fr auto;gap:20px;
+}
+.hero .meta .line{border-top:1px solid var(--hairline);margin-top:7px}
+.hero h1{
+  font-family:"Instrument Serif",serif;font-weight:400;
+  font-size:clamp(56px,9vw,148px);line-height:.93;letter-spacing:-.035em;
+  color:var(--ink);
+}
+.hero h1 em{font-style:italic;color:var(--ochre);letter-spacing:-.04em}
+.hero .deck{
+  max-width:720px;margin-top:28px;
+  font-family:"Instrument Serif",serif;font-style:italic;
+  font-size:clamp(19px,1.8vw,24px);line-height:1.42;color:var(--ink-soft);
+}
+
+/* oversized numeral accent */
+.hero .marker{
+  position:absolute;right:0;top:60px;
+  font-family:"Instrument Serif",serif;font-weight:400;
+  font-size:260px;line-height:.8;color:var(--bone-soft);
+  user-select:none;pointer-events:none;z-index:0;
+  letter-spacing:-.06em;
+}
+@media(max-width:900px){.hero .marker{display:none}}
+.hero > *{position:relative;z-index:1}
+
+/* ========== GIANT STAT BAR ========== */
+.stat-bar{
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  display:grid;grid-template-columns:repeat(4,1fr);
+}
+@media(max-width:900px){.stat-bar{grid-template-columns:repeat(2,1fr)}}
+.stat-bar > div{
+  padding:30px 24px;border-right:1px solid var(--hairline);
+  display:flex;flex-direction:column;justify-content:space-between;min-height:180px;
+}
+.stat-bar > div:last-child{border-right:none}
+.stat-bar .n{
+  font-family:"Instrument Serif",serif;font-weight:400;
+  font-size:clamp(60px,7.5vw,108px);line-height:.92;letter-spacing:-.03em;
+  color:var(--ink);
+}
+.stat-bar .n .u{font-size:36%;color:var(--ochre);font-style:italic;margin-left:6px}
+.stat-bar .l{
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);margin-top:16px;line-height:1.5;
+}
+
+/* ========== SECTION LAYOUT ========== */
+.section{
+  display:grid;grid-template-columns:220px 1fr;gap:60px;
+  padding:72px 0;border-bottom:1px solid var(--hairline);
+}
+@media(max-width:900px){.section{grid-template-columns:1fr;gap:28px;padding:48px 0}}
+.section-label{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);
+  padding-top:6px;position:sticky;top:20px;align-self:start;
+}
+.section-label .num{color:var(--ochre);font-weight:500;margin-right:8px}
+.section-body{max-width:780px}
+.section-body h2{
+  font-family:"Instrument Serif",serif;font-weight:400;font-style:italic;
+  font-size:clamp(36px,4.6vw,62px);line-height:1.02;letter-spacing:-.022em;
+  margin-bottom:26px;color:var(--ink);
+}
+.section-body h2 strong{font-style:normal;font-weight:400;color:var(--ink)}
+.section-body p{font-size:17px;line-height:1.65;margin-bottom:20px;color:var(--ink-soft)}
+.section-body p strong{color:var(--ink);font-weight:600}
+
+/* highlighted inline */
+.mark{background:linear-gradient(transparent 60%,rgba(182,84,31,.18) 60%);padding:0 2px}
+
+/* ========== INLINE DATA CARDS ========== */
+.data-row{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:32px 0;
+}
+@media(max-width:720px){.data-row{grid-template-columns:1fr}}
+.data-card{
+  padding:28px 22px;border:1px solid var(--hairline);background:var(--bone-soft);
+  border-radius:0;position:relative;
+}
+.data-card .cap{
+  font-family:"JetBrains Mono",monospace;font-size:10px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:12px;
+}
+.data-card .big{
+  font-family:"Instrument Serif",serif;font-weight:400;
+  font-size:54px;line-height:.95;color:var(--ink);letter-spacing:-.02em;
+}
+.data-card .sm{font-size:14px;line-height:1.5;color:var(--ink-soft);margin-top:10px}
+.data-card.alert{background:#f2d8c7;border-color:var(--ochre)}
+.data-card.alert .big{color:var(--ochre)}
+
+/* ========== PULL QUOTE ========== */
+.quote{
+  padding:90px 0;text-align:left;border-bottom:1px solid var(--hairline);
+  display:grid;grid-template-columns:220px 1fr;gap:60px;
+}
+@media(max-width:900px){.quote{grid-template-columns:1fr}}
+.quote .tag{
+  font-family:"JetBrains Mono",monospace;font-size:11px;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--ochre);
+}
+.quote q{
+  font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;
+  font-size:clamp(32px,4.4vw,58px);line-height:1.12;letter-spacing:-.018em;
+  color:var(--ink);display:block;
+}
+.quote q::before{content:"\201C ";font-style:normal;color:var(--ochre);margin-right:2px}
+.quote q::after{content:"\201D";font-style:normal;color:var(--ochre);margin-left:2px}
+.quote .attr{
+  font-family:"JetBrains Mono",monospace;font-size:11px;margin-top:28px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);
+}
+
+/* ========== REGISTRY TABLE ========== */
+.registry{padding:72px 0}
+.registry-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px;flex-wrap:wrap;gap:16px}
+.registry-head h3{
+  font-family:"Instrument Serif",serif;font-weight:400;font-size:44px;letter-spacing:-.02em;
+}
+.registry-head .note{
+  font-family:"JetBrains Mono",monospace;font-size:11px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);
+}
+.rt{width:100%;border-collapse:collapse}
+.rt th{
+  font-family:"JetBrains Mono",monospace;font-weight:500;
+  font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);
+  text-align:left;padding:12px 14px 12px 0;border-bottom:1px solid var(--rule);
+}
+.rt td{
+  padding:18px 14px 18px 0;border-bottom:1px solid var(--hairline);
+  font-size:15px;color:var(--ink-soft);
+}
+.rt td.label{color:var(--ink);font-weight:600}
+.rt td.num{
+  font-family:"Instrument Serif",serif;font-weight:400;font-size:22px;color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.rt td.num.warn{color:var(--ochre)}
+.rt td.num.red{color:#a4291b}
+.pill{
+  display:inline-block;padding:3px 9px;border-radius:3px;
+  font-family:"JetBrains Mono",monospace;font-size:10px;
+  letter-spacing:.16em;text-transform:uppercase;
+}
+.pill.active{background:#dfead0;color:#305b22}
+.pill.off{background:#efe1d4;color:#8c4115}
+
+/* ========== FOOTER ========== */
+.foot{
+  border-top:1px solid var(--rule);padding:48px 0 0 0;
+  display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;
+}
+@media(max-width:900px){.foot{grid-template-columns:1fr 1fr}}
+.foot .brand{
+  font-family:"Instrument Serif",serif;font-size:34px;line-height:1;letter-spacing:-.02em;
+}
+.foot .brand em{font-style:italic;color:var(--ochre)}
+.foot h4{
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;font-weight:500;
+}
+.foot a,.foot p{
+  font-size:14px;color:var(--ink-soft);text-decoration:none;display:block;margin-bottom:8px;line-height:1.5;
+}
+.foot a:hover{color:var(--ochre)}
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="logo">Bali Air <em>Quarterly</em></div>
+    <nav class="top-nav">
+      <a href="#brief">Brief</a>
+      <a href="#registry">Registry</a>
+      <a href="#history">History</a>
+      <a href="/monitor">Live Map</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <div class="top-right"><span class="dot"></span>Updated 17 Apr 2026</div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="marker">17·04·26</div>
+    <div class="meta">
+      <span>Issue no. 01</span>
+      <span class="line"></span>
+      <span>Investigation · Bali, Indonesia</span>
+    </div>
+    <h1>A quiet crisis, <em>politely unmeasured.</em></h1>
+    <p class="deck">Bali's sole urban government air quality station has been offline for eight months. Seven private sensors tell a consistent, uncomfortable story — one the province is not formally keeping records of.</p>
+  </section>
+
+  <!-- STAT BAR -->
+  <section class="stat-bar">
+    <div>
+      <div class="n">92<span class="u">%</span></div>
+      <div class="l">Days at the Kopernik / Ubud sensor that exceeded the WHO 24-hour PM2.5 guideline</div>
+    </div>
+    <div>
+      <div class="n">4.4<span class="u">×</span></div>
+      <div class="l">Kerobokan's 469-day mean relative to the WHO 2021 annual PM2.5 guideline</div>
+    </div>
+    <div>
+      <div class="n">1</div>
+      <div class="l">Government station currently operating anywhere on the island (Badung Sempidi)</div>
+    </div>
+    <div>
+      <div class="n">0</div>
+      <div class="l">Multi-year public records for Sanur, Ubud, North Bali, or East Bali</div>
+    </div>
+  </section>
+
+  <!-- SECTION 01 -->
+  <section class="section" id="brief">
+    <div class="section-label"><span class="num">01</span>Context</div>
+    <div class="section-body">
+      <h2>After the <em>landfill</em> closed its gates.</h2>
+      <p>In April 2026, the provincial government tightened its position on organic waste: Suwung, Bali's primary landfill for decades, stopped accepting organic material. The rule was described as a step toward better waste management. In the weeks that followed, residents across Ubud, Kerobokan, Canggu and Jimbaran reported a visible increase in <strong>burning</strong> — in households, at compound edges, along rivers, in the early morning and after dark.</p>
+      <p>A regulation is only as useful as the infrastructure that supports compliance. When organic waste cannot go to the landfill and composting is not widely available, it does not disappear. It burns — and <span class="mark">PM2.5 is what it leaves in the air</span>.</p>
+
+      <div class="data-row">
+        <div class="data-card">
+          <div class="cap">WHO 2021 · Annual</div>
+          <div class="big">5</div>
+          <div class="sm">µg/m³ — the target for long-term PM2.5 exposure</div>
+        </div>
+        <div class="data-card">
+          <div class="cap">WHO 2021 · 24-hour</div>
+          <div class="big">15</div>
+          <div class="sm">µg/m³ — the target for a single day's exposure</div>
+        </div>
+        <div class="data-card alert">
+          <div class="cap">Kerobokan · Mean</div>
+          <div class="big">21.9</div>
+          <div class="sm">µg/m³ over 469 days · 4.4× the annual guideline</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 02 -->
+  <section class="section" id="what-we-know">
+    <div class="section-label"><span class="num">02</span>What the record shows</div>
+    <div class="section-body">
+      <h2>Seven sensors, <em>two networks</em>, one picture.</h2>
+      <p>Public historical data exists for only a handful of Bali air quality monitors. The AQICN network preserves records for the <strong>Kerobokan community sensor</strong> (469 days, now offline) and the <strong>Denpasar government KLHK station</strong> (548 days, offline since August 2025). OpenAQ preserves CSVs for three additional private AirGradient sensors in Ubud, Balangan and Kopernik — all now offline as well.</p>
+      <p>Two PurpleAir units in Klungkung and Jimbaran are still reporting. Together these seven sensors produce an uneven, patchy, but consistently sobering picture: most days in populated Bali exceed the WHO 24-hour guideline. Some months, almost all days do.</p>
+    </div>
+  </section>
+
+  <!-- QUOTE -->
+  <section class="quote">
+    <div>
+      <div class="tag">Section 09</div>
+    </div>
+    <div>
+      <q>Without distributed monitoring, it is impossible to determine whether the patterns seen in Kerobokan and Denpasar are representative of the island as a whole.</q>
+      <div class="attr">Historical Data · Bali Air Quarterly, Issue 01</div>
+    </div>
+  </section>
+
+  <!-- REGISTRY TABLE -->
+  <section class="registry" id="registry">
+    <div class="registry-head">
+      <h3>The sensor registry.</h3>
+      <div class="note">17.iv.2026 · 12:27 WITA · 7 of 7 tracked</div>
+    </div>
+    <table class="rt">
+      <thead>
+        <tr><th>Sensor</th><th>Area</th><th>Network</th><th>Days</th><th>Mean PM2.5</th><th>% &gt; WHO 24h</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="label">Kerobokan / Umalas</td><td>Canggu corridor</td><td>AQICN · GAIA</td><td class="num">469</td><td class="num warn">21.9</td><td class="num red">68%</td><td><span class="pill off">Offline</span></td></tr>
+        <tr><td class="label">Denpasar / KLHK</td><td>Central Denpasar</td><td>AQICN · Govt.</td><td class="num">548</td><td class="num warn">15.1</td><td class="num">~40%</td><td><span class="pill off">Offline</span></td></tr>
+        <tr><td class="label">Kopernik / Ubud</td><td>Ubud</td><td>OpenAQ · AirGradient</td><td class="num">36</td><td class="num red">31.2</td><td class="num red">92%</td><td><span class="pill off">Offline</span></td></tr>
+        <tr><td class="label">Ubud / Rozendal</td><td>Ubud</td><td>OpenAQ · AirGradient</td><td class="num">167</td><td class="num warn">17.8</td><td class="num warn">57%</td><td><span class="pill off">Offline</span></td></tr>
+        <tr><td class="label">Balangan</td><td>Bukit peninsula</td><td>OpenAQ · AirGradient</td><td class="num">26</td><td class="num warn">15.4</td><td class="num">46%</td><td><span class="pill off">Offline</span></td></tr>
+        <tr><td class="label">Klungkung / Lumi</td><td>East Bali</td><td>PurpleAir</td><td class="num">687</td><td class="num">—</td><td class="num">—</td><td><span class="pill active">Active</span></td></tr>
+        <tr><td class="label">Jimbaran / Lumi</td><td>South coast</td><td>PurpleAir</td><td class="num">728</td><td class="num">—</td><td class="num">—</td><td><span class="pill active">Active</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="foot" id="contact">
+    <div>
+      <div class="brand">Bali Air <em>Quarterly</em></div>
+      <p style="margin-top:14px">An independent, anonymous, non-commercial publication. Public-interest data journalism. No tracking, no ads, no affiliations.</p>
+    </div>
+    <div>
+      <h4>Data</h4>
+      <a href="https://openaq.org" target="_blank">OpenAQ</a>
+      <a href="https://aqicn.org" target="_blank">AQICN</a>
+      <a href="https://purpleair.com" target="_blank">PurpleAir</a>
+      <a href="https://iqair.com" target="_blank">IQAir</a>
+    </div>
+    <div>
+      <h4>Read</h4>
+      <a href="#brief">Brief</a>
+      <a href="#registry">Registry</a>
+      <a href="/monitor">Live Map</a>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

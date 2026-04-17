@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Preview · Template 4 — Observer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter+Tight:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fdfcfa;
+  --ink:#0c0c0c;
+  --ink-soft:#2a2a2a;
+  --ink-faint:#6b6b6b;
+  --hairline:#d8d6d1;
+  --rule:#0c0c0c;
+  --accent:#c52727;        /* channel-tag red */
+  --accent-blue:#2058c8;
+  --accent-ochre:#b27b2c;
+  --accent-green:#2b6f3a;
+  --wash:#f4f1ea;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-feature-settings:"ss01","ss02","kern","liga"}
+body{font-family:"Inter Tight",system-ui,sans-serif;font-size:16px;line-height:1.55}
+a{color:inherit}
+.wrap{max-width:1400px;margin:0 auto;padding:0 40px}
+@media(max-width:720px){.wrap{padding:0 20px}}
+
+/* preview banner */
+.preview-banner{position:sticky;top:0;z-index:50;background:var(--ink);color:var(--paper);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;padding:8px 18px;text-align:center}
+
+/* ===== TOP BAR ===== */
+.topbar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 0;border-bottom:1px solid var(--hairline);
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);
+}
+.topbar .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:7px;vertical-align:1px}
+
+/* ===== MASTHEAD ===== */
+.masthead{padding:34px 0 18px 0;text-align:center;border-bottom:1px solid var(--rule)}
+.masthead h1{
+  font-family:"Playfair Display",serif;font-weight:900;font-style:italic;
+  font-size:clamp(60px,10vw,148px);line-height:.9;letter-spacing:-.035em;
+  color:var(--ink);
+}
+.masthead h1 .the{font-style:normal;font-weight:400;color:var(--accent);display:block;font-size:.42em;letter-spacing:.04em;margin-bottom:-4px}
+.masthead .tag{
+  margin-top:14px;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink-faint);
+}
+
+/* ===== CHANNEL NAV ===== */
+.channels{
+  display:flex;justify-content:center;flex-wrap:wrap;gap:28px;
+  padding:14px 0;border-bottom:1px solid var(--rule);
+  font-family:"Inter Tight",sans-serif;font-weight:600;
+  font-size:13.5px;letter-spacing:.01em;
+}
+.channels a{text-decoration:none;color:var(--ink)}
+.channels a:hover{color:var(--accent)}
+.channels a.active{color:var(--accent)}
+
+/* ===== HERO LEAD ===== */
+.hero{
+  display:grid;grid-template-columns:1.6fr 1fr;gap:56px;
+  padding:44px 0 46px 0;border-bottom:1px solid var(--rule);
+}
+@media(max-width:900px){.hero{grid-template-columns:1fr;gap:26px}}
+.tag-chip{
+  display:inline-block;padding:4px 12px;
+  background:var(--accent);color:var(--paper);
+  font-family:"Inter Tight",sans-serif;font-weight:700;
+  font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+}
+.tag-chip.blue{background:var(--accent-blue)}
+.tag-chip.ochre{background:var(--accent-ochre)}
+.tag-chip.green{background:var(--accent-green)}
+.hero h2{
+  font-family:"Playfair Display",serif;font-weight:700;
+  font-size:clamp(40px,5.2vw,78px);line-height:1.02;letter-spacing:-.018em;
+  margin-top:18px;color:var(--ink);
+}
+.hero h2 em{font-style:italic}
+.hero .deck{
+  margin-top:22px;
+  font-family:"Playfair Display",serif;font-weight:400;font-style:italic;
+  font-size:clamp(19px,1.9vw,24px);line-height:1.42;color:var(--ink-soft);
+}
+.hero .byline{
+  margin-top:22px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);
+}
+.hero .byline .dot{color:var(--hairline)}
+
+/* sidebar chart visual */
+.hero-side{
+  border-left:1px solid var(--hairline);padding-left:36px;
+}
+@media(max-width:900px){.hero-side{border-left:none;padding-left:0;border-top:1px solid var(--hairline);padding-top:26px}}
+.hero-side .label{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px}
+.hero-side svg{width:100%;height:auto;display:block}
+.hero-side .caption{margin-top:12px;font-size:13px;color:var(--ink-soft);line-height:1.5;font-style:italic;font-family:"Playfair Display",serif}
+
+/* ===== CARD ROW ===== */
+.stories{
+  padding:48px 0;border-bottom:1px solid var(--rule);
+  display:grid;grid-template-columns:repeat(3,1fr);gap:40px;
+}
+@media(max-width:900px){.stories{grid-template-columns:1fr;gap:36px}}
+.card{display:flex;flex-direction:column}
+.card .fig{
+  background:var(--wash);height:220px;border:1px solid var(--hairline);
+  display:flex;align-items:center;justify-content:center;position:relative;
+  overflow:hidden;
+}
+.card .fig svg{width:90%;height:auto}
+.card .fig .big{
+  font-family:"Playfair Display",serif;font-weight:900;font-style:italic;
+  font-size:clamp(88px,11vw,156px);line-height:1;color:var(--ink);letter-spacing:-.04em;
+}
+.card .fig .big.red{color:var(--accent)}
+.card .fig .big.blue{color:var(--accent-blue)}
+.card .chip-row{margin-top:18px}
+.card h3{
+  font-family:"Playfair Display",serif;font-weight:700;
+  font-size:28px;line-height:1.08;letter-spacing:-.012em;
+  margin-top:10px;color:var(--ink);
+}
+.card p{
+  margin-top:10px;
+  font-size:14.5px;line-height:1.55;color:var(--ink-soft);
+}
+.card .meta{
+  margin-top:14px;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);
+}
+
+/* ===== QUOTE BAR ===== */
+.quote{
+  background:var(--ink);color:var(--paper);
+  padding:68px 0;
+}
+.quote .inner{max-width:1100px;margin:0 auto;padding:0 40px}
+.quote blockquote{
+  font-family:"Playfair Display",serif;font-weight:500;font-style:italic;
+  font-size:clamp(28px,3.6vw,50px);line-height:1.18;letter-spacing:-.01em;
+}
+.quote cite{
+  display:block;margin-top:28px;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-style:normal;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#bfbcb4;
+}
+
+/* ===== DATA TABLE ===== */
+.section{padding:52px 0;border-bottom:1px solid var(--rule)}
+.section-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  border-bottom:1px solid var(--rule);padding-bottom:12px;margin-bottom:26px;flex-wrap:wrap;gap:18px;
+}
+.section-head h2{
+  font-family:"Playfair Display",serif;font-weight:700;
+  font-size:clamp(32px,3.6vw,48px);line-height:1;letter-spacing:-.018em;
+}
+.section-head .meta{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint)}
+
+.registry{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.registry th,.registry td{text-align:left;padding:14px 16px;border-bottom:1px solid var(--hairline)}
+.registry th{
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;
+  font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);
+  border-bottom:2px solid var(--rule);
+}
+.registry td.n{font-family:"Playfair Display",serif;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.registry td.red{color:var(--accent)}
+.registry td.ochre{color:var(--accent-ochre)}
+.registry tr:hover td{background:var(--wash)}
+.pill{display:inline-block;padding:3px 10px;border:1.5px solid currentColor;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:500}
+.pill.red{color:var(--accent)}
+.pill.green{color:var(--accent-green)}
+.pill.gray{color:var(--ink-faint)}
+
+/* ===== 2-COL ESSAY ===== */
+.essay{display:grid;grid-template-columns:1fr 1fr;gap:56px;padding:52px 0;border-bottom:1px solid var(--rule)}
+@media(max-width:900px){.essay{grid-template-columns:1fr;gap:26px}}
+.essay h2{font-family:"Playfair Display",serif;font-weight:700;font-size:clamp(30px,3.4vw,44px);line-height:1.04;letter-spacing:-.015em;margin-bottom:18px}
+.essay p{margin-bottom:14px;font-size:16.5px;line-height:1.6;color:var(--ink-soft)}
+.essay p strong{color:var(--ink)}
+.essay p.first::first-letter{
+  font-family:"Playfair Display",serif;font-weight:900;font-style:italic;
+  font-size:82px;line-height:.85;float:left;padding:10px 12px 0 0;color:var(--accent);
+}
+
+/* ===== CTA STRIP ===== */
+.cta{padding:56px 0 36px 0;text-align:center}
+.cta h2{font-family:"Playfair Display",serif;font-style:italic;font-weight:500;font-size:clamp(32px,4vw,54px);line-height:1.05;letter-spacing:-.015em;max-width:900px;margin:0 auto}
+.cta h2 em{font-style:italic;color:var(--accent)}
+.cta .links{display:flex;justify-content:center;gap:18px;margin-top:32px;flex-wrap:wrap}
+.cta a{
+  display:inline-block;padding:14px 24px;border:1.5px solid var(--ink);background:var(--paper);
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;
+  text-decoration:none;color:var(--ink);font-weight:600;transition:background .15s,color .15s;
+}
+.cta a:hover{background:var(--ink);color:var(--paper)}
+.cta a.primary{background:var(--accent);border-color:var(--accent);color:var(--paper)}
+.cta a.primary:hover{background:var(--ink);border-color:var(--ink)}
+
+/* ===== FOOTER ===== */
+.foot{padding:40px 0 0 0;border-top:1px solid var(--rule);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:var(--ink-faint);line-height:1.8;text-transform:uppercase}
+.foot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px}
+@media(max-width:720px){.foot-grid{grid-template-columns:repeat(2,1fr)}}
+.foot h4{font-family:"Playfair Display",serif;font-weight:700;font-size:17px;text-transform:none;letter-spacing:-.005em;margin-bottom:10px;color:var(--ink)}
+.foot a{color:var(--ink-faint);text-decoration:none;border-bottom:1px dotted var(--hairline)}
+.foot a:hover{color:var(--accent);border-color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="preview-banner">Preview · Template 4 · Observer · Not deployed · Local review only</div>
+
+<div class="wrap">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div><span class="dot"></span>Live · Reporting from Bali · 17.iv.2026 · 12:27 WITA</div>
+    <div>Anonymous · Non-commercial · No trackers</div>
+  </div>
+
+  <!-- MASTHEAD -->
+  <header class="masthead">
+    <h1><span class="the">Vol. I — No. 17</span>Bali Air Dispatch</h1>
+    <div class="tag">A record of particulate matter, regulation, and the gaps between</div>
+  </header>
+
+  <!-- CHANNELS -->
+  <nav class="channels">
+    <a href="#" class="active">Brief</a>
+    <a href="#data">The Record</a>
+    <a href="#regulation">Regulation</a>
+    <a href="#gap">The Gap</a>
+    <a href="#demands">What Would Help</a>
+    <a href="/monitor">Live Monitor</a>
+    <a href="/appendix">Appendix</a>
+  </nav>
+
+  <!-- HERO LEAD -->
+  <section class="hero">
+    <div>
+      <span class="tag-chip">Investigation · Air Quality</span>
+      <h2>After the waste ban, <em>an island holds its breath — and we have no way to measure it.</em></h2>
+      <p class="deck">Bali's only government air-quality station for 4.4 million residents has gone offline. The community sensor that filled the gap went silent two weeks before April's landfill rules took effect. This is what the record, imperfect and fragmentary, currently shows.</p>
+      <div class="byline">
+        <span>Anonymous public-interest report</span>
+        <span class="dot">·</span>
+        <span>Data · OpenAQ · AQICN · PurpleAir · Nafas · IQAir</span>
+      </div>
+    </div>
+
+    <aside class="hero-side">
+      <div class="label">Kerobokan / daily median PM2.5 · 15 months</div>
+      <!-- Stylised sparkline -->
+      <svg viewBox="0 0 320 160" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#c52727" stop-opacity=".28"/>
+            <stop offset="100%" stop-color="#c52727" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- WHO guideline line -->
+        <line x1="0" y1="112" x2="320" y2="112" stroke="#0c0c0c" stroke-width="1" stroke-dasharray="4 3" opacity=".5"/>
+        <text x="4" y="108" font-family="JetBrains Mono" font-size="9" fill="#0c0c0c" opacity=".7">WHO 15 µg/m³</text>
+        <!-- Area -->
+        <path d="M0,140 L10,130 L22,118 L34,122 L48,108 L62,95 L76,88 L88,75 L100,72 L114,80 L128,62 L142,50 L156,58 L172,68 L186,40 L200,28 L214,48 L228,60 L242,56 L258,70 L270,90 L284,106 L298,120 L312,130 L320,134 L320,160 L0,160 Z" fill="url(#g1)"/>
+        <!-- Line -->
+        <path d="M0,140 L10,130 L22,118 L34,122 L48,108 L62,95 L76,88 L88,75 L100,72 L114,80 L128,62 L142,50 L156,58 L172,68 L186,40 L200,28 L214,48 L228,60 L242,56 L258,70 L270,90 L284,106 L298,120 L312,130" fill="none" stroke="#c52727" stroke-width="1.8"/>
+        <!-- dropoff indicator -->
+        <circle cx="312" cy="130" r="3.5" fill="#c52727"/>
+        <text x="260" y="153" font-family="JetBrains Mono" font-size="9" fill="#0c0c0c" opacity=".7">Offline · 15 Mar</text>
+      </svg>
+      <div class="caption">The line stops where the sensor did. 469 days of data, 68% above the WHO 24-hour guideline, then silence.</div>
+    </aside>
+  </section>
+
+  <!-- CARD ROW -->
+  <section class="stories">
+    <article class="card">
+      <div class="fig"><div class="big red">68%</div></div>
+      <div class="chip-row"><span class="tag-chip">Data</span></div>
+      <h3>Two in three days, the air exceeds the daily guideline.</h3>
+      <p>Of 469 days recorded at Kerobokan before the sensor went dark, 320 exceeded the WHO 24-hour PM2.5 guideline of 15 µg/m³. The typical daily median was 21.9 µg/m³ — four-and-a-half times the annual target.</p>
+      <div class="meta">Kerobokan · GAIA · Nov 2024 – Mar 2026</div>
+    </article>
+    <article class="card">
+      <div class="fig"><div class="big">1</div></div>
+      <div class="chip-row"><span class="tag-chip blue">Infrastructure</span></div>
+      <h3>One government sensor for an island of 4.4 million.</h3>
+      <p>Bali's second government station, in central Denpasar, has been listed as "under maintenance" since August 2025. Its last two readings climbed into the Unhealthy range. No public repair timeline has been issued.</p>
+      <div class="meta">KLHK · ISPU portal · 8+ months offline</div>
+    </article>
+    <article class="card">
+      <div class="fig"><div class="big ochre">7 t</div></div>
+      <div class="chip-row"><span class="tag-chip ochre">Regulation</span></div>
+      <h3>Seven tons of river waste a day, and no air data to match.</h3>
+      <p>Denpasar's April organic-waste ban is well-intended; its rollout has outrun its infrastructure. Cleanup crews are pulling seven tons of waste from rivers daily. What burns by the roadside appears only in the air — currently unmeasured.</p>
+      <div class="meta">Hey Bali · Bali.live · PUPR · April 2026</div>
+    </article>
+  </section>
+
+  <!-- QUOTE BAR -->
+  <section class="quote">
+    <div class="inner">
+      <blockquote>"Without distributed monitoring, it is impossible to determine whether the patterns seen in Kerobokan and Denpasar are representative of the island as a whole."</blockquote>
+      <cite>— From the Historical Record · Chapter IV</cite>
+    </div>
+  </section>
+
+  <!-- DATA / REGISTRY SECTION -->
+  <section class="section" id="data">
+    <div class="section-head">
+      <h2>The registry, as of today.</h2>
+      <div class="meta">Updated 17.iv.2026 · 12:27 WITA</div>
+    </div>
+    <table class="registry">
+      <thead>
+        <tr><th>Sensor</th><th>Network</th><th>Area</th><th>Days of record</th><th>Mean PM2.5</th><th>% &gt; WHO 24h</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Kerobokan / Umalas</td><td>AQICN · GAIA</td><td>Canggu corridor</td><td class="n">469</td><td class="n red">21.9</td><td class="n red">68%</td><td><span class="pill red">Offline Mar 2026</span></td></tr>
+        <tr><td>Denpasar / KLHK</td><td>AQICN · Govt.</td><td>Central Denpasar</td><td class="n">548</td><td class="n ochre">15.1</td><td class="n">~40%</td><td><span class="pill red">Offline Aug 2025</span></td></tr>
+        <tr><td>Kopernik / Ubud</td><td>OpenAQ · AirGradient</td><td>Ubud</td><td class="n">36</td><td class="n red">31.2</td><td class="n red">92%</td><td><span class="pill red">Offline Mar 2026</span></td></tr>
+        <tr><td>Ubud / Rozendal</td><td>OpenAQ · AirGradient</td><td>Ubud</td><td class="n">167</td><td class="n ochre">17.8</td><td class="n ochre">57%</td><td><span class="pill red">Offline Dec 2025</span></td></tr>
+        <tr><td>Balangan</td><td>OpenAQ · AirGradient</td><td>Bukit peninsula</td><td class="n">26</td><td class="n ochre">15.4</td><td class="n">46%</td><td><span class="pill red">Offline Aug 2025</span></td></tr>
+        <tr><td>Klungkung</td><td>PurpleAir</td><td>East Bali</td><td class="n">687</td><td class="n">—</td><td class="n">—</td><td><span class="pill green">Active</span></td></tr>
+        <tr><td>Jimbaran</td><td>PurpleAir</td><td>South coast</td><td class="n">728</td><td class="n">—</td><td class="n">—</td><td><span class="pill green">Active</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ESSAY -->
+  <section class="essay" id="regulation">
+    <div>
+      <span class="tag-chip ochre">Regulation · April 2026</span>
+      <h2>The rule that outran its infrastructure.</h2>
+      <p class="first">On the first of April, Denpasar banned organic waste from the Suwung landfill — Bali's largest waste endpoint — ahead of a planned closure by August 2026. The stated aim was a legitimate one: push households toward source separation and reduce landfill dependency.</p>
+      <p>Implementation has outpaced infrastructure. Without adequate composting or collection alternatives in place, some residents have turned to burning waste in backyards and roadsides, and others to dumping it in the rivers that feed the west-coast catchments.</p>
+      <p>Denpasar cleanup crews have reportedly removed <strong>approximately seven tons of waste from rivers daily</strong>, according to local reporting citing the city's PUPR office. What burns at roadside does not appear in any such tally. It appears only in the air.</p>
+    </div>
+    <div>
+      <span class="tag-chip">Health · PM2.5</span>
+      <h2>What burns is not what is measured.</h2>
+      <p class="first">Mixed-waste burning, particularly of plastics, releases PM2.5 alongside dioxins, furans, polycyclic aromatic hydrocarbons, and heavy metals. Standard low-cost PM sensors capture only the particulate fraction. The toxic organic compounds released in the same plume are not measured by the instrumentation described in this document.</p>
+      <p>Their absence from the record should not be read as their absence from the air. <strong>PM2.5 is a proxy for a broader plume</strong> whose full composition remains, in Bali, uncharacterised.</p>
+      <p>The concern addressed here is not the regulation itself. It is that <strong>Bali currently has no instrumentation adequate to measure the air-quality consequences of a major waste-management transition as it unfolds.</strong></p>
+    </div>
+  </section>
+
+  <!-- COMPARISON -->
+  <section class="section" id="gap">
+    <div class="section-head">
+      <h2>The gap, in context.</h2>
+      <div class="meta">Government stations · per million residents</div>
+    </div>
+    <table class="registry">
+      <thead><tr><th>Jurisdiction</th><th>Gov. AQ stations</th><th>Population</th><th>Stations per million</th></tr></thead>
+      <tbody>
+        <tr style="background:var(--wash)"><td><strong style="color:var(--accent)">Bali — today</strong></td><td class="n red">1</td><td>4.4 million</td><td class="n red">0.2</td></tr>
+        <tr><td>Hong Kong</td><td class="n">18</td><td>7.5 million</td><td class="n">2.4</td></tr>
+        <tr><td>Bangkok</td><td class="n">~70</td><td>10.7 million</td><td class="n">6.5</td></tr>
+        <tr><td>London</td><td class="n">100+</td><td>9.0 million</td><td class="n">11+</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- CTA CLOSE -->
+  <div class="cta">
+    <h2>Bali's air is being breathed <em>without record.</em></h2>
+    <div class="links">
+      <a class="primary" href="/monitor">Open the Live Monitor →</a>
+      <a href="/appendix">Methodology &amp; Appendix</a>
+      <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="foot">
+    <div class="foot-grid">
+      <div><h4>Contact</h4><div><a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a></div></div>
+      <div><h4>Pages</h4><div><a href="/monitor">Live Monitor</a><br><a href="/appendix">Appendix</a></div></div>
+      <div><h4>Sources</h4><div>OpenAQ · AQICN · GAIA · PurpleAir · Nafas / Airly · IQAir · KLHK ISPU</div></div>
+      <div><h4>Rights</h4><div>Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution.</div></div>
+    </div>
+    <div style="margin-top:28px;padding-top:18px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.2em">
+      No trackers · No advertisements · No accounts · No cookies · Circulated anonymously
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

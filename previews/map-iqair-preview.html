@@ -1,0 +1,1178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Bali Air Dispatch — Map Preview (IQAir-style)</title>
+<meta name="referrer" content="no-referrer">
+<!-- Self-hosted fonts (relative path from previews/) -->
+<link rel="preload" as="style" href="../public/fonts/fonts.css">
+<link rel="stylesheet" href="../public/fonts/fonts.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<style>
+/* =====================================================
+   DESIGN SYSTEM — same tokens as brief.html / index.html
+   ===================================================== */
+:root{
+  --paper:#f3ece0;
+  --paper-2:#ebe1ce;
+  --paper-3:#e4d8c1;
+  --ink:#14110d;
+  --ink-soft:#34302a;
+  --ink-faint:#6a635a;
+  --ink-whisper:#9a9181;
+  --rule:#2b2620;
+  --hairline:#c0b9a8;
+  --crimson:#8b1a1a;
+  --crimson-soft:#a93939;
+  --ochre:#a7742e;
+  --forest:#355e3b;
+  --dust:rgba(20,17,13,0.05);
+  --aqi-good:#4f7a3f;
+  --aqi-mod:#b8892a;
+  --aqi-usg:#c25d22;
+  --aqi-unh:#a32020;
+  --aqi-vunh:#6e1414;
+  --aqi-haz:#4a1142;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:"Source Serif 4",Georgia,serif;font-optical-sizing:auto;font-size:15px;display:flex;flex-direction:column}
+
+/* grain overlay */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9000;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.22;pointer-events:none}
+
+/* =====================================================
+   TOP BAR — compact, no masthead, map-first
+   ===================================================== */
+.topbar{
+  height:52px;flex-shrink:0;
+  background:var(--paper);
+  border-bottom:2px solid var(--rule);
+  display:flex;align-items:center;gap:0;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  padding:0 22px;position:relative;z-index:1001;
+}
+.topbar-brand{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 120,"SOFT" 20;
+  font-size:18px;letter-spacing:-.02em;text-transform:none;color:var(--ink);
+  margin-right:18px;white-space:nowrap;
+}
+.topbar-badge{
+  background:var(--ink);color:var(--paper);padding:3px 10px;
+  font-size:10px;letter-spacing:.2em;font-weight:600;margin-right:14px;
+}
+.topbar-status{color:var(--ink-faint);display:flex;align-items:center;gap:8px;flex:1}
+.topbar-status .dot{width:7px;height:7px;border-radius:50%;background:var(--crimson);animation:pls 1.8s ease-in-out infinite;flex-shrink:0}
+@keyframes pls{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+.topbar-nav{display:flex;gap:0;margin-left:auto}
+.topbar-nav a{
+  padding:0 14px;height:52px;line-height:52px;
+  color:var(--ink-soft);text-decoration:none;
+  border-left:1px solid var(--hairline);
+  transition:background .12s,color .12s;
+}
+.topbar-nav a:hover{background:var(--ink);color:var(--paper)}
+@media(max-width:720px){
+  .topbar-nav a{padding:0 10px;font-size:9.5px}
+  .topbar-status{display:none}
+}
+
+/* =====================================================
+   MAP WRAPPER — fills remaining viewport exactly
+   ===================================================== */
+.map-wrap{flex:1;position:relative;overflow:hidden}
+#map-leaflet{position:absolute;inset:0;background:var(--paper-3)}
+
+/* tile sepia — slightly less aggressive than production for the preview */
+.leaflet-tile-pane{filter:sepia(0.12) saturate(0.82) hue-rotate(-5deg) brightness(1.03) contrast(0.93)}
+.leaflet-container{background:var(--paper-3);font-family:"Source Serif 4",Georgia,serif}
+.leaflet-control-zoom{border:none!important;box-shadow:none!important;border-radius:0!important;font-family:"IBM Plex Mono",monospace!important}
+.leaflet-control-zoom a{background:var(--paper)!important;color:var(--ink)!important;border:1px solid var(--rule)!important;width:30px!important;height:30px!important;line-height:28px!important;font-size:17px!important;font-weight:600!important}
+.leaflet-control-zoom a:hover{background:var(--ink)!important;color:var(--paper)!important}
+.leaflet-control-attribution{background:rgba(243,236,224,.88)!important;color:var(--ink-faint)!important;font-family:"IBM Plex Mono",monospace!important;font-size:9px!important;letter-spacing:.04em!important;border:1px solid var(--hairline)!important;border-right:none!important;border-bottom:none!important;padding:3px 8px!important}
+.leaflet-control-attribution a{color:var(--ink-soft)!important}
+
+/* =====================================================
+   FLOATING MAP CARDS
+   ===================================================== */
+.map-card{
+  position:absolute;z-index:500;
+  background:var(--paper);
+  border:1px solid var(--rule);
+  box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule),0 6px 20px rgba(20,17,13,.18);
+}
+.map-card h5{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink-faint);
+  padding:8px 12px 6px;border-bottom:1px solid var(--hairline);font-weight:600;
+}
+/* HUD card */
+.hud{top:14px;left:14px;width:260px}
+.hud-stats{padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hud-stats .v{font-family:"Fraunces",serif;font-weight:900;font-size:22px;color:var(--ink);line-height:1}
+.hud-stats .k{font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+/* Layers card */
+.layers{top:14px;right:14px;min-width:175px}
+.layer-row{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);
+  border-bottom:1px solid var(--hairline);transition:background .12s;
+}
+.layer-row:last-child{border-bottom:none}
+.layer-row:hover{background:var(--dust)}
+.layer-row .icn{width:14px;height:14px;color:var(--ink-faint);flex-shrink:0}
+.layer-row .lbl{flex:1}
+.layer-row .swch{width:26px;height:14px;background:var(--paper-3);border:1px solid var(--rule);position:relative;transition:.2s;flex-shrink:0}
+.layer-row .swch::after{content:"";position:absolute;top:1px;left:1px;width:10px;height:10px;background:var(--ink-faint);transition:.2s}
+.layer-row.on .swch{background:var(--crimson);border-color:var(--crimson)}
+.layer-row.on .swch::after{transform:translateX(12px);background:var(--paper)}
+.layer-row.on .icn{color:var(--crimson)}
+/* Legend card */
+.legend{bottom:32px;right:14px;min-width:230px}
+.legend-body{padding:10px 12px 12px}
+.legend-grad{display:flex;height:9px;border:1px solid var(--rule);overflow:hidden}
+.legend-grad>div{flex:1}
+.legend-ticks{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--ink-faint);margin-top:5px;font-variant-numeric:tabular-nums}
+.legend-more{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-top:8px;padding-top:8px;border-top:1px dashed var(--hairline);cursor:pointer;text-align:center}
+.legend-more:hover{color:var(--crimson)}
+.legend-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--hairline)}
+.legend.expanded .legend-detail{display:block}
+.legend-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink-soft);font-family:"Source Serif 4",serif;padding:2px 0}
+.legend-row .sw{width:12px;height:12px;border:1px solid var(--rule);flex-shrink:0}
+.legend-row .dash{width:12px;height:12px;border:1.5px dashed var(--crimson);flex-shrink:0}
+/* Wind caption */
+.wind-cap{bottom:32px;left:14px;padding:8px 12px;display:none;
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.wind-cap.on{display:flex;align-items:center;gap:8px}
+.wind-cap .arr{color:var(--crimson);font-size:14px}
+
+/* =====================================================
+   STATION MARKERS — enhanced
+   ===================================================== */
+.pin{
+  display:flex;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:12px;
+  border-radius:50%;border:2.5px solid var(--ink);
+  background:var(--paper);color:var(--ink);
+  cursor:pointer;
+  /* IQAir-style drop shadow */
+  box-shadow:0 2px 0 rgba(20,17,13,.4), 0 3px 8px rgba(20,17,13,.25);
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s;
+  letter-spacing:-0.02em;
+}
+.pin:hover{
+  transform:scale(1.22) translateY(-1px);
+  box-shadow:0 4px 0 rgba(20,17,13,.45),0 0 0 2.5px var(--crimson),0 6px 18px rgba(20,17,13,.3);
+  z-index:1000!important;
+}
+.pin.selected{
+  transform:scale(1.28) translateY(-2px);
+  box-shadow:0 0 0 3px var(--crimson),0 6px 22px rgba(20,17,13,.4);
+  z-index:1001!important;
+}
+/* Pulsing ring for worst station */
+.pin.worst::after{
+  content:"";position:absolute;inset:-10px;border-radius:50%;
+  border:2px solid var(--crimson);opacity:0;
+  animation:pinPulse 2.4s ease-out infinite;
+}
+@keyframes pinPulse{0%{transform:scale(.65);opacity:.95}100%{transform:scale(2.0);opacity:0}}
+/* AQI-colored pins */
+.pin.good{background:#dfebd6;color:var(--aqi-good);border-color:var(--aqi-good)}
+.pin.mod{background:#f2e4c0;color:var(--aqi-mod);border-color:var(--aqi-mod)}
+.pin.usg{background:#f0ceac;color:var(--aqi-usg);border-color:var(--aqi-usg)}
+.pin.unh{background:#e7b3b3;color:var(--aqi-unh);border-color:var(--aqi-unh)}
+.pin.vunh{background:var(--aqi-vunh);color:#f8ece0;border-color:#3d0a0a}
+.pin.haz{background:var(--aqi-haz);color:#f3e0f0;border-color:#2a0a28}
+/* Offline — hollow dashed ring */
+.pin.offline{
+  background:transparent;border-style:dashed;border-width:2px;
+  border-color:var(--crimson);color:var(--crimson);
+  font-family:"IBM Plex Mono",monospace;font-size:9px;
+  box-shadow:none;
+}
+.pin.offline::before{content:"OFF";font-size:8.5px;letter-spacing:.06em}
+/* Seed pulse skeleton */
+.pin.seed{background:var(--paper);border-color:var(--rule);color:var(--ink-faint);animation:seedPulse 1.25s ease-in-out infinite;cursor:default;box-shadow:none}
+@keyframes seedPulse{0%,100%{opacity:.88;transform:scale(1)}50%{opacity:.45;transform:scale(.9)}}
+
+/* =====================================================
+   HEATMAP + WIND CANVASES
+   ===================================================== */
+#heatCanvas{
+  position:absolute;pointer-events:none;z-index:200;
+  mix-blend-mode:soft-light;opacity:0.58;
+  image-rendering:auto;
+  /* CSS blur for smooth interpolation look */
+  filter:blur(24px);
+}
+#windCanvas{
+  position:absolute;pointer-events:none;z-index:400;
+  mix-blend-mode:screen;opacity:.82;
+}
+
+/* =====================================================
+   STATION SIDE PANEL
+   ===================================================== */
+.side{
+  position:fixed;top:52px;right:-500px;width:460px;max-width:100vw;
+  height:calc(100vh - 52px);
+  background:var(--paper);border-left:1px solid var(--rule);
+  box-shadow:-18px 0 50px rgba(20,17,13,.28);
+  z-index:2100;transition:right .38s cubic-bezier(.32,0,.15,1);
+  overflow-y:auto;display:flex;flex-direction:column;
+}
+.side.open{right:0}
+@media(max-width:600px){.side{width:100vw;top:52px}}
+.side-grain::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.18;
+}
+.side-close{
+  position:absolute;top:14px;right:14px;
+  width:32px;height:32px;
+  background:var(--paper);border:1px solid var(--rule);
+  font-family:"Fraunces",serif;font-size:22px;line-height:1;
+  cursor:pointer;color:var(--ink);z-index:3;
+}
+.side-close:hover{background:var(--ink);color:var(--paper)}
+.side-hero{padding:48px 28px 22px;border-bottom:3px double var(--rule);position:relative}
+.side-kicker{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--crimson);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.side-kicker .tag{background:var(--crimson);color:var(--paper);padding:1px 7px;letter-spacing:.14em}
+.side-kicker .tag.gone{background:var(--ink)}
+.side-name{font-family:"Fraunces",serif;font-weight:800;font-variation-settings:"opsz" 120;font-size:clamp(26px,3.4vw,38px);line-height:1.02;letter-spacing:-.02em;color:var(--ink);margin-bottom:6px}
+.side-byline{font-family:"Source Serif 4",serif;font-style:italic;color:var(--ink-faint);font-size:13px}
+.side-big{padding:22px 28px;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start}
+.side-big-val{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 10;font-size:72px;line-height:.9;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.side-big-val.good{color:var(--aqi-good)}.side-big-val.mod{color:var(--aqi-mod)}.side-big-val.usg{color:var(--aqi-usg)}.side-big-val.unh{color:var(--aqi-unh)}.side-big-val.vunh{color:var(--aqi-vunh)}.side-big-val.haz{color:var(--aqi-haz)}.side-big-val.offline{color:var(--ink-whisper);font-style:italic}
+.side-unit{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-top:4px}
+.side-cat{font-family:"Fraunces",serif;font-weight:700;font-size:17px;line-height:1.1;margin-bottom:5px}
+.side-cat-sub{font-family:"Source Serif 4",serif;font-size:13px;line-height:1.5;color:var(--ink-soft)}
+.side-section{padding:18px 28px;border-bottom:1px solid var(--hairline)}
+.side-section h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:12px;font-weight:600;display:flex;align-items:baseline;gap:10px}
+.side-section h4::after{content:"";flex:1;height:1px;background:var(--hairline)}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;padding:5px 9px;background:var(--paper-2);border:1px solid var(--hairline);color:var(--ink-soft)}
+.chip b{font-weight:700;color:var(--ink)}.chip.warn{background:rgba(167,116,46,.12);border-color:var(--ochre);color:var(--ochre)}.chip.bad{background:rgba(139,26,26,.12);border-color:var(--crimson);color:var(--crimson)}.chip.bad b{color:var(--crimson)}
+.rows{font-family:"IBM Plex Mono",monospace;font-size:12px}
+.rows .r{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted var(--hairline);gap:16px}
+.rows .r:last-child{border-bottom:none}
+.rows .k{color:var(--ink-faint);letter-spacing:.05em;text-transform:uppercase;font-size:10.5px}
+.rows .v{color:var(--ink);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.hist-wrap{margin-top:10px;padding:10px 12px;background:var(--paper-2);border:1px solid var(--hairline)}
+.hist-wrap canvas{display:block;width:100%!important;height:140px!important}
+.side-link{display:block;padding:16px 28px;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);text-align:center;text-decoration:none;border-top:1px solid var(--rule);margin-top:auto}
+.side-link:hover{background:var(--ink);color:var(--paper)}
+/* Timeline bar */
+.tl-scale{height:38px;position:relative;background:var(--paper-2);border:1px solid var(--rule);overflow:hidden}
+.tl-data{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,var(--forest) 0 2px,rgba(53,94,59,.5) 2px 5px)}
+.tl-offline{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,var(--crimson) 0 2px,rgba(139,26,26,.5) 2px 5px);animation:throb 3s ease-in-out infinite}
+@keyframes throb{0%,100%{opacity:.75}50%{opacity:1}}
+.tl-label{position:absolute;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--paper);padding:0 4px;white-space:nowrap;overflow:hidden;pointer-events:none}
+.tl-dates{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--ink-faint);margin-top:4px;letter-spacing:.05em}
+
+/* =====================================================
+   BELOW-MAP SCROLLABLE SECTION
+   ===================================================== */
+.below{
+  /* Only visible when user scrolls down past the map — we unlock overflow on <html> */
+  background:var(--paper);
+  border-top:3px double var(--rule);
+}
+/* NOTE: body is overflow:hidden so "below" content is accessible via a
+   scroll-down affordance button on the map. Clicking it brings up the
+   station cards in a bottom sheet / unlocks scroll. */
+
+/* Station card grid */
+.cards-section{padding:36px 28px 28px;max-width:1320px;margin:0 auto}
+.cards-kicker{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson);margin-bottom:6px;font-weight:600}
+.cards-title{font-family:"Fraunces",serif;font-weight:800;font-variation-settings:"opsz" 120;font-size:clamp(22px,3vw,32px);letter-spacing:-.015em;line-height:1.08;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--rule)}
+.cards-title em{font-style:italic;color:var(--crimson);font-weight:500}
+.station-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1px;border:1px solid var(--rule);background:var(--rule)}
+.st-card{
+  background:var(--paper);padding:16px 18px 14px;
+  cursor:pointer;position:relative;
+  transition:background .12s;
+}
+.st-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+.st-card:hover{background:var(--paper-2)}
+.st-card.good::before{background:var(--aqi-good)}
+.st-card.mod::before{background:var(--aqi-mod)}
+.st-card.usg::before{background:var(--aqi-usg)}
+.st-card.unh::before{background:var(--aqi-unh)}
+.st-card.vunh::before{background:var(--aqi-vunh)}
+.st-card.haz::before{background:var(--aqi-haz)}
+.st-card.offline::before{background:repeating-linear-gradient(45deg,var(--crimson) 0 2px,transparent 2px 5px)}
+.st-card-src{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px}
+.st-card-name{font-family:"Fraunces",serif;font-weight:800;font-size:17px;line-height:1.1;letter-spacing:-.01em;margin-bottom:8px;color:var(--ink)}
+.st-card-val{display:flex;align-items:baseline;gap:6px}
+.st-card-pm{font-family:"Fraunces",serif;font-weight:900;font-size:38px;line-height:.95;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.st-card-pm.good{color:var(--aqi-good)}.st-card-pm.mod{color:var(--aqi-mod)}.st-card-pm.usg{color:var(--aqi-usg)}.st-card-pm.unh{color:var(--aqi-unh)}.st-card-pm.vunh{color:var(--aqi-vunh)}.st-card-pm.haz{color:var(--aqi-haz)}
+.st-card-pm.offline{color:var(--ink-whisper);font-style:italic;font-size:22px}
+.st-card-unit{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:2px}
+.st-card-badge{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border:1px solid currentColor;margin-top:6px}
+.st-card-badge.good{color:var(--aqi-good)}.st-card-badge.mod{color:var(--aqi-mod)}.st-card-badge.usg{color:var(--aqi-usg)}.st-card-badge.unh{color:var(--aqi-unh)}.st-card-badge.vunh{color:var(--aqi-vunh)}.st-card-badge.haz{color:var(--aqi-haz)}.st-card-badge.off{color:var(--crimson);border-style:dashed}
+.st-card-ts{font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--ink-whisper);margin-top:5px;letter-spacing:.04em}
+
+/* Scroll-down pill button on map */
+.scroll-btn{
+  position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+  z-index:510;
+  background:var(--paper);border:1px solid var(--rule);
+  padding:8px 18px;
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-soft);cursor:pointer;
+  box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule),0 4px 12px rgba(20,17,13,.18);
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+  transition:background .14s,color .14s;
+}
+.scroll-btn:hover{background:var(--ink);color:var(--paper)}
+.scroll-btn .arr{animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
+
+/* Bottom sheet (when scrolled) */
+.sheet-wrap{
+  position:fixed;bottom:0;left:0;right:0;z-index:800;
+  height:50vh;transform:translateY(100%);
+  transition:transform .42s cubic-bezier(.32,0,.15,1);
+  background:var(--paper);
+  border-top:3px double var(--rule);
+  overflow-y:auto;
+  box-shadow:0 -12px 40px rgba(20,17,13,.22);
+}
+.sheet-wrap.open{transform:translateY(0)}
+.sheet-handle{
+  height:40px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border-bottom:1px solid var(--hairline);
+  flex-shrink:0;
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink-faint);gap:10px;
+}
+.sheet-handle:hover{background:var(--dust)}
+.sheet-handle::before{content:"";width:40px;height:3px;background:var(--hairline);border-radius:2px}
+.sheet-body{padding:20px 22px 40px}
+
+/* Summary stats bar in sheet */
+.stats-bar{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+  border:1px solid var(--rule);margin-bottom:18px;
+}
+@media(max-width:640px){.stats-bar{grid-template-columns:repeat(2,1fr)}}
+.stat-cell{padding:14px 16px;border-right:1px solid var(--hairline)}
+.stat-cell:last-child{border-right:none}
+.stat-cell .k{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px}
+.stat-cell .v{font-family:"Fraunces",serif;font-weight:900;font-size:32px;line-height:.95;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat-cell .v em{font-style:italic;color:var(--crimson);font-weight:500;font-size:0.55em}
+
+.colophon{
+  padding:24px 22px;margin-top:18px;
+  border-top:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;
+  color:var(--ink-faint);text-transform:uppercase;
+  display:flex;gap:14px;flex-wrap:wrap;align-items:center;
+}
+.colophon a{color:var(--ink-soft);text-decoration:none;border-bottom:1px solid var(--hairline)}
+.colophon a:hover{color:var(--crimson);border-bottom-color:var(--crimson)}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <span class="topbar-brand">Bali Air Dispatch</span>
+  <span class="topbar-badge">Preview</span>
+  <div class="topbar-status">
+    <span class="dot"></span>
+    <span id="topStatus">Connecting…</span>
+  </div>
+  <nav class="topbar-nav">
+    <a href="https://baliair.pages.dev/brief" target="_blank" rel="noopener">Brief</a>
+    <a href="https://baliair.pages.dev/articles" target="_blank" rel="noopener">Dispatches</a>
+    <a href="https://baliair.pages.dev/appendix" target="_blank" rel="noopener">Appendix</a>
+  </nav>
+</div>
+
+<!-- MAP -->
+<div class="map-wrap" id="mapWrap">
+  <div id="map-leaflet"></div>
+
+  <!-- HUD stats -->
+  <div class="map-card hud">
+    <h5>Bali · Live Network</h5>
+    <div class="hud-stats">
+      <div><div class="v" id="hud-live">—</div><div class="k">Live</div></div>
+      <div><div class="v" id="hud-off">—</div><div class="k">Offline</div></div>
+      <div><div class="v" id="hud-worst">—</div><div class="k">Worst µg</div></div>
+    </div>
+  </div>
+
+  <!-- Layer toggles -->
+  <div class="map-card layers">
+    <h5>Layers</h5>
+    <div class="layer-row on" id="lr-live" onclick="toggleLayer('live')">
+      <svg class="icn" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+      <span class="lbl">Live</span><span class="swch"></span>
+    </div>
+    <div class="layer-row on" id="lr-heat" onclick="toggleLayer('heat')">
+      <svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+      <span class="lbl">Heatmap</span><span class="swch"></span>
+    </div>
+    <div class="layer-row on" id="lr-off" onclick="toggleLayer('off')">
+      <svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"><circle cx="12" cy="12" r="6"/></svg>
+      <span class="lbl">Offline</span><span class="swch"></span>
+    </div>
+    <div class="layer-row on" id="lr-wind" onclick="toggleLayer('wind')">
+      <svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h14a3 3 0 1 1-3 3"/><path d="M3 16h8"/></svg>
+      <span class="lbl">Wind</span><span class="swch"></span>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="map-card legend" id="legend">
+    <h5>PM2.5 · µg/m³</h5>
+    <div class="legend-body">
+      <div class="legend-grad">
+        <div style="background:var(--aqi-good)"></div>
+        <div style="background:var(--aqi-mod)"></div>
+        <div style="background:var(--aqi-usg)"></div>
+        <div style="background:var(--aqi-unh)"></div>
+        <div style="background:var(--aqi-vunh)"></div>
+        <div style="background:var(--aqi-haz)"></div>
+      </div>
+      <div class="legend-ticks"><span>0</span><span>12</span><span>35</span><span>55</span><span>150</span><span>250+</span></div>
+      <div class="legend-more" onclick="document.getElementById('legend').classList.toggle('expanded')">Full scale ▾</div>
+      <div class="legend-detail">
+        <div class="legend-row"><span class="sw" style="background:var(--aqi-good)"></span>Good · 0–12</div>
+        <div class="legend-row"><span class="sw" style="background:var(--aqi-mod)"></span>Moderate · 12–35</div>
+        <div class="legend-row"><span class="sw" style="background:var(--aqi-usg)"></span>Sensitive groups · 35–55</div>
+        <div class="legend-row"><span class="sw" style="background:var(--aqi-unh)"></span>Unhealthy · 55–150</div>
+        <div class="legend-row"><span class="sw" style="background:var(--aqi-vunh)"></span>Very Unhealthy · 150–250</div>
+        <div class="legend-row"><span class="sw" style="background:var(--aqi-haz)"></span>Hazardous · 250+</div>
+        <div class="legend-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--hairline)"><span class="dash"></span>Dashed = offline sensor</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wind caption -->
+  <div class="map-card wind-cap" id="windCap">
+    <span class="arr">↗</span>
+    <span id="windCapText">Wind at 10m · Open-Meteo</span>
+  </div>
+
+  <!-- Scroll-down button -->
+  <button class="scroll-btn" onclick="toggleSheet(true)">
+    <span>Station data</span>
+    <span class="arr">↓</span>
+  </button>
+</div>
+
+<!-- STATION PANEL (slides from right) -->
+<aside class="side side-grain" id="panel" aria-hidden="true">
+  <button class="side-close" onclick="closePanel()" aria-label="Close">×</button>
+  <div id="panelBody"></div>
+</aside>
+
+<!-- BOTTOM SHEET (stations below map) -->
+<div class="sheet-wrap" id="sheet">
+  <div class="sheet-handle" onclick="toggleSheet(false)">
+    Station data · <span id="sheetCount">—</span>
+  </div>
+  <div class="sheet-body">
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-cell"><div class="k">Live sensors</div><div class="v" id="b-live">—</div></div>
+      <div class="stat-cell"><div class="k">Median PM2.5</div><div class="v" id="b-med">—<em>µg</em></div></div>
+      <div class="stat-cell"><div class="k">Worst station</div><div class="v" id="b-worst">—</div></div>
+      <div class="stat-cell"><div class="k">Offline sensors</div><div class="v" id="b-off">—</div></div>
+    </div>
+    <!-- Station card grid -->
+    <div class="cards-kicker">All stations</div>
+    <div class="station-grid" id="stationGrid">
+      <div style="padding:24px;color:var(--ink-faint);font-style:italic;font-family:'Source Serif 4',serif;font-size:14px">Loading stations…</div>
+    </div>
+    <div class="colophon">
+      <span>Preview of IQAir-style layout · Data from baliair.pages.dev</span>
+      <a href="https://baliair.pages.dev" target="_blank" rel="noopener">Live site →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================
+   EMBEDDED OFFLINE HISTORY DATA (same as index.html)
+   ===================================================== */
+const OFFLINE_HISTORY = {"ubud_rozendal":{"name":"Ubud (Rozendal)","lat":-8.53036,"lon":115.26932,"first":"2025-06-22","last":"2025-12-05","daily":[["2025-06-22",69.5],["2025-06-23",18.5],["2025-06-24",9.5],["2025-06-25",6.2],["2025-06-26",7.8],["2025-06-27",17.1],["2025-06-28",10],["2025-06-29",5.0],["2025-06-30",6.0],["2025-07-01",13.5],["2025-07-02",18.3],["2025-07-03",9.6],["2025-07-04",3.9],["2025-07-05",6.6],["2025-07-06",11.5],["2025-07-07",20],["2025-07-08",29.1],["2025-07-09",20.1],["2025-07-10",17.1],["2025-07-11",28.2],["2025-07-12",29.8],["2025-07-13",23.5],["2025-07-14",23.3],["2025-07-15",13.6],["2025-07-16",11.9],["2025-07-17",20.3],["2025-07-18",26.1],["2025-07-19",21.1],["2025-07-20",17.5],["2025-07-21",28.7],["2025-07-22",33],["2025-07-23",30.2],["2025-07-24",31.1],["2025-07-25",18.8],["2025-07-26",17.6],["2025-07-27",26.8],["2025-07-28",19.7],["2025-07-29",5.0],["2025-07-30",5.7],["2025-07-31",3.5],["2025-08-01",6.3],["2025-08-02",23.8],["2025-08-03",33.8],["2025-08-04",27.6],["2025-08-05",18.9],["2025-08-06",18.3],["2025-08-07",25.7],["2025-08-08",33.4],["2025-08-09",30.3],["2025-08-10",28.1],["2025-08-11",24.7],["2025-08-12",18.7],["2025-08-13",21.7],["2025-08-14",17.5],["2025-08-15",23],["2025-08-16",22.1],["2025-08-17",32.7],["2025-08-18",26.6],["2025-08-19",29.9],["2025-08-20",33.2],["2025-08-21",32.8],["2025-08-22",38.9],["2025-08-23",40.7],["2025-08-24",40.9],["2025-08-25",35.6],["2025-08-26",24.4],["2025-08-27",12.5],["2025-08-28",2.7],["2025-08-29",5.0],["2025-08-30",6.7],["2025-08-31",20.3],["2025-09-01",25.1],["2025-09-02",27.5],["2025-09-03",27.2],["2025-09-04",26.3],["2025-09-05",21.9],["2025-09-06",20.3],["2025-09-07",23.1],["2025-09-08",14.9],["2025-09-09",0.2],["2025-09-10",2.5],["2025-09-11",6.4],["2025-09-12",6.4],["2025-09-13",8.3],["2025-09-14",5.9],["2025-09-15",10.5],["2025-09-16",14.6],["2025-09-17",16.8],["2025-09-18",8.4],["2025-09-19",9.2],["2025-09-20",11.7],["2025-09-21",10.8],["2025-09-22",21.6],["2025-09-23",37.3],["2025-09-24",32.7],["2025-09-25",23.9],["2025-09-26",25.1],["2025-09-27",21.1],["2025-09-28",19.2],["2025-09-29",15],["2025-09-30",20.6],["2025-10-01",21.3],["2025-10-02",25.5],["2025-10-03",27],["2025-10-04",16.7],["2025-10-05",28.6],["2025-10-06",26.3],["2025-10-07",27.3],["2025-10-08",26.8],["2025-10-09",13.1],["2025-10-10",12.2],["2025-10-11",5.8],["2025-10-12",8.5],["2025-10-13",8.8],["2025-10-14",18],["2025-10-15",12.4],["2025-10-16",14],["2025-10-17",19.1],["2025-10-18",22],["2025-10-19",12.2],["2025-10-20",25],["2025-10-21",17.6],["2025-10-22",15.5],["2025-10-23",22],["2025-10-24",16.5],["2025-10-25",29],["2025-10-26",19.8],["2025-10-27",29.8],["2025-10-28",30.9],["2025-10-29",27.5],["2025-10-30",16.3],["2025-10-31",8.0],["2025-11-01",11.4],["2025-11-02",17.1],["2025-11-03",12.1],["2025-11-04",15.2],["2025-11-05",19.9],["2025-11-06",6.4],["2025-11-07",7.9],["2025-11-08",21.8],["2025-11-09",12.7],["2025-11-10",19.8],["2025-11-11",23.8],["2025-11-12",18.3],["2025-11-13",2.9],["2025-11-14",0.5],["2025-11-15",2.2],["2025-11-16",8.5],["2025-11-17",12.6],["2025-11-18",0.7],["2025-11-19",4.4],["2025-11-20",10.7],["2025-11-21",14.5],["2025-11-22",21.6],["2025-11-23",14.9],["2025-11-24",4.2],["2025-11-25",4.6],["2025-11-26",7.9],["2025-11-27",1.4],["2025-11-28",4.9],["2025-11-29",1.5],["2025-11-30",7.2],["2025-12-01",9.4],["2025-12-02",5.1],["2025-12-03",14],["2025-12-04",12.5],["2025-12-05",11.1]]},"balangan":{"name":"Balangan","lat":-8.8071,"lon":115.1408,"first":"2025-07-12","last":"2025-08-06","daily":[["2025-07-12",25.5],["2025-07-13",24.6],["2025-07-14",24.4],["2025-07-15",12.6],["2025-07-16",9.1],["2025-07-17",10],["2025-07-18",13.5],["2025-07-19",15],["2025-07-20",12.2],["2025-07-21",24.7],["2025-07-22",28.3],["2025-07-23",18.6],["2025-07-24",25.3],["2025-07-25",16.3],["2025-07-26",13.6],["2025-07-27",18.4],["2025-07-28",6.1],["2025-07-29",5.8],["2025-07-30",3.7],["2025-07-31",4.1],["2025-08-01",1.5],["2025-08-02",16.9],["2025-08-03",21.9],["2025-08-04",21.9],["2025-08-05",12.7],["2025-08-06",12.7]]},"kopernik":{"name":"Kopernik (Ubud)","lat":-8.554,"lon":115.272,"first":"2025-10-22","last":"2026-03-02","daily":[["2025-10-22",44.4],["2025-10-23",46.0],["2025-10-24",31.4],["2025-10-25",37.5],["2025-10-26",37.0],["2025-10-27",42.3],["2025-10-28",40.6],["2025-10-29",38.6],["2025-10-30",21.8],["2025-10-31",24.7],["2025-11-01",19.9],["2025-11-02",29.0],["2025-11-03",24.6],["2025-11-04",28.4],["2025-11-05",30.4],["2025-11-06",14.4],["2025-11-07",25.6],["2025-11-08",34.6],["2025-11-09",19.9],["2025-11-10",33.4],["2025-11-11",38.9],["2025-11-12",28.5],["2025-11-13",16.5],["2025-11-14",4.0],["2025-11-15",22.0],["2025-11-16",15.8],["2025-11-17",23.7],["2025-11-18",11.8],["2025-11-20",16.8],["2025-11-21",15.8],["2026-01-18",36.7],["2026-02-26",111.0],["2026-02-27",45.1],["2026-02-28",78.0],["2026-03-01",15.5],["2026-03-02",19.3]]}};
+const OFFLINE_OTHER = [
+  { id:'aq-umalas', name:'Umalas (Fusion) — Kerobokan', source:'AQICN', type:'GAIA / community', lat:-8.67220, lon:115.15640, last:'2026-03-15', reason:'offline · last reported March 2026' },
+  { id:'aq-denp-lumintang', name:'Denpasar Lumintang', source:'AQICN', type:'Government · KLHK', lat:-8.65300, lon:115.21350, last:'2025-08-09', reason:'removed from ISPU portal · no data since Aug 2025' }
+];
+
+/* =====================================================
+   AQI HELPERS
+   ===================================================== */
+function catFor(pm){
+  if(pm==null)return {cls:'good',label:'—',health:''};
+  if(pm<=12)  return {cls:'good', label:'Good',                        health:'Satisfactory air quality for everyone.'};
+  if(pm<=35.4)return {cls:'mod',  label:'Moderate',                    health:'Acceptable; unusually sensitive people may be affected.'};
+  if(pm<=55.4)return {cls:'usg',  label:'Unhealthy for Sensitive',     health:'Children, elderly, and those with respiratory or heart conditions should reduce outdoor exertion.'};
+  if(pm<=150.4)return{cls:'unh',  label:'Unhealthy',                   health:'Everyone may experience health effects; sensitive groups more serious.'};
+  if(pm<=250.4)return{cls:'vunh', label:'Very Unhealthy',              health:'Health alert: serious effects for everyone.'};
+  return              {cls:'haz',  label:'Hazardous',                   health:'Emergency conditions; entire population affected.'};
+}
+function pmToRgb(pm){
+  if(pm<=12)  return [79,122,63];
+  if(pm<=35.4)return [184,137,42];
+  if(pm<=55.4)return [194,93,34];
+  if(pm<=150.4)return[163,32,32];
+  if(pm<=250.4)return[110,20,20];
+  return              [74,17,66];
+}
+function fmtDate(s){try{return new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}catch(e){return s}}
+function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000)}
+
+/* =====================================================
+   MAP INIT
+   ===================================================== */
+const BALI = L.latLngBounds([-8.92,114.35],[-8.00,115.75]);
+const map = L.map('map-leaflet',{
+  center:[-8.48,115.12], zoom:10,
+  minZoom:9, maxZoom:16,
+  maxBounds: BALI.pad(0.02),
+  maxBoundsViscosity:1.0,
+  zoomControl:true
+});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+map.fitBounds(BALI,{padding:[20,20]});
+
+/* =====================================================
+   STATE
+   ===================================================== */
+let liveStations = [];
+let allStations  = [];
+const liveLayer  = L.layerGroup().addTo(map);
+const offLayer   = L.layerGroup().addTo(map);
+const markers    = {};
+let heatOn = true;
+
+/* =====================================================
+   SEED SKELETON
+   ===================================================== */
+const SEEDS = [
+  {id:'seed-seminyak',  name:'Seminyak',  lat:-8.6923, lon:115.1700},
+  {id:'seed-kerobokan', name:'Kerobokan', lat:-8.6468, lon:115.1589},
+  {id:'seed-canggu',    name:'Canggu',    lat:-8.6478, lon:115.1371},
+  {id:'seed-kuta',      name:'Kuta',      lat:-8.7215, lon:115.1668},
+  {id:'seed-sanur',     name:'Sanur',     lat:-8.6900, lon:115.2620},
+  {id:'seed-denpasar',  name:'Denpasar',  lat:-8.6705, lon:115.2126},
+  {id:'seed-ubud',      name:'Ubud',      lat:-8.5069, lon:115.2625},
+  {id:'seed-jimbaran',  name:'Jimbaran',  lat:-8.7908, lon:115.1655}
+];
+let skelLayer = L.layerGroup().addTo(map);
+function renderSkeleton(){
+  skelLayer.clearLayers();
+  [...Object.values(OFFLINE_HISTORY), ...OFFLINE_OTHER].forEach(s=>{
+    const lat = s.lat, lon = s.lon;
+    if(!lat||!lon) return;
+    L.marker([lat,lon],{
+      icon:L.divIcon({className:'',html:'<div class="pin offline"></div>',iconSize:[36,36],iconAnchor:[18,18]}),
+      interactive:false
+    }).addTo(skelLayer);
+  });
+  SEEDS.forEach(s=>{
+    L.marker([s.lat,s.lon],{
+      icon:L.divIcon({className:'',html:'<div class="pin seed"><span class="pm">…</span></div>',iconSize:[44,44],iconAnchor:[22,22]}),
+      interactive:false
+    }).addTo(skelLayer);
+  });
+}
+
+/* =====================================================
+   FETCH LIVE DATA
+   ===================================================== */
+async function loadLive(){
+  try{
+    const r = await fetch('https://baliair.pages.dev/api/live',{cache:'no-cache',mode:'cors'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    liveStations = d.stations||[];
+    renderAll(d.ts);
+    document.getElementById('topStatus').textContent =
+      'Synced '+new Date(d.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA · '+liveStations.length+' live';
+  }catch(e){
+    console.warn('live fetch failed',e);
+    document.getElementById('topStatus').textContent = 'Live unreachable — check CORS or network';
+    // Render with offline-only data still visible
+    renderAll(new Date().toISOString());
+  }
+}
+
+/* =====================================================
+   RENDER ALL
+   ===================================================== */
+function renderAll(ts){
+  const offlineList = [
+    ...Object.entries(OFFLINE_HISTORY).map(([k,s])=>({
+      id:'oaq-'+k, name:s.name, source:'OpenAQ/AirGradient', type:'community · AirGradient',
+      lat:s.lat, lon:s.lon, last:s.last, first:s.first, pm25:null, offline:true,
+      historyKey:k, daily:s.daily
+    })),
+    ...OFFLINE_OTHER.map(s=>({...s, pm25:null, offline:true}))
+  ];
+  allStations = [...liveStations.map(s=>({...s,offline:false})), ...offlineList];
+
+  skelLayer.clearLayers();
+  liveLayer.clearLayers(); offLayer.clearLayers();
+  for(const k in markers) delete markers[k];
+
+  const worst = liveStations.reduce((a,b)=>((b.pm25??-1)>(a.pm25??-1)?b:a),{pm25:-1});
+
+  allStations.forEach(s=>{
+    if(!s.lat||!s.lon) return;
+    let html, size;
+    if(s.offline){
+      size = 36;
+      html = `<div class="pin offline" data-sid="${s.id}"></div>`;
+    } else {
+      const c = catFor(s.pm25);
+      size = 44 + Math.min(18, Math.round((s.pm25||0)/6));
+      const pulse = s.id===worst.id && (s.pm25||0)>12 ? ' worst' : '';
+      html = `<div class="pin ${c.cls}${pulse}" style="width:${size}px;height:${size}px;font-size:${size>=54?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
+    }
+    const icon = L.divIcon({className:'',html,iconSize:[size,size],iconAnchor:[size/2,size/2]});
+    const mk = L.marker([s.lat,s.lon],{icon,riseOnHover:true});
+    mk.on('click',()=>openPanel(s.id));
+    mk.addTo(s.offline ? offLayer : liveLayer);
+    markers[s.id] = mk;
+  });
+
+  // Stats
+  const pms = liveStations.map(s=>s.pm25).filter(v=>v!=null).sort((a,b)=>a-b);
+  const median = pms.length ? (pms.length%2 ? pms[(pms.length-1)/2] : (pms[pms.length/2-1]+pms[pms.length/2])/2) : null;
+
+  document.getElementById('hud-live').textContent = liveStations.length;
+  document.getElementById('hud-off').textContent  = offlineList.length;
+  document.getElementById('hud-worst').textContent = worst.pm25>0 ? worst.pm25.toFixed(1) : '—';
+  document.getElementById('b-live').textContent = liveStations.length;
+  document.getElementById('b-med').innerHTML   = median!=null ? median.toFixed(1)+'<em>µg</em>' : '—<em>µg</em>';
+  document.getElementById('b-worst').textContent = worst.pm25>0 ? worst.pm25.toFixed(1) : '—';
+  document.getElementById('b-off').textContent  = offlineList.length;
+  document.getElementById('sheetCount').textContent =
+    liveStations.length+' live · '+offlineList.length+' offline';
+
+  renderCards();
+  if(heatOn) drawHeatmap();
+}
+
+/* =====================================================
+   STATION CARD GRID
+   ===================================================== */
+function renderCards(){
+  const live = [...liveStations].sort((a,b)=>(b.pm25??-1)-(a.pm25??-1));
+  const off  = allStations.filter(s=>s.offline);
+  const all  = [...live,...off];
+  const grid = document.getElementById('stationGrid');
+  grid.innerHTML = all.map(s=>{
+    const c = catFor(s.pm25);
+    const ts = s.lastSeen ? new Date(s.lastSeen).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA' : '';
+    const daysOff = s.offline && s.last ? daysBetween(s.last,new Date())+'d offline' : '';
+    return `<div class="st-card ${s.offline?'offline':c.cls}" data-sid="${s.id}">
+      <div class="st-card-src">${s.source}${s.type?' · '+s.type:''}</div>
+      <div class="st-card-name">${(s.name||'Unnamed').split(' (')[0]}</div>
+      <div class="st-card-val">
+        <div class="st-card-pm ${s.offline?'offline':c.cls}">${s.offline?'—':s.pm25!=null?s.pm25.toFixed(1):'—'}</div>
+        ${!s.offline?`<div class="st-card-unit">µg/m³</div>`:''}
+      </div>
+      <div><span class="st-card-badge ${s.offline?'off':c.cls}">${s.offline?'Offline · '+daysOff:c.label}</span></div>
+      ${ts?`<div class="st-card-ts">${ts}</div>`:''}
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.st-card[data-sid]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const s = allStations.find(x=>x.id===el.dataset.sid);
+      if(s){ openPanel(s.id); map.flyTo([s.lat,s.lon],13,{duration:.7}); toggleSheet(false); }
+    });
+  });
+}
+
+/* =====================================================
+   AQI HEATMAP OVERLAY — IDW interpolation on canvas
+   ===================================================== */
+let heatCanvas = null;
+const HEAT_W = 140, HEAT_H = 90;
+// Bali extent: lat [-8, -9], lon [114.4, 115.75]
+const H_LA1=-8, H_LA2=-9, H_LO1=114.4, H_LO2=115.75;
+
+function initHeatCanvas(){
+  if(heatCanvas) return;
+  heatCanvas = document.createElement('canvas');
+  heatCanvas.id = 'heatCanvas';
+  heatCanvas.width  = HEAT_W;
+  heatCanvas.height = HEAT_H;
+  // CSS blur applied inline via style; also override width/height in CSS
+  heatCanvas.style.cssText = 'position:absolute;pointer-events:none;z-index:200;mix-blend-mode:soft-light;opacity:0.6;filter:blur(26px)';
+  map.getPanes().overlayPane.appendChild(heatCanvas);
+  map.on('move zoom resize viewreset', positionHeatCanvas);
+}
+
+function positionHeatCanvas(){
+  if(!heatCanvas) return;
+  const tl = map.latLngToContainerPoint([H_LA1, H_LO1]);
+  const br = map.latLngToContainerPoint([H_LA2, H_LO2]);
+  const topLeft = map.containerPointToLayerPoint([tl.x, tl.y]);
+  const w = br.x - tl.x, h = br.y - tl.y;
+  heatCanvas.style.left   = topLeft.x + 'px';
+  heatCanvas.style.top    = topLeft.y + 'px';
+  heatCanvas.style.width  = w + 'px';
+  heatCanvas.style.height = h + 'px';
+}
+
+function drawHeatmap(){
+  const stations = liveStations.filter(s=>s.pm25!=null && s.lat && s.lon);
+  if(!stations.length){ if(heatCanvas) heatCanvas.style.opacity='0'; return; }
+  initHeatCanvas();
+  positionHeatCanvas();
+  heatCanvas.style.opacity = '0.6';
+
+  const ctx = heatCanvas.getContext('2d');
+  const imgData = ctx.createImageData(HEAT_W, HEAT_H);
+  const data = imgData.data;
+
+  // Max weight for full-alpha = station within ~0.06° (~7 km)
+  const ALPHA_SCALE = 1 / (0.06 * 0.06);
+
+  for(let py=0; py<HEAT_H; py++){
+    for(let px=0; px<HEAT_W; px++){
+      const lat = H_LA1 - (py/HEAT_H)*(H_LA1-H_LA2);
+      const lon = H_LO1 + (px/HEAT_W)*(H_LO2-H_LO1);
+
+      let wSum=0, pmSum=0;
+      for(const s of stations){
+        const dLat = lat - s.lat, dLon = lon - s.lon;
+        const d2 = dLat*dLat + dLon*dLon*0.6 + 1e-8;
+        const w = 1 / (d2 * d2); // power-4 IDW = tighter blobs
+        wSum += w; pmSum += w * s.pm25;
+      }
+
+      const pm = pmSum / wSum;
+      const alpha = Math.min(1, wSum / (ALPHA_SCALE * ALPHA_SCALE)) * 220;
+      const [r,g,b] = pmToRgb(pm);
+
+      const i = (py*HEAT_W+px)*4;
+      data[i]=r; data[i+1]=g; data[i+2]=b; data[i+3]=Math.round(alpha);
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function removeHeatmap(){
+  if(heatCanvas && heatCanvas.parentNode){
+    heatCanvas.style.opacity='0';
+  }
+}
+
+/* =====================================================
+   LAYER TOGGLES
+   ===================================================== */
+function toggleLayer(kind){
+  const row = document.getElementById('lr-'+kind);
+  const on  = !row.classList.contains('on');
+  row.classList.toggle('on',on);
+  if(kind==='live'){
+    if(on) liveLayer.addTo(map); else map.removeLayer(liveLayer);
+  } else if(kind==='off'){
+    if(on) offLayer.addTo(map); else map.removeLayer(offLayer);
+  } else if(kind==='heat'){
+    heatOn = on;
+    if(on) drawHeatmap(); else removeHeatmap();
+  } else if(kind==='wind'){
+    if(on) startWind(); else stopWind();
+  }
+}
+
+/* =====================================================
+   WIND OVERLAY — enhanced IQAir-style
+   Improvements over index.html:
+   - Speed-proportional drift (not constant)
+   - Cream/warm particles (not crimson)
+   - More particles, longer trails
+   - Better fade for atmosphere
+   ===================================================== */
+let windField=null, windCanvas=null, windCtx=null;
+let windParticles=[], windAnimId=null, windOn=false;
+
+async function startWind(){
+  document.getElementById('lr-wind').style.opacity=.6;
+  try{
+    if(!windField) windField = await fetchWindField();
+    makeWindCanvas();
+    seedParticles();
+    windOn=true;
+    animateWind();
+    document.getElementById('windCap').classList.add('on');
+    const mid = centerSample(windField);
+    document.getElementById('windCapText').textContent =
+      `Wind at 10m · ${mid.spd.toFixed(1)} m/s · ${mid.dirLabel} · Open-Meteo`;
+  }catch(e){
+    console.warn('wind',e);
+    // Fallback: simulate SE trade wind typical for Bali
+    windField = mockWindField();
+    makeWindCanvas();
+    seedParticles();
+    windOn=true;
+    animateWind();
+    document.getElementById('windCap').classList.add('on');
+    document.getElementById('windCapText').textContent = 'Wind at 10m · simulated (SE trade wind)';
+  }finally{
+    document.getElementById('lr-wind').style.opacity=1;
+  }
+}
+
+function stopWind(){
+  windOn=false;
+  if(windAnimId) cancelAnimationFrame(windAnimId);
+  if(windCanvas && windCanvas.parentNode) windCanvas.parentNode.removeChild(windCanvas);
+  windCanvas=null; windCtx=null;
+  document.getElementById('windCap').classList.remove('on');
+}
+
+function mockWindField(){
+  // SE trade wind: dir=135°, speed=4.5 m/s across Bali
+  const nx=8, ny=8, la1=-8, la2=-9, lo1=114.4, lo2=115.75;
+  const dx=(lo2-lo1)/(nx-1), dy=(la1-la2)/(ny-1);
+  const spd=4.5, dir=135;
+  const rad=(dir+180)*Math.PI/180;
+  const uv = spd*Math.sin(rad), vv = spd*Math.cos(rad);
+  const u = new Float32Array(nx*ny).fill(uv);
+  const v = new Float32Array(nx*ny).fill(vv);
+  return {nx,ny,la1,la2,lo1,lo2,dx,dy,u,v};
+}
+
+async function fetchWindField(){
+  const nx=8, ny=8, la1=-8, la2=-9, lo1=114.4, lo2=115.75;
+  const dx=(lo2-lo1)/(nx-1), dy=(la1-la2)/(ny-1);
+  const r = await fetch('https://baliair.pages.dev/api/wind',{cache:'no-cache',mode:'cors'});
+  if(!r.ok) throw new Error('wind '+r.status);
+  const arr = await r.json();
+  const pts = Array.isArray(arr)?arr:[arr];
+  if(pts.length!==nx*ny) throw new Error('grid mismatch');
+  const u=new Float32Array(nx*ny), v=new Float32Array(nx*ny);
+  pts.forEach((p,i)=>{
+    const spd=p.current?.wind_speed_10m??0;
+    const dir=p.current?.wind_direction_10m??0;
+    const rad=(dir+180)*Math.PI/180;
+    u[i]=spd*Math.sin(rad); v[i]=spd*Math.cos(rad);
+  });
+  return {nx,ny,la1,la2,lo1,lo2,dx,dy,u,v};
+}
+
+function sampleField(f,lat,lon){
+  if(!f) return [0,0];
+  const fx=(lon-f.lo1)/f.dx, fy=(f.la1-lat)/f.dy;
+  if(fx<0||fx>f.nx-1||fy<0||fy>f.ny-1) return [0,0];
+  const x0=Math.floor(fx), y0=Math.floor(fy);
+  const x1=Math.min(f.nx-1,x0+1), y1=Math.min(f.ny-1,y0+1);
+  const sx=fx-x0, sy=fy-y0;
+  const g=(arr,ix,iy)=>arr[iy*f.nx+ix];
+  const u=(1-sx)*(1-sy)*g(f.u,x0,y0)+sx*(1-sy)*g(f.u,x1,y0)+(1-sx)*sy*g(f.u,x0,y1)+sx*sy*g(f.u,x1,y1);
+  const v=(1-sx)*(1-sy)*g(f.v,x0,y0)+sx*(1-sy)*g(f.v,x1,y0)+(1-sx)*sy*g(f.v,x0,y1)+sx*sy*g(f.v,x1,y1);
+  return [u,v];
+}
+
+function centerSample(f){
+  const [u,v]=sampleField(f,-8.5,115.1);
+  const spd=Math.hypot(u,v);
+  const going=(Math.atan2(u,v)*180/Math.PI+360)%360;
+  const from=(going+180)%360;
+  const labels=['N','NE','E','SE','S','SW','W','NW'];
+  return {spd, dirLabel:'from '+labels[Math.round(from/45)%8]};
+}
+
+function makeWindCanvas(){
+  const pane = map.getPanes().overlayPane;
+  windCanvas = document.createElement('canvas');
+  windCanvas.id = 'windCanvas';
+  pane.appendChild(windCanvas);
+  windCtx = windCanvas.getContext('2d');
+  resizeWindCanvas();
+  map.on('move zoom resize viewreset', resizeWindCanvas);
+}
+
+function resizeWindCanvas(){
+  if(!windCanvas) return;
+  const sz=map.getSize();
+  windCanvas.width=sz.x; windCanvas.height=sz.y;
+  const topLeft=map.containerPointToLayerPoint([0,0]);
+  L.DomUtil.setPosition(windCanvas,topLeft);
+  seedParticles();
+}
+
+function seedParticles(){
+  if(!windCanvas) return;
+  const N = Math.min(900, Math.round(windCanvas.width*windCanvas.height/900));
+  windParticles = Array.from({length:N},()=>newParticle());
+}
+function newParticle(){
+  return {
+    x: Math.random()*windCanvas.width,
+    y: Math.random()*windCanvas.height,
+    age: Math.random()*180|0,
+    maxAge: 180+Math.random()*120|0
+  };
+}
+
+function animateWind(){
+  if(!windOn||!windCtx) return;
+  const W=windCanvas.width, H=windCanvas.height;
+
+  /* IQAir-style: cream/warm particles on a screen-blend canvas
+     Fade trails slowly → longer, flowing streaks */
+  windCtx.save();
+  windCtx.globalCompositeOperation='destination-in';
+  windCtx.fillStyle='rgba(0,0,0,0.982)'; // retain 98.2% → trails ~56 frames long
+  windCtx.fillRect(0,0,W,H);
+  windCtx.restore();
+
+  windCtx.globalCompositeOperation='source-over';
+
+  for(const p of windParticles){
+    const ll = map.containerPointToLatLng([p.x,p.y]);
+    const [u,v] = sampleField(windField, ll.lat, ll.lng);
+    const mag = Math.hypot(u,v) || 0.5;
+
+    /* Speed-proportional drift: 0.4–2.8 px per frame
+       so fast wind (8 m/s) flows ~3× faster than calm (2 m/s). */
+    const SPEED_K = 0.30;
+    const drift = Math.max(0.35, Math.min(2.8, mag * SPEED_K));
+
+    const nx = p.x + (u/mag)*drift;
+    const ny = p.y - (v/mag)*drift;
+
+    /* Alpha fades in and out over particle lifetime for smooth appearance */
+    const lifeFrac = p.age / p.maxAge;
+    const alpha = lifeFrac < 0.15 ? lifeFrac/0.15
+                : lifeFrac > 0.82 ? (1-lifeFrac)/0.18
+                : 1.0;
+
+    /* Warm cream color — sits naturally on the paper-toned map */
+    windCtx.strokeStyle = `rgba(248,238,210,${(0.55 + alpha*0.35).toFixed(2)})`;
+    windCtx.lineWidth = 0.9;
+    windCtx.beginPath();
+    windCtx.moveTo(p.x, p.y);
+    windCtx.lineTo(nx, ny);
+    windCtx.stroke();
+
+    p.x=nx; p.y=ny; p.age++;
+    if(p.age>p.maxAge || p.x<-6 || p.x>W+6 || p.y<-6 || p.y>H+6){
+      Object.assign(p, newParticle());
+    }
+  }
+  windAnimId = requestAnimationFrame(animateWind);
+}
+
+/* =====================================================
+   SIDE PANEL
+   ===================================================== */
+function openPanel(id){
+  const s = allStations.find(x=>x.id===id);
+  if(!s) return;
+  const panel = document.getElementById('panel');
+  Object.values(markers).forEach(m=>{ const el=m.getElement()?.querySelector('.pin'); if(el) el.classList.remove('selected'); });
+  const sel = markers[id]?.getElement()?.querySelector('.pin'); if(sel) sel.classList.add('selected');
+  document.getElementById('panelBody').innerHTML = s.offline ? panelOffline(s) : panelLive(s);
+  if(s.offline) setTimeout(()=>drawPanelChart(s),10);
+  panel.classList.add('open'); panel.setAttribute('aria-hidden','false');
+}
+function closePanel(){
+  document.getElementById('panel').classList.remove('open');
+  Object.values(markers).forEach(m=>{ const el=m.getElement()?.querySelector('.pin'); if(el) el.classList.remove('selected'); });
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePanel(); });
+
+function panelLive(s){
+  const c=catFor(s.pm25);
+  const xAnnual = s.pm25!=null ? (s.pm25/5).toFixed(1) : '—';
+  const xDaily  = s.pm25!=null ? (s.pm25/15).toFixed(1) : '—';
+  const ts = s.lastSeen ? new Date(s.lastSeen).toLocaleString('en-GB') : '—';
+  const srcUrl = s.source==='PurpleAir'?'https://map.purpleair.com'
+               : s.source==='AQICN'?'https://aqicn.org/city/indonesia/bali/'
+               : s.source==='IQAir'?'https://www.iqair.com/indonesia/bali'
+               : '#';
+  return `
+    <div class="side-hero">
+      <div class="side-kicker"><span class="tag">Live</span> ${s.source}${s.type?' · '+s.type:''}</div>
+      <div class="side-name">${s.name||'Unnamed station'}</div>
+      <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} · updated ${s.lastSeen?new Date(s.lastSeen).toLocaleTimeString('en-GB'):'—'}</div>
+    </div>
+    <div class="side-big">
+      <div>
+        <div class="side-big-val ${c.cls}">${s.pm25!=null?s.pm25.toFixed(1):'—'}</div>
+        <div class="side-unit">µg/m³ · PM2.5</div>
+      </div>
+      <div>
+        <div class="side-cat" style="color:var(--aqi-${c.cls})">${c.label}</div>
+        <div class="side-cat-sub">${c.health}</div>
+      </div>
+    </div>
+    <div class="side-section">
+      <h4>WHO Guidelines</h4>
+      <div class="chips">
+        <span class="chip ${s.pm25>5?'warn':''} ${s.pm25>15?'bad':''}"><b>${xAnnual}×</b> annual · 5 µg/m³</span>
+        <span class="chip ${s.pm25>15?'warn':''} ${s.pm25>30?'bad':''}"><b>${xDaily}×</b> 24-hour · 15 µg/m³</span>
+      </div>
+    </div>
+    <div class="side-section">
+      <h4>Sensor data</h4>
+      <div class="rows">
+        <div class="r"><span class="k">Source</span><span class="v">${s.source}</span></div>
+        <div class="r"><span class="k">Sensor type</span><span class="v">${s.type||'—'}</span></div>
+        <div class="r"><span class="k">AQI</span><span class="v">${s.aqi!=null?s.aqi:'—'}</span></div>
+        <div class="r"><span class="k">Last seen</span><span class="v">${ts}</span></div>
+        <div class="r"><span class="k">Coordinates</span><span class="v">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}</span></div>
+      </div>
+    </div>
+    <div class="side-section">
+      <h4>Wind context</h4>
+      <p style="font-family:'Source Serif 4',serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin:0">
+        The flowing lines on the map show current wind at 10m — trace them upwind to find the likely source of any elevated readings at this station.
+      </p>
+    </div>
+    <a class="side-link" href="${srcUrl}" target="_blank" rel="noopener noreferrer">View on ${s.source} ↗</a>`;
+}
+
+function panelOffline(s){
+  const hasDaily = Array.isArray(s.daily)&&s.daily.length>0;
+  const days = daysBetween(s.last, new Date());
+  let mean='—', peak='—', pctOver='—';
+  if(hasDaily){
+    const vals=s.daily.map(d=>d[1]);
+    mean=(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+    peak=Math.max(...vals).toFixed(0);
+    pctOver=Math.round(vals.filter(v=>v>15).length/vals.length*100)+'%';
+  }
+  const dataPct = hasDaily ? Math.max(4,(new Date(s.last)-new Date(s.first))/86400000/daysBetween(s.first,new Date())*100) : 50;
+  const offPct  = 100-dataPct;
+  return `
+    <div class="side-hero">
+      <div class="side-kicker"><span class="tag gone">Offline · ${days}d</span></div>
+      <div class="side-name">${s.name}</div>
+      <div class="side-byline">${s.source}${s.type?' · '+s.type:''} · last seen ${fmtDate(s.last)}</div>
+    </div>
+    ${hasDaily?`
+    <div class="side-section">
+      <h4>Archive record · ${s.daily.length} days</h4>
+      <div class="chips" style="margin-bottom:12px">
+        <span class="chip"><b>${mean}</b> µg/m³ mean</span>
+        <span class="chip warn"><b>${pctOver}</b> over WHO 15</span>
+        <span class="chip"><b>${peak}</b> peak</span>
+      </div>
+      <div class="tl-scale">
+        <div class="tl-data" style="left:0;width:${dataPct}%"></div>
+        <div class="tl-offline" style="left:${dataPct}%;width:${offPct}%"></div>
+        <div class="tl-label" style="left:0;width:${dataPct}%;color:var(--paper)">${s.daily.length}d data</div>
+        <div class="tl-label" style="left:${dataPct}%;width:${offPct}%">${days}d silent</div>
+      </div>
+      <div class="tl-dates">
+        <span>${fmtDate(s.first)}</span>
+        <span style="color:var(--crimson)">▲ offline ${fmtDate(s.last)}</span>
+        <span>Today</span>
+      </div>
+    </div>
+    <div class="side-section">
+      <h4>Daily PM2.5 history</h4>
+      <div class="hist-wrap"><canvas id="panelChart"></canvas></div>
+    </div>`:''}
+    <a class="side-link" href="https://baliair.pages.dev/brief#sensors" target="_blank" rel="noopener">About Bali's sensor gap ↗</a>`;
+}
+
+function drawPanelChart(s){
+  const canvas=document.getElementById('panelChart'); if(!canvas) return;
+  const daily=s.daily;
+  const daysOff = daysBetween(s.last, new Date());
+  const zones={id:'zones',beforeDatasetsDraw(chart){
+    const {ctx,chartArea:{left,right,top,bottom},scales:{y}}=chart;
+    [[0,12,'rgba(79,122,63,0.08)'],[12.1,35.4,'rgba(184,137,42,0.10)'],[35.5,55.4,'rgba(194,93,34,0.12)'],[55.5,150.4,'rgba(163,32,32,0.14)']].forEach(([lo,hi,col])=>{
+      const y1=y.getPixelForValue(lo),y2=y.getPixelForValue(Math.min(hi,y.max));
+      if(isFinite(y1)&&isFinite(y2)){ctx.save();ctx.fillStyle=col;ctx.fillRect(left,Math.min(y1,y2),right-left,Math.abs(y1-y2));ctx.restore();}
+    });
+    const yw=y.getPixelForValue(15);
+    if(isFinite(yw)){ctx.save();ctx.strokeStyle='#4f7a3f';ctx.lineWidth=1;ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(left,yw);ctx.lineTo(right,yw);ctx.stroke();ctx.setLineDash([]);ctx.restore();}
+  }};
+  const offBand={id:'offBand',afterDatasetsDraw(chart){
+    const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
+    const lastX=x.getPixelForValue(new Date(s.last).getTime());
+    const rightX=x.right;
+    if(isFinite(lastX)&&rightX>lastX){
+      ctx.save();
+      const g=ctx.createLinearGradient(lastX,0,rightX,0);
+      g.addColorStop(0,'rgba(139,26,26,0.22)');g.addColorStop(1,'rgba(139,26,26,0.40)');
+      ctx.fillStyle=g;ctx.fillRect(lastX,top,rightX-lastX,bottom-top);
+      ctx.strokeStyle='rgba(139,26,26,0.5)';ctx.lineWidth=1;
+      for(let px=lastX;px<rightX;px+=8){ctx.beginPath();ctx.moveTo(px,top);ctx.lineTo(px+10,bottom);ctx.stroke();}
+      ctx.fillStyle='rgba(139,26,26,0.9)';ctx.font='10px "IBM Plex Mono",monospace';
+      ctx.fillText('SILENT '+daysOff+'d',lastX+6,top+14);
+      ctx.restore();
+    }
+  }};
+  new Chart(canvas,{
+    type:'line',
+    data:{datasets:[{label:'PM2.5',data:daily.map(d=>({x:new Date(d[0]).getTime(),y:d[1]})),
+      borderColor:'#14110d',backgroundColor:'rgba(139,26,26,0.08)',
+      borderWidth:1.5,fill:true,pointRadius:0,tension:.25}]},
+    plugins:[zones,offBand],
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      scales:{
+        x:{type:'time',min:new Date(s.first).getTime(),max:Date.now(),
+           time:{unit:'month',displayFormats:{month:"MMM ''yy"}},
+           ticks:{color:'#6a635a',font:{family:'IBM Plex Mono',size:9},maxRotation:0},
+           grid:{display:false},border:{color:'#c0b9a8'}},
+        y:{min:0,beginAtZero:true,
+           ticks:{color:'#6a635a',font:{family:'IBM Plex Mono',size:9},maxTicksLimit:5},
+           grid:{color:'rgba(20,17,13,0.06)'},border:{color:'#c0b9a8'}}
+      },
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#14110d',titleColor:'#f3ece0',bodyColor:'#f3ece0',
+        titleFont:{family:'IBM Plex Mono',size:10},bodyFont:{family:'Source Serif 4',size:12},
+        displayColors:false,
+        callbacks:{
+          title:items=>new Date(items[0].parsed.x).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+          label:it=>it.parsed.y.toFixed(1)+' µg/m³'
+        }
+      }}
+    }
+  });
+}
+
+/* =====================================================
+   BOTTOM SHEET
+   ===================================================== */
+function toggleSheet(open){
+  document.getElementById('sheet').classList.toggle('open', open);
+}
+
+/* =====================================================
+   BOOT
+   ===================================================== */
+renderSkeleton();
+loadLive();
+setInterval(loadLive, 5*60*1000);
+setTimeout(()=>{ try{ startWind(); }catch(e){} }, 900);
+</script>
+</body>
+</html>

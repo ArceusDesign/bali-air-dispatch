@@ -3,11 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Bali Air Dispatch — Live Monitor</title>
-<meta name="description" content="Live air-quality monitoring for Bali. Every sensor we can still reach — and the ones that have gone dark.">
-<meta name="referrer" content="no-referrer">
-<link rel="preload" as="style" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/fonts/fonts.css">
+<title>Preview v3 · Bali Air Dispatch — Live Monitor</title>
+<meta name="robots" content="noindex,nofollow">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
@@ -51,6 +52,9 @@ body::before{
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   mix-blend-mode:multiply;opacity:.28;
 }
+
+/* ===== PREVIEW BANNER ===== */
+.preview-banner{background:var(--crimson);color:var(--paper);text-align:center;padding:5px 12px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;position:relative;z-index:3}
 
 /* ===== MASTHEAD ===== */
 .masthead{border-bottom:3px double var(--rule);padding:16px 0 14px;position:relative}
@@ -370,6 +374,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 </head>
 <body>
 
+<div class="preview-banner">Preview v3 · Not deployed · Local review only</div>
 
 <!-- MASTHEAD -->
 <header class="masthead wrap">
@@ -394,9 +399,11 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <nav class="navbar wrap">
   <div class="navbar-inner">
     <span class="edition">Live</span>
-    <a href="/brief">Evidence Brief</a>
-    <a href="/articles">Dispatches</a>
-    <a href="/appendix">Appendix</a>
+    <a href="/">Evidence Brief</a>
+    <a href="#map">Map</a>
+    <a href="#bulletin">Bulletin</a>
+    <a href="#roll">Station Roll</a>
+    <a href="#archive">Archive</a>
     <span class="spacer"></span>
     <span id="nav-status">—</span>
   </div>
@@ -575,8 +582,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   <div class="row">Circulated anonymously · No advertisements · No trackers · No accounts</div>
   <div class="row">Live data: PurpleAir · AQICN / KLHK · IQAir · Nafas · OpenAQ/AirGradient · © OpenStreetMap · CARTO · wind © Open-Meteo</div>
   <div class="ornament">✦</div>
-  <div class="row"><a href="/brief">Evidence Brief</a> &nbsp;·&nbsp; <a href="/articles">Dispatches</a> &nbsp;·&nbsp; <a href="/appendix">Appendix &amp; Methodology</a></div>
-  <div class="row" style="margin-top:10px"><span style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;text-transform:none;color:var(--ink);user-select:all">baliair@protonmail.com</span> &nbsp;—&nbsp; copy &amp; paste, no mail client opens.</div>
+  <div class="row">This is a preview build — not public.</div>
 </footer>
 
 <script>
@@ -651,7 +657,7 @@ const HAZE = {
 /* =========================================================
    SEED LOCATIONS — placeholder pins shown instantly while
    /api/live is still in flight. Coords are approximate Bali
-   city centres that typically host Nafas, Airly or AirGradient
+   city centres that typically host Nafas/Airly/AirGradient
    stations. They get wiped the moment real data arrives.
    ========================================================= */
 const SEED_LIVE = [
@@ -1239,11 +1245,19 @@ function stopWind(){
 }
 
 async function fetchWindField(){
-  // Must stay in sync with the Bali grid in functions/api/wind.js (north→south, west→east, 8×8).
-  const la1=-8.0, la2=-9.0, lo1=114.4, lo2=115.75, nx=8, ny=8;
+  const la1=-8.05, la2=-8.9, lo1=114.4, lo2=115.75;
+  const nx=8, ny=8;
   const dx=(lo2-lo1)/(nx-1), dy=(la1-la2)/(ny-1);
-  const r = await fetch('/api/wind', { cache:'no-cache' });
-  if(!r.ok) throw new Error('wind proxy '+r.status);
+  const lats=[],lons=[];
+  for(let iy=0;iy<ny;iy++) for(let ix=0;ix<nx;ix++){
+    lats.push((la1 - iy*dy).toFixed(3));
+    lons.push((lo1 + ix*dx).toFixed(3));
+  }
+  // NOTE FOR PRODUCTION: replace direct call with /api/wind Cloudflare Pages Function proxy
+  //   so visitor IPs never reach Open-Meteo. Preview-only for now.
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats.join(',')}&longitude=${lons.join(',')}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('open-meteo '+r.status);
   const arr = await r.json();
   const pts = Array.isArray(arr) ? arr : [arr];
   if(pts.length !== nx*ny) throw new Error('grid mismatch '+pts.length);

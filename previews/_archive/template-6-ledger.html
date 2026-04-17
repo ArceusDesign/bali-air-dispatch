@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Preview · Template 6 — Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fbf0e0;             /* Financial Times "salmon" */
+  --paper-2:#f3e7d1;
+  --paper-3:#e9dbbd;
+  --ink:#1a1410;
+  --ink-soft:#3a3228;
+  --ink-faint:#776850;
+  --hairline:#c9b795;
+  --rule:#1a1410;
+  --accent:#a4202b;            /* ledger red */
+  --accent-2:#2a5d3a;          /* money green */
+  --accent-3:#5a3a7a;          /* violet chip */
+  --good:#2a5d3a;
+  --warn:#a46a00;
+  --bad:#a4202b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-feature-settings:"tnum","kern"}
+body{font-family:"Inter",system-ui,sans-serif;font-size:14.5px;line-height:1.55}
+.wrap{max-width:1380px;margin:0 auto;padding:0 28px}
+@media(max-width:720px){.wrap{padding:0 16px}}
+a{color:inherit}
+
+.preview-banner{position:sticky;top:0;z-index:50;background:var(--ink);color:var(--paper);font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;padding:7px 18px;text-align:center;border-bottom:1px solid var(--accent)}
+
+/* ===== TICKER BAR ===== */
+.ticker{
+  background:var(--ink);color:var(--paper);padding:10px 0;
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.06em;
+  overflow:hidden;white-space:nowrap;
+}
+.ticker-inner{display:inline-block;animation:tk 60s linear infinite;padding-left:100%}
+.ticker .t{padding:0 22px}
+.ticker .t .v{font-weight:700;margin-left:4px}
+.ticker .t .up{color:#ff4b4b}
+.ticker .t .dn{color:#64ffa0}
+.ticker .t .flag{color:#ffb454}
+@keyframes tk{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ===== MASTHEAD ===== */
+.masthead{padding:20px 0;border-bottom:2px solid var(--rule)}
+.masthead-grid{display:grid;grid-template-columns:auto 1fr auto;gap:28px;align-items:end}
+@media(max-width:820px){.masthead-grid{grid-template-columns:1fr;gap:18px}}
+.masthead .issue{
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;
+  font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);
+}
+.masthead .issue .bold{display:block;color:var(--ink);font-weight:700;font-size:12px;margin-top:4px}
+.masthead h1{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:clamp(44px,6.8vw,96px);line-height:.9;letter-spacing:-.025em;
+  text-align:center;
+}
+.masthead h1 .the{display:block;font-size:.22em;font-weight:500;letter-spacing:.28em;color:var(--accent);text-transform:uppercase;margin-bottom:6px;font-family:"JetBrains Mono",monospace}
+.masthead .meta{
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;
+  font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);
+  text-align:right;
+}
+.masthead .meta .bold{display:block;color:var(--ink);font-weight:700;font-size:12px;margin-top:4px}
+@media(max-width:820px){.masthead .meta{text-align:left}.masthead h1{text-align:left}}
+
+/* ===== NAV ===== */
+.nav{
+  border-bottom:1px solid var(--rule);padding:10px 0;
+  display:flex;gap:0;flex-wrap:wrap;align-items:center;
+}
+.nav a{
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  text-decoration:none;color:var(--ink);padding:4px 14px;border-right:1px solid var(--hairline);
+}
+.nav a:first-child{padding-left:0}
+.nav a:last-child{border-right:none}
+.nav a:hover{color:var(--accent)}
+.nav a.active{color:var(--accent);font-weight:700}
+
+/* ===== HERO INDEX ROW ===== */
+.idx-row{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:0;
+  border-bottom:1px solid var(--rule);
+}
+@media(max-width:900px){.idx-row{grid-template-columns:repeat(2,1fr)}}
+.idx{padding:20px 24px;border-right:1px solid var(--hairline);position:relative}
+.idx:last-child{border-right:none}
+.idx .lbl{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
+.idx .n{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144;font-size:44px;line-height:1;letter-spacing:-.02em;color:var(--ink)}
+.idx .n small{font-size:18px;color:var(--ink-soft);font-weight:400;margin-left:2px}
+.idx .n.bad{color:var(--accent)}
+.idx .n.warn{color:var(--warn)}
+.idx .n.good{color:var(--good)}
+.idx .d{margin-top:6px;font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.1em;color:var(--ink-soft)}
+.idx .d.bad{color:var(--accent)}
+
+/* ===== MAIN LEAD ===== */
+.lead{
+  display:grid;grid-template-columns:2fr 1fr;gap:40px;
+  padding:40px 0;border-bottom:1px solid var(--rule);
+}
+@media(max-width:900px){.lead{grid-template-columns:1fr}}
+.lead .kicker{
+  display:flex;align-items:center;gap:10px;margin-bottom:16px;
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+}
+.lead .kicker .dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pls 1.8s ease-in-out infinite}
+@keyframes pls{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.lead .kicker .tag{background:var(--accent);color:var(--paper);padding:3px 10px;font-weight:700;letter-spacing:.18em}
+.lead h2{
+  font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144;
+  font-size:clamp(36px,4.6vw,66px);line-height:1.02;letter-spacing:-.02em;
+  margin-bottom:18px;
+}
+.lead h2 em{font-style:italic;color:var(--accent)}
+.lead .deck{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:20px;line-height:1.4;color:var(--ink-soft);
+  max-width:620px;
+}
+.lead .byline{
+  margin-top:20px;display:flex;gap:18px;flex-wrap:wrap;
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);
+}
+
+/* visual panel */
+.lead-side{border-left:1px dashed var(--rule);padding-left:30px}
+@media(max-width:900px){.lead-side{border-left:none;padding-left:0;border-top:1px dashed var(--rule);padding-top:20px}}
+.lead-side .title{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px}
+.lead-side svg{width:100%;height:auto;display:block;background:var(--paper-2);border:1px solid var(--hairline)}
+.lead-side .cap{margin-top:10px;font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--ink-soft);line-height:1.5}
+
+/* ===== TABLE (STATION ROLL) ===== */
+.section{padding:36px 0;border-bottom:1px solid var(--rule)}
+.section-head{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:baseline;border-bottom:2px solid var(--rule);padding-bottom:10px;margin-bottom:18px}
+.section-head .n{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.section-head h2{font-family:"Fraunces",serif;font-weight:700;font-size:clamp(26px,3vw,40px);letter-spacing:-.018em}
+.section-head .meta{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
+
+.ldgr{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.ldgr th,.ldgr td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--hairline);font-family:"JetBrains Mono",monospace}
+.ldgr th{font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);border-bottom:2px solid var(--rule);background:var(--paper-2)}
+.ldgr td{font-size:13px}
+.ldgr td.name{font-family:"Fraunces",serif;font-weight:700;font-size:16px;letter-spacing:-.005em}
+.ldgr td.n{font-weight:700}
+.ldgr td.n.bad{color:var(--accent)}
+.ldgr td.n.warn{color:var(--warn)}
+.ldgr td.n.good{color:var(--good)}
+.ldgr tr:hover td{background:var(--paper-2)}
+.chip{display:inline-block;padding:2px 8px;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;border:1px solid currentColor}
+.chip.bad{color:var(--accent)}
+.chip.good{color:var(--good)}
+.chip.gray{color:var(--ink-faint)}
+
+/* ===== TWO-COL COMMENTARY ===== */
+.commentary{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:40px 0;border-bottom:1px solid var(--rule)}
+@media(max-width:900px){.commentary{grid-template-columns:1fr}}
+.commentary h3{
+  font-family:"Fraunces",serif;font-weight:700;font-size:26px;letter-spacing:-.012em;margin-bottom:14px;
+}
+.commentary h3 em{font-style:italic;color:var(--accent)}
+.commentary .kicker{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.commentary p{margin-bottom:12px;font-size:15px;line-height:1.6;color:var(--ink-soft)}
+.commentary p strong{color:var(--ink);font-weight:700}
+
+/* ===== COMPARISON GRID ===== */
+.cmp{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--rule);margin-top:16px}
+@media(max-width:720px){.cmp{grid-template-columns:repeat(2,1fr)}}
+.cmp .cell{padding:22px 22px;border-right:1px solid var(--hairline);background:var(--paper-2)}
+.cmp .cell:last-child{border-right:none}
+.cmp .cell.highlight{background:var(--paper-3);position:relative}
+.cmp .cell.highlight::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--accent)}
+.cmp .cell .jur{font-family:"Fraunces",serif;font-weight:700;font-size:18px;margin-bottom:10px}
+.cmp .cell .jur.bad{color:var(--accent)}
+.cmp .cell .big{font-family:"Fraunces",serif;font-weight:900;font-size:44px;line-height:1;letter-spacing:-.02em}
+.cmp .cell .big.bad{color:var(--accent)}
+.cmp .cell .big small{font-size:16px;color:var(--ink-soft);font-weight:400;margin-left:2px}
+.cmp .cell .sub{margin-top:6px;font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase}
+
+/* ===== DEMANDS ===== */
+.demands{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-top:1px solid var(--rule);border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
+@media(max-width:720px){.demands{grid-template-columns:1fr}}
+.demands li{list-style:none;padding:22px 26px;border-bottom:1px solid var(--rule);position:relative}
+.demands li:nth-child(odd){border-right:1px solid var(--rule)}
+@media(max-width:720px){.demands li:nth-child(odd){border-right:none}}
+.demands li .n{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:11px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px}
+.demands li h4{font-family:"Fraunces",serif;font-weight:700;font-size:20px;line-height:1.15;margin-bottom:8px;letter-spacing:-.008em}
+.demands li p{font-size:13.5px;color:var(--ink-soft);line-height:1.55}
+
+/* ===== CLOSING ===== */
+.close{text-align:center;padding:60px 0 40px 0;border-top:2px solid var(--rule);border-bottom:2px solid var(--rule);margin-top:10px}
+.close .pre{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.close h2{font-family:"Fraunces",serif;font-weight:700;font-size:clamp(36px,5vw,64px);line-height:1.02;letter-spacing:-.02em;max-width:960px;margin:0 auto}
+.close h2 em{font-style:italic;color:var(--accent)}
+.close .cta{display:flex;justify-content:center;gap:0;flex-wrap:wrap;margin-top:32px;border:1px solid var(--rule);max-width:860px;margin-left:auto;margin-right:auto}
+.close .cta a{
+  flex:1;padding:16px 24px;border-right:1px solid var(--rule);
+  font-family:"JetBrains Mono",monospace;font-weight:600;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  text-decoration:none;color:var(--ink);background:var(--paper);
+  transition:background .12s,color .12s;white-space:nowrap;
+}
+.close .cta a:last-child{border-right:none}
+.close .cta a:hover{background:var(--ink);color:var(--paper)}
+.close .cta a.primary{background:var(--accent);color:var(--paper)}
+.close .cta a.primary:hover{background:var(--ink)}
+@media(max-width:720px){.close .cta a{border-right:none;border-bottom:1px solid var(--rule)}.close .cta a:last-child{border-bottom:none}}
+
+/* ===== COLOPHON ===== */
+.colo{padding:30px 0 24px 0;font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;color:var(--ink-faint);line-height:1.9;display:grid;grid-template-columns:1fr auto;gap:20px}
+@media(max-width:720px){.colo{grid-template-columns:1fr}}
+.colo strong{color:var(--ink);font-weight:700}
+.colo a{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="preview-banner">Preview · Template 6 · Ledger · Not deployed · Local review only</div>
+
+<!-- TICKER BAR -->
+<div class="ticker">
+  <div class="ticker-inner">
+    <span class="t">BALI AQ IDX <span class="v up">127 ▲</span></span>
+    <span class="t">KEROBOKAN PM2.5 <span class="v flag">OFFLINE · 33d</span></span>
+    <span class="t">KOPERNIK <span class="v flag">OFFLINE · 32d</span></span>
+    <span class="t">DENPASAR KLHK <span class="v flag">OFFLINE · 8mo</span></span>
+    <span class="t">SEMPIDI <span class="v up">38.0 µg/m³ · ACTIVE</span></span>
+    <span class="t">JIMBARAN <span class="v dn">4.1 µg/m³ · GOOD</span></span>
+    <span class="t">KLUNGKUNG 7D AVG <span class="v up">25.7 µg/m³</span></span>
+    <span class="t">GOV. STATIONS / MILLION <span class="v flag">0.2 (BALI) · 11+ (LONDON)</span></span>
+    <span class="t">NEXT UPDATE <span class="v">HOURLY · NO TRACKERS</span></span>
+    <!-- repeat for seamless loop -->
+    <span class="t">BALI AQ IDX <span class="v up">127 ▲</span></span>
+    <span class="t">KEROBOKAN PM2.5 <span class="v flag">OFFLINE · 33d</span></span>
+    <span class="t">KOPERNIK <span class="v flag">OFFLINE · 32d</span></span>
+    <span class="t">DENPASAR KLHK <span class="v flag">OFFLINE · 8mo</span></span>
+    <span class="t">SEMPIDI <span class="v up">38.0 µg/m³ · ACTIVE</span></span>
+    <span class="t">JIMBARAN <span class="v dn">4.1 µg/m³ · GOOD</span></span>
+    <span class="t">KLUNGKUNG 7D AVG <span class="v up">25.7 µg/m³</span></span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- MASTHEAD -->
+  <header class="masthead">
+    <div class="masthead-grid">
+      <div class="issue">
+        Edition XVII<br>
+        <span class="bold">A data-first record</span>
+      </div>
+      <h1><span class="the">Particulate Matter · Regulation · The Gaps Between</span>Bali Air Dispatch</h1>
+      <div class="meta">
+        Fri · 17 April 2026<br>
+        <span class="bold">12:27 WITA · Live</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="#" class="active">Front</a>
+    <a href="#record">Record</a>
+    <a href="#regulation">Regulation</a>
+    <a href="#gap">The Gap</a>
+    <a href="#help">What Would Help</a>
+    <a href="/monitor">Live Monitor</a>
+    <a href="/appendix">Appendix</a>
+    <a href="mailto:baliair@protonmail.com">Correspondence</a>
+  </nav>
+
+  <!-- INDEX ROW -->
+  <div class="idx-row">
+    <div class="idx">
+      <div class="lbl">Gov. stations / million</div>
+      <div class="n bad">0.2</div>
+      <div class="d bad">▼ 91% vs. Hong Kong (2.4)</div>
+    </div>
+    <div class="idx">
+      <div class="lbl">Days offline · Denpasar</div>
+      <div class="n bad">251</div>
+      <div class="d bad">no published repair timeline</div>
+    </div>
+    <div class="idx">
+      <div class="lbl">% days &gt; WHO 24h · Kerobokan</div>
+      <div class="n bad">68<small>%</small></div>
+      <div class="d">469-day record · n = 320</div>
+    </div>
+    <div class="idx">
+      <div class="lbl">% days &gt; WHO 24h · Kopernik</div>
+      <div class="n bad">92<small>%</small></div>
+      <div class="d">36-day record · peak 111</div>
+    </div>
+    <div class="idx">
+      <div class="lbl">Live sensors (private)</div>
+      <div class="n warn">9</div>
+      <div class="d">none operated by province</div>
+    </div>
+  </div>
+
+  <!-- LEAD -->
+  <section class="lead">
+    <div>
+      <div class="kicker"><span class="dot"></span><span class="tag">Investigation</span> <span>Air Quality · Bali · April 2026</span></div>
+      <h2>After the waste ban, <em>the air is unmeasured.</em></h2>
+      <p class="deck">Bali's only government air-quality station for 4.4 million residents has been offline for eight months. The community sensor that filled the gap across the Canggu corridor went silent two weeks before the 1 April landfill rules took effect. This is what the record shows — and what it cannot.</p>
+      <div class="byline">
+        <span>Anonymous public-interest report</span>
+        <span>·</span>
+        <span>Data · OpenAQ / AQICN / PurpleAir / Nafas / IQAir / KLHK</span>
+      </div>
+    </div>
+    <aside class="lead-side">
+      <div class="title">Kerobokan · Daily median PM2.5 · Nov 2024 – Mar 2026</div>
+      <svg viewBox="0 0 360 180" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <pattern id="hatch" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">
+            <rect width="5" height="5" fill="#fbf0e0"/>
+            <line x1="0" y1="0" x2="0" y2="5" stroke="#a4202b" stroke-width="1" opacity=".35"/>
+          </pattern>
+        </defs>
+        <!-- EPA bands -->
+        <rect x="0" y="0" width="360" height="22" fill="#a4202b" opacity=".1"/>
+        <rect x="0" y="22" width="360" height="26" fill="#c47c2a" opacity=".1"/>
+        <rect x="0" y="48" width="360" height="40" fill="#d4a73d" opacity=".08"/>
+        <rect x="0" y="88" width="360" height="92" fill="#2a5d3a" opacity=".06"/>
+        <!-- WHO line -->
+        <line x1="0" y1="108" x2="360" y2="108" stroke="#1a1410" stroke-dasharray="3 3" stroke-width="1" opacity=".6"/>
+        <text x="4" y="104" font-family="JetBrains Mono" font-size="8" fill="#1a1410">WHO 15 µg/m³</text>
+        <!-- Line area -->
+        <path d="M0,135 L16,125 L30,118 L44,122 L58,104 L72,96 L86,85 L100,92 L116,78 L130,65 L146,52 L160,44 L174,66 L188,58 L204,40 L220,30 L236,48 L252,64 L268,58 L282,70 L296,88 L312,104 L326,118 L340,128 L352,132" fill="none" stroke="#a4202b" stroke-width="1.6"/>
+        <!-- offline silence block -->
+        <rect x="352" y="0" width="8" height="180" fill="url(#hatch)"/>
+        <line x1="352" y1="0" x2="352" y2="180" stroke="#a4202b" stroke-width="1.2"/>
+        <text x="336" y="12" font-family="JetBrains Mono" font-size="8" fill="#a4202b" text-anchor="end" font-weight="700">OFFLINE 15.III</text>
+      </svg>
+      <div class="cap">Mean daily PM2.5 · 21.9 µg/m³. 68% of recorded days exceeded WHO 15 µg/m³. Line ends where sensor ends.</div>
+    </aside>
+  </section>
+
+  <!-- STATION ROLL -->
+  <section class="section" id="record">
+    <div class="section-head">
+      <div class="n">§ I</div>
+      <h2>The station roll</h2>
+      <div class="meta">As of 17.iv.2026 · 12:27 WITA</div>
+    </div>
+    <table class="ldgr">
+      <thead>
+        <tr><th>Sensor</th><th>Network</th><th>Area</th><th>Days</th><th>Mean PM2.5</th><th>% &gt; WHO 24h</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="name">Kerobokan · Umalas</td><td>AQICN · GAIA</td><td>Canggu corridor</td><td class="n">469</td><td class="n bad">21.9</td><td class="n bad">68%</td><td><span class="chip bad">Offline 15 Mar 2026</span></td></tr>
+        <tr><td class="name">Denpasar · KLHK</td><td>AQICN · Govt.</td><td>Central Denpasar</td><td class="n">548</td><td class="n warn">15.1</td><td class="n">~40%</td><td><span class="chip bad">Offline Aug 2025</span></td></tr>
+        <tr><td class="name">Kopernik · Ubud</td><td>OpenAQ · AirGradient</td><td>Ubud</td><td class="n">36</td><td class="n bad">31.2</td><td class="n bad">92%</td><td><span class="chip bad">Offline Mar 2026</span></td></tr>
+        <tr><td class="name">Ubud · Rozendal</td><td>OpenAQ · AirGradient</td><td>Ubud</td><td class="n">167</td><td class="n warn">17.8</td><td class="n warn">57%</td><td><span class="chip bad">Offline Dec 2025</span></td></tr>
+        <tr><td class="name">Balangan</td><td>OpenAQ · AirGradient</td><td>Bukit peninsula</td><td class="n">26</td><td class="n warn">15.4</td><td class="n">46%</td><td><span class="chip bad">Offline Aug 2025</span></td></tr>
+        <tr><td class="name">Klungkung</td><td>PurpleAir</td><td>East Bali</td><td class="n">687</td><td class="n">25.7</td><td class="n warn">~55%</td><td><span class="chip good">Active</span></td></tr>
+        <tr><td class="name">Jimbaran</td><td>PurpleAir</td><td>South coast</td><td class="n">728</td><td class="n good">4.1</td><td class="n">low</td><td><span class="chip good">Active</span></td></tr>
+        <tr><td class="name">Sempidi</td><td>AQICN · KLHK (Govt.)</td><td>Badung Regency</td><td class="n">—</td><td class="n warn">38.0</td><td class="n warn">—</td><td><span class="chip good">Active</span></td></tr>
+        <tr><td class="name">Ubud · DBS</td><td>Nafas · Airly</td><td>Ubud</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td><span class="chip good">Active</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- COMMENTARY -->
+  <section class="commentary" id="regulation">
+    <div>
+      <div class="kicker">§ II — Regulation</div>
+      <h3>A rule that <em>outran</em> its infrastructure.</h3>
+      <p>On 1 April 2026, Denpasar banned organic waste from the Suwung landfill — Bali's largest waste endpoint — as part of a plan to close the site by August 2026. The stated aim was a legitimate environmental objective: push households toward source separation and reduce landfill dependency.</p>
+      <p>Implementation has outpaced infrastructure. Without adequate composting or collection alternatives in place, some residents have turned to burning waste in backyards and roadsides; others to dumping it in the rivers feeding the west-coast catchments. Denpasar cleanup crews have reportedly removed <strong>approximately seven tons of waste from rivers daily</strong>, per the city's Public Works office.</p>
+      <p>What burns at roadside does not appear in any such tally. It appears only in the air.</p>
+    </div>
+    <div>
+      <div class="kicker">§ III — Silence</div>
+      <h3>Two sensors, silent by <em>March's end.</em></h3>
+      <p>The Kerobokan community sensor (AQICN / GAIA) stopped transmitting on <strong>15 March 2026</strong>. It had run for 469 consecutive days. Two weeks later, Denpasar's organic-waste ban took effect.</p>
+      <p>The Kopernik / Ubud AirGradient (OpenAQ) stopped on <strong>16 March 2026</strong>, mid-month. It had run for 36 days; 92% of them had exceeded the WHO 24-hour guideline. Its peak of 111 µg/m³ on 26 February placed it firmly in the "Unhealthy" band on the US EPA scale.</p>
+      <p>Both were privately operated volunteer sensors. As such, they can go offline for any number of reasons — failure, relocation, choice. <strong>The problem is not that any one sensor went dark. The problem is that no public backstop exists.</strong></p>
+    </div>
+  </section>
+
+  <!-- COMPARISON -->
+  <section class="section" id="gap">
+    <div class="section-head">
+      <div class="n">§ IV</div>
+      <h2>The gap, in context</h2>
+      <div class="meta">Gov. AQ stations · per million residents</div>
+    </div>
+    <div class="cmp">
+      <div class="cell highlight">
+        <div class="jur bad">Bali · today</div>
+        <div class="big bad">0.2</div>
+        <div class="sub">1 station · 4.4M residents</div>
+      </div>
+      <div class="cell">
+        <div class="jur">Hong Kong</div>
+        <div class="big">2.4</div>
+        <div class="sub">18 stations · 7.5M</div>
+      </div>
+      <div class="cell">
+        <div class="jur">Bangkok</div>
+        <div class="big">6.5</div>
+        <div class="sub">~70 stations · 10.7M</div>
+      </div>
+      <div class="cell">
+        <div class="jur">London</div>
+        <div class="big">11<small>+</small></div>
+        <div class="sub">100+ stations · 9.0M</div>
+      </div>
+    </div>
+    <p style="margin-top:18px;font-size:14px;color:var(--ink-soft);max-width:880px;line-height:1.55">To reach Hong Kong's density, Bali would require approximately eleven additional government-class stations. Bangkok's density would require roughly twenty-eight. London's, fifty.</p>
+  </section>
+
+  <!-- DEMANDS -->
+  <section class="section" id="help">
+    <div class="section-head">
+      <div class="n">§ V</div>
+      <h2>What would help</h2>
+      <div class="meta">Four actions · low cost · available now</div>
+    </div>
+    <ol class="demands">
+      <li>
+        <div class="n">Action 01</div>
+        <h4>Restore the Denpasar government station.</h4>
+        <p>The Lumintang KLHK station produced almost two years of valuable data before going offline. Repairing or replacing a single monitor is not a major infrastructure investment.</p>
+      </li>
+      <li>
+        <div class="n">Action 02</div>
+        <h4>Deploy a community sensor network.</h4>
+        <p>AirGradient (US$195) and PurpleAir (US$229) can fill gaps immediately. Five to ten units across populated Bali would transform visibility at a total cost under US$3,000.</p>
+      </li>
+      <li>
+        <div class="n">Action 03</div>
+        <h4>Publish whatever is already being measured.</h4>
+        <p>Any operational sensor — government, hospitality, industrial, community — should feed an open platform. Private data helps private decisions; public data makes public ones possible.</p>
+      </li>
+      <li>
+        <div class="n">Action 04</div>
+        <h4>Measure the waste-rule transition in real time.</h4>
+        <p>As Bali moves away from the Suwung landfill, live air-quality data is the only feedback loop that can catch burning hotspots early — and the only one that can distinguish regulatory success from blowback.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- CLOSING -->
+  <div class="close">
+    <div class="pre">Editorial · 17 April 2026</div>
+    <h2>Bali's air is being breathed <em>without record.</em></h2>
+    <div class="cta">
+      <a class="primary" href="/monitor">Open the Live Monitor →</a>
+      <a href="/appendix">Appendix / Methodology</a>
+      <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+    </div>
+  </div>
+
+  <!-- COLOPHON -->
+  <div class="colo">
+    <div>
+      <strong>Bali Air Dispatch</strong> · Edition XVII · 17 April 2026 · Sources: OpenAQ · AQICN · GAIA · PurpleAir · Nafas / Airly · IQAir · KLHK ISPU
+    </div>
+    <div>
+      No trackers · No ads · No accounts · <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

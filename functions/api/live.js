@@ -1,6 +1,6 @@
 // Cloudflare Pages Function — fetches live air quality data server-side
 // API keys stored in Cloudflare env vars (Settings → Environment Variables), never exposed to browser
-// Sources: PurpleAir, AQICN, IQAir, Airly (Nafas sensors), OpenAQ (AirGradient)
+// Sources: PurpleAir, AQICN, IQAir, Airly, Nafas (public JSON feed), OpenAQ (AirGradient)
 
 export async function onRequest(context) {
   const env = context.env;
@@ -83,7 +83,12 @@ export async function onRequest(context) {
     }
   } catch (e) { results.errors.push({ source: 'AQICN', error: e.message }); }
 
-  // ── 3. Airly (Nafas sensors) ──
+  // ── 3. Airly network ──
+  // Note: historically we relabelled `sponsor.name ∈ {Nafas, DBS}` Airly installations
+  // as "Nafas", on the assumption they were the same hardware. Verified against the
+  // Nafas public station list (outdoor.nafas.co.id /api/v1/location/all) — no Bali
+  // UUID overlap. The relabel was incorrect and has been removed. Airly stations
+  // now always report source='Airly'.
   try {
     const resp = await fetch('https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=100&maxResults=25', {
       headers: { Accept: 'application/json', apikey: AIRLY_KEY }
@@ -113,7 +118,8 @@ export async function onRequest(context) {
           results.stations.push({
             id: `airly-${inst.id}`,
             name: [addr.displayAddress1, addr.displayAddress2].filter(Boolean).join(', ') || `Airly #${inst.id}`,
-            source: 'Airly', type: sponsor ? `${sponsor} sensor` : 'Airly sensor',
+            source: 'Airly',
+            type: sponsor ? `${sponsor}-sponsored Airly sensor` : 'Airly sensor',
             lat: inst.location?.latitude, lon: inst.location?.longitude,
             pm25, pm1, pm10, temperature: temp, humidity,
             aqi: cur.indexes?.[0]?.value ? +cur.indexes[0].value.toFixed(0) : null,
@@ -123,6 +129,75 @@ export async function onRequest(context) {
       }
     }
   } catch (e) { results.errors.push({ source: 'Airly', error: e.message }); }
+
+  // ── 3b. Nafas Foundation — Indonesia-specific PM/met sensor network ──
+  // Public JSON backend (same endpoint that share.nafas.co.id consumes).
+  // No auth, no rate limiting. Nafas devices are PM + met only (no gas sensors).
+  // Polling cadence here (per request) is well below their ~15 min refresh.
+  try {
+    const allResp = await fetch('https://outdoor.nafas.co.id/api/v1/location/all', {
+      headers: { Accept: 'application/json' },
+      cf: { cacheTtl: 180, cacheEverything: true },
+    });
+    if (allResp.ok) {
+      const allData = await allResp.json();
+      if (allData?.success && Array.isArray(allData.body)) {
+        // Bali bbox filter — ingest only Bali stations, not all 184 nationwide.
+        const BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
+        const baliStations = allData.body.filter(loc => {
+          const lat = +loc.latitude, lon = +loc.longitude;
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+          if (loc.visible === false) return false;
+          return lat >= BALI.latMin && lat <= BALI.latMax &&
+                 lon >= BALI.lonMin && lon <= BALI.lonMax;
+        });
+
+        if (baliStations.length > 0) results.sources++;
+
+        // Fetch per-station detail in parallel (6 stations → 6 concurrent requests)
+        const details = await Promise.all(baliStations.map(async (loc) => {
+          try {
+            const dr = await fetch(`https://outdoor.nafas.co.id/api/v1/location/detail/${loc.uuid}`, {
+              headers: { Accept: 'application/json' },
+              cf: { cacheTtl: 180, cacheEverything: true },
+            });
+            if (!dr.ok) return { loc, detail: null };
+            const dd = await dr.json();
+            return { loc, detail: dd?.body || null };
+          } catch { return { loc, detail: null }; }
+        }));
+
+        for (const { loc, detail } of details) {
+          const num = (v) => {
+            if (v == null || v === '') return null;
+            const n = +v;
+            return Number.isFinite(n) ? +n.toFixed(1) : null;
+          };
+          const d = detail || loc; // fall back to /all row if detail failed
+          const pm25 = num(d.pm25);
+          const pm10 = num(d.pm10);
+          const pm1  = num(d.pm1);
+          const temp = num(d.temperature);
+          const hum  = num(d.humidity);
+          const aqi  = d.aqi != null ? +d.aqi : (loc.aqi != null ? +loc.aqi : null);
+          const { cat, cls } = pm25Category(pm25);
+          results.stations.push({
+            id: `nafas-${loc.uuid}`,
+            name: loc.name || `Nafas ${String(loc.uuid).slice(0, 8)}`,
+            source: 'Nafas',
+            type: 'Nafas Foundation sensor',
+            lat: +loc.latitude,
+            lon: +loc.longitude,
+            pm25, pm1, pm10, temperature: temp, humidity: hum,
+            aqi: Number.isFinite(aqi) ? aqi : null,
+            category: cat, cls,
+            lastSeen: d.till || loc.till || null,
+            nafas_uuid: loc.uuid,
+          });
+        }
+      }
+    }
+  } catch (e) { results.errors.push({ source: 'Nafas', error: e.message }); }
 
   // ── 4. OpenAQ (AirGradient sensors) ──
   try {

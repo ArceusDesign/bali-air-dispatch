@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Appendix &amp; Methodology — Bali Air Dispatch</title>
+<meta name="description" content="Methodology, PM2.5 scale, data sources, platforms and glossary for Bali Air Dispatch.">
+<meta name="referrer" content="no-referrer">
+<link rel="preload" as="style" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --paper:#f3ece0; --paper-dark:#eae1d1; --paper-3:#dcd2be;
+  --ink:#14110d; --ink-soft:#34302a; --ink-faint:#6a635a;
+  --rule:#2b2620; --hairline:#c0b9a8;
+  --crimson:#8b1a1a; --ochre:#a7742e;
+  --good:#2f6b3a; --mod:#a7742e; --usg:#b9571f; --unh:#8b1a1a; --vunh:#5a1111;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:"Source Serif 4",Georgia,serif;font-optical-sizing:auto;font-size:16px;line-height:1.55;padding:0 0 80px 0}
+.wrap{max-width:1320px;margin:0 auto;padding:0 32px}
+@media(max-width:720px){.wrap{padding:0 18px}}
+
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.35;
+}
+
+
+/* masthead */
+.masthead{border-bottom:3px double var(--rule);padding:22px 0 18px 0}
+.masthead-top{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:10px;border-bottom:1px solid var(--hairline)}
+.masthead-top .r{text-align:right}
+.nameplate{text-align:center;padding:22px 0 14px 0}
+.nameplate h1{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(34px,5vw,62px);line-height:.94;letter-spacing:-.015em}
+.nameplate .sub{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(14px,1.6vw,18px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em}
+.folio{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);padding-top:10px;border-top:1px solid var(--hairline)}
+.folio .c{text-align:center;letter-spacing:.22em}
+.folio .r{text-align:right}
+
+/* nav */
+.navbar{border-bottom:1px solid var(--rule);padding:12px 0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;display:flex;justify-content:center;gap:32px;flex-wrap:wrap}
+.navbar a{color:var(--ink);text-decoration:none}
+.navbar a:hover{color:var(--crimson)}
+.navbar a.current{color:var(--crimson);border-bottom:2px solid var(--crimson);padding-bottom:2px}
+
+/* hero */
+.hero{padding:44px 0 28px 0;border-bottom:1px solid var(--rule)}
+.hero .kicker{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--crimson);margin-bottom:12px}
+.hero h1{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144;font-size:clamp(40px,5.6vw,72px);line-height:.98;letter-spacing:-.02em;color:var(--ink)}
+.hero .deck{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(18px,2vw,22px);line-height:1.42;color:var(--ink-soft);margin-top:18px;max-width:860px}
+
+/* chapter */
+.chapter{padding:46px 0 22px 0;border-top:3px double var(--rule);margin-top:12px}
+.chapter-head{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:baseline;border-bottom:1px solid var(--rule);padding-bottom:14px;margin-bottom:26px}
+.chapter-no{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--crimson);border:1px solid var(--crimson);padding:6px 12px}
+.chapter-title{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144,"SOFT" 10;font-size:clamp(28px,3.6vw,46px);line-height:1;letter-spacing:-.015em}
+.chapter-meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);text-align:right}
+@media(max-width:720px){.chapter-head{grid-template-columns:1fr;gap:10px}.chapter-meta{text-align:left}}
+.chapter-lede{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(17px,1.9vw,21px);line-height:1.42;color:var(--ink-soft);max-width:860px;margin-bottom:22px}
+.chapter-body{display:grid;grid-template-columns:1.35fr 1fr;gap:38px}
+.chapter-body p{margin-bottom:16px}
+.chapter-body p strong{font-weight:700;color:var(--ink)}
+@media(max-width:900px){.chapter-body{grid-template-columns:1fr}}
+
+/* data table */
+.data-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin:14px 0}
+.data-table th,.data-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--hairline)}
+.data-table th{font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:500;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid var(--rule)}
+.data-table td.big{font-family:"Fraunces",serif;font-weight:700;font-size:18px}
+.badge{display:inline-block;padding:3px 9px;border:1px solid currentColor;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase}
+.b-good{color:var(--good)}
+.b-mod{color:var(--ochre)}
+.b-usg{color:var(--usg)}
+.b-unh{color:var(--crimson)}
+.b-vunh{color:var(--vunh)}
+
+/* health scale */
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin:18px 0;border:1px solid var(--rule)}
+.scale .band{padding:14px 12px;border-right:1px solid var(--rule);position:relative}
+.scale .band:last-child{border-right:none}
+.scale .band .t{font-family:"Fraunces",serif;font-weight:700;font-size:15px;line-height:1.15}
+.scale .band .r{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:var(--ink-soft);margin-top:4px}
+.scale .band .d{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.4}
+.scale .b1{background:#e9e4d1}
+.scale .b2{background:#ead9b5}
+.scale .b3{background:#e5c79d}
+.scale .b4{background:#d9a590}
+.scale .b5{background:#c78585}
+@media(max-width:720px){.scale{grid-template-columns:1fr}.scale .band{border-right:none;border-bottom:1px solid var(--rule)}.scale .band:last-child{border-bottom:none}}
+
+/* platform cards */
+.plat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;margin-top:16px}
+@media(max-width:720px){.plat-grid{grid-template-columns:1fr}}
+.plat{border:1px solid var(--rule);padding:22px 24px;background:var(--paper)}
+.plat h4{font-family:"Fraunces",serif;font-weight:700;font-size:19px;margin-bottom:4px}
+.plat .meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px}
+.plat p{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:10px}
+.plat a{color:var(--crimson);text-decoration:none;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;border-bottom:1px dotted var(--crimson);padding-bottom:1px}
+
+/* glossary */
+.gloss-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
+@media(max-width:720px){.gloss-grid{grid-template-columns:1fr}}
+.gloss{border-top:2px solid var(--rule);padding-top:14px}
+.gloss dt{font-family:"Fraunces",serif;font-weight:700;font-size:18px;margin-bottom:6px}
+.gloss dd{font-size:14px;color:var(--ink-soft);line-height:1.5}
+
+/* verify list */
+.verify-list{list-style:none;padding:0}
+.verify-list li{border-bottom:1px solid var(--hairline);padding:14px 0}
+.verify-list li strong{font-weight:700;color:var(--ink);display:block;margin-bottom:4px;font-family:"Fraunces",serif;font-size:16px}
+.verify-list li a{color:var(--crimson);text-decoration:none;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;border-bottom:1px dotted var(--crimson);padding-bottom:1px}
+
+/* footer */
+.foot{padding:40px 0 0 0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:var(--ink-soft);line-height:1.8;text-transform:uppercase}
+.foot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px}
+@media(max-width:720px){.foot-grid{grid-template-columns:repeat(2,1fr)}}
+.foot h4{font-family:"Fraunces",serif;font-weight:700;font-size:15px;text-transform:none;letter-spacing:0;margin-bottom:10px;color:var(--ink)}
+.foot a{color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted var(--hairline)}
+.foot a:hover{color:var(--crimson);border-color:var(--crimson)}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+  <!-- MASTHEAD -->
+  <header class="masthead">
+    <div class="masthead-top">
+      <div>Supplementary record</div>
+      <div>Bali Air Dispatch</div>
+      <div class="r">Anonymous, non-commercial</div>
+    </div>
+    <div class="nameplate">
+      <h1>Appendix &amp; Methodology</h1>
+      <div class="sub">The fine print, the scales, and the places to check everything for yourself.</div>
+    </div>
+    <div class="folio">
+      <div>Edition XVII · Supplement</div>
+      <div class="c">Friday, 17 April 2026</div>
+      <div class="r">Circulated anonymously</div>
+    </div>
+  </header>
+
+  <nav class="navbar">
+    <a href="/">Monitor</a>
+    <a href="/brief">Brief</a>
+    <a href="/articles">Dispatches</a>
+    <a href="#understanding" class="current">Appendix</a>
+    <a href="#verify">Verify</a>
+    <a href="#glossary">Glossary</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="kicker">Supporting material · For researchers and reporters</div>
+    <h1>What <em>PM2.5</em> is, where to check it, and how to verify every claim.</h1>
+    <p class="deck">This supplement holds the reference tables, platform directory, glossary and verification links referenced throughout the brief and the monitor. Content is factual and sourced; the language is plain. If anything here is wrong, email and we will correct it.</p>
+  </section>
+
+  <!-- CHAPTER A — UNDERSTANDING PM2.5 -->
+  <section class="chapter" id="understanding">
+    <div class="chapter-head">
+      <div class="chapter-no">A</div>
+      <div class="chapter-title">Understanding PM2.5</div>
+      <div class="chapter-meta">Science · Standards</div>
+    </div>
+    <p class="chapter-lede">Why this specific number matters more than the others.</p>
+
+    <div class="chapter-body">
+      <div>
+        <p>PM2.5 refers to fine particulate matter with a diameter of 2.5 micrometers or less — roughly one-thirtieth the width of a human hair. Particles that small bypass the nose and throat, enter the deep lung, and cross into the bloodstream. Long-term exposure is associated with heart disease, stroke, chronic lung disease, lung cancer, and measurable reductions in life expectancy. Children, older adults, and people with existing cardiovascular or respiratory conditions are disproportionately affected.</p>
+        <p>Mixed-waste burning — particularly of plastics — emits PM2.5 alongside dioxins, furans, polycyclic aromatic hydrocarbons, and heavy metals. Standard low-cost PM sensors capture only the particulate portion. The toxic organic compounds released in the same plume are not measured by the instrumentation described in this document, and their absence from the record should not be read as their absence from the air.</p>
+      </div>
+      <div>
+        <p>Two scales are commonly quoted. The <strong>WHO Air Quality Guidelines (2021)</strong> set health-based targets: 5 µg/m³ annual mean, 15 µg/m³ 24-hour mean. These were revised downward in 2021 to reflect updated evidence of harm at lower concentrations. The <strong>US EPA Air Quality Index</strong> translates PM2.5 into a 0–500 scale with six public-health categories; its breakpoints are looser than WHO's, reflecting regulatory rather than purely health-based limits.</p>
+        <p>Throughout this document, "above WHO 24-hour" means the daily average exceeded 15 µg/m³ — a threshold that roughly 68% of days in the Kerobokan record cross, and roughly 92% of days in the Kopernik record cross.</p>
+      </div>
+    </div>
+
+    <h3 style="font-family:Fraunces,serif;font-weight:700;font-size:22px;margin:28px 0 12px">The scales, side by side</h3>
+
+    <div class="scale">
+      <div class="band b1"><div class="t">WHO Annual</div><div class="r">5 µg/m³</div><div class="d">Long-term target. Below this, risks are minimised.</div></div>
+      <div class="band b2"><div class="t">WHO 24-hr</div><div class="r">15 µg/m³</div><div class="d">Daily limit. Most populated Bali stations exceed this routinely.</div></div>
+      <div class="band b3"><div class="t">EPA Moderate</div><div class="r">9 – 35.4 µg/m³</div><div class="d">Acceptable; some risk for unusually sensitive groups.</div></div>
+      <div class="band b4"><div class="t">Unhealthy (USG)</div><div class="r">35.5 – 55.4 µg/m³</div><div class="d">Sensitive groups should reduce outdoor exertion.</div></div>
+      <div class="band b5"><div class="t">Unhealthy+</div><div class="r">55.5+ µg/m³</div><div class="d">Everyone may begin to experience effects. Keep children indoors.</div></div>
+    </div>
+
+    <table class="data-table">
+      <thead><tr><th>Standard</th><th>PM2.5 Level</th><th>Classification</th></tr></thead>
+      <tbody>
+        <tr><td>WHO 2021 · Annual</td><td class="big">5 µg/m³</td><td><span class="badge b-good">Long-term target</span></td></tr>
+        <tr><td>WHO 2021 · 24-hour</td><td class="big">15 µg/m³</td><td><span class="badge b-good">Daily exposure limit</span></td></tr>
+        <tr><td>WHO Interim Target 4 (IT-4)</td><td class="big">Annual 10 / 24-hr 25 µg/m³</td><td><span class="badge b-good">Transitional benchmark</span></td></tr>
+        <tr><td>US EPA · Good</td><td class="big">0 – 9.0 µg/m³</td><td><span class="badge b-good">Satisfactory</span></td></tr>
+        <tr><td>US EPA · Moderate</td><td class="big">9.1 – 35.4 µg/m³</td><td><span class="badge b-mod">Acceptable; sensitive concern</span></td></tr>
+        <tr><td>US EPA · Unhealthy (sensitive)</td><td class="big">35.5 – 55.4 µg/m³</td><td><span class="badge b-usg">At-risk groups affected</span></td></tr>
+        <tr><td>US EPA · Unhealthy</td><td class="big">55.5 – 125.4 µg/m³</td><td><span class="badge b-unh">Everyone may be affected</span></td></tr>
+        <tr><td>US EPA · Very Unhealthy</td><td class="big">125.5 – 225.4 µg/m³</td><td><span class="badge b-vunh">Health alert</span></td></tr>
+        <tr><td>US EPA · Hazardous</td><td class="big">225.5+ µg/m³</td><td><span class="badge b-vunh">Emergency conditions</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- CHAPTER B — WHERE TO CHECK -->
+  <section class="chapter" id="platforms">
+    <div class="chapter-head">
+      <div class="chapter-no">B</div>
+      <div class="chapter-title">Where to check, right now</div>
+      <div class="chapter-meta">Five platforms</div>
+    </div>
+    <p class="chapter-lede">The places where a resident, visitor, or researcher can see Bali's air without relying on this page.</p>
+
+    <div class="plat-grid">
+      <article class="plat">
+        <h4>Nafas — Indonesia Air Quality App</h4>
+        <div class="meta">Active · 6 Bali stations (Ubud, Tonja, Sanur, Ketewel, Dauh Puri Kauh, Padangsambian Kaja)</div>
+        <p>The most complete Indonesia-specific dataset. Six live Bali stations spanning Ubud and greater Denpasar, refreshed roughly every fifteen minutes, with PM2.5, PM10, temperature and humidity. The mobile app offers push notifications when readings cross thresholds; the same data is publicly accessible via the Nafas Foundation's live feed.</p>
+        <a href="https://nafas.co.id" target="_blank">nafas.co.id →</a>
+      </article>
+      <article class="plat">
+        <h4>IQAir — Global Air-Quality Map</h4>
+        <div class="meta">Active · ~10 Bali contributors</div>
+        <p>Aggregates private sensors worldwide. Bali coverage comes primarily from private households and businesses that have registered devices. Interactive map with forecast overlay.</p>
+        <a href="https://www.iqair.com/id/air-quality-map" target="_blank">iqair.com →</a>
+      </article>
+      <article class="plat">
+        <h4>PurpleAir</h4>
+        <div class="meta">Active · Jimbaran, Klungkung</div>
+        <p>Community-sensor network. Two Bali units have been reporting continuously for 687 and 728 days respectively. Raw CSVs downloadable from the map.</p>
+        <a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank">map.purpleair.com →</a>
+      </article>
+      <article class="plat">
+        <h4>AQICN · GAIA Network</h4>
+        <div class="meta">Badung active · Denpasar + Kerobokan offline</div>
+        <p>Global aggregator of government and community sensors. Historical CSVs for Kerobokan and Denpasar KLHK remain downloadable even though both are currently offline.</p>
+        <a href="https://aqicn.org/map/indonesia/bali/" target="_blank">aqicn.org →</a>
+      </article>
+      <article class="plat">
+        <h4>OpenAQ · AirGradient</h4>
+        <div class="meta">All Bali sensors offline · archives open</div>
+        <p>Open-data platform. Four Bali AirGradient units are listed (Ubud Rozendal, Balangan, two Kopernik / Ubud units). All are currently offline. Their historical CSVs remain downloadable.</p>
+        <a href="https://explore.openaq.org/locations?bbox=114.4,-8.85,115.7,-8.1" target="_blank">explore.openaq.org →</a>
+      </article>
+      <article class="plat">
+        <h4>KLHK · ISPU Portal</h4>
+        <div class="meta">Government · Badung Sempidi only</div>
+        <p>Indonesia's Ministry of Environment and Forestry air-quality portal. Only Kabupaten Badung is returned in Bali searches. The Denpasar station appears internally as <em>Sedang dalam perawatan</em>.</p>
+        <a href="https://ispu.menlhk.go.id/webv5/#/" target="_blank">ispu.menlhk.go.id →</a>
+      </article>
+    </div>
+
+    <div style="margin-top:26px;padding:20px 22px;border:1px solid var(--crimson);background:var(--paper-dark)">
+      <strong style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson)">Protective measures</strong>
+      <p style="margin-top:8px;font-size:14.5px;line-height:1.55">Above <strong>35 µg/m³</strong>, close windows and use an air purifier if available. Above <strong>55 µg/m³</strong>, avoid outdoor exercise. Children, older adults, and people with respiratory conditions should take additional precautions at any reading above the WHO 24-hour guideline of 15 µg/m³.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER C — PURPLEAIR KLUNGKUNG -->
+  <section class="chapter" id="klungkung">
+    <div class="chapter-head">
+      <div class="chapter-no">C</div>
+      <div class="chapter-title">A week in Klungkung</div>
+      <div class="chapter-meta">7 days · PurpleAir</div>
+    </div>
+    <p class="chapter-lede">Seven consecutive days from a sensor in East Bali, away from the south-west waste corridor. Daily averages sit in the moderate band; daily maxima reach the "Unhealthy for Sensitive Groups" range.</p>
+
+    <table class="data-table">
+      <thead><tr><th>Date</th><th>Daily Avg PM2.5</th><th>Daily Max</th><th>Daily Min</th><th>EPA Category</th></tr></thead>
+      <tbody>
+        <tr><td>Apr 7</td><td class="big">22.3</td><td>64.8</td><td>5.0</td><td><span class="badge b-mod">Moderate</span></td></tr>
+        <tr><td>Apr 8</td><td class="big">30.1</td><td>87.1</td><td>10.1</td><td><span class="badge b-mod">Moderate</span></td></tr>
+        <tr><td>Apr 9</td><td class="big">33.1</td><td>84.7</td><td>7.6</td><td><span class="badge b-mod">Moderate</span></td></tr>
+        <tr><td>Apr 10</td><td class="big">19.7</td><td>53.2</td><td>11.6</td><td><span class="badge b-mod">Moderate</span></td></tr>
+        <tr><td>Apr 11</td><td class="big">25.1</td><td>51.9</td><td>13.4</td><td><span class="badge b-mod">Moderate</span></td></tr>
+        <tr><td>Apr 12</td><td class="big">27.8</td><td>93.5</td><td>7.3</td><td><span class="badge b-mod">Moderate</span></td></tr>
+        <tr><td>Apr 13</td><td class="big">21.9</td><td>56.8</td><td>8.1</td><td><span class="badge b-mod">Moderate</span></td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px;font-size:14px;color:var(--ink-soft);font-style:italic;max-width:860px">Daily maxima of 50–93 µg/m³ enter the "Unhealthy for Sensitive Groups" range. These peaks indicate intermittent pollution events even in areas distant from the Denpasar waste corridor. Without additional sensors, it is not possible to determine how widespread these events are.</p>
+  </section>
+
+  <!-- CHAPTER D — VERIFY EVERYTHING -->
+  <section class="chapter" id="verify">
+    <div class="chapter-head">
+      <div class="chapter-no">D</div>
+      <div class="chapter-title">Verify everything</div>
+      <div class="chapter-meta">Primary sources</div>
+    </div>
+    <p class="chapter-lede">Every claim in the brief and the monitor can be checked at its original source. The links below are the receipts.</p>
+
+    <ul class="verify-list">
+      <li><strong>Kerobokan sensor historical record (download CSV)</strong>
+        <a href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank">aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/ →</a>
+      </li>
+      <li><strong>Denpasar government sensor historical record</strong>
+        <a href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" target="_blank">aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/ →</a>
+      </li>
+      <li><strong>KLHK national station list (search "Bali" / "Denpasar" / "Gianyar")</strong>
+        <a href="https://ispu.menlhk.go.id/webv5/#/stasiun" target="_blank">ispu.menlhk.go.id/webv5/#/stasiun →</a>
+      </li>
+      <li><strong>OpenAQ Bali bounding-box view (4 AirGradient sensors, all offline)</strong>
+        <a href="https://explore.openaq.org/locations?bbox=114.4,-8.85,115.7,-8.1" target="_blank">explore.openaq.org/locations?bbox=114.4,-8.85,115.7,-8.1 →</a>
+      </li>
+      <li><strong>PurpleAir Bali map (Jimbaran + Klungkung active)</strong>
+        <a href="https://map.purpleair.com/air-quality-standards-us-epa-aqi/indonesia/bali" target="_blank">map.purpleair.com/…/indonesia/bali →</a>
+      </li>
+      <li><strong>Hey Bali News · organic-waste ban reporting</strong>
+        <a href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" target="_blank">heybali.info → waste ban backfires</a>
+      </li>
+      <li><strong>Bali.live · waste collection rule change from 1 April</strong>
+        <a href="https://bali.live/p/no-sorting-no-collection-how-balis-waste-collection-rules-changed-from-1-april" target="_blank">bali.live → no sorting, no collection</a>
+      </li>
+      <li><strong>WHO Global Air Quality Guidelines 2021</strong>
+        <a href="https://www.who.int/publications/i/item/9789240034228" target="_blank">who.int → 2021 air quality guidelines</a>
+      </li>
+      <li><strong>US EPA PM2.5 AQI breakpoints</strong>
+        <a href="https://www.epa.gov/pm-pollution/particulate-matter-pm-basics" target="_blank">epa.gov → PM basics</a>
+      </li>
+    </ul>
+  </section>
+
+  <!-- CHAPTER E — GLOSSARY -->
+  <section class="chapter" id="glossary">
+    <div class="chapter-head">
+      <div class="chapter-no">E</div>
+      <div class="chapter-title">Glossary</div>
+      <div class="chapter-meta">Plain-language definitions</div>
+    </div>
+    <p class="chapter-lede">The terms used throughout this site, defined.</p>
+
+    <div class="gloss-grid">
+      <dl class="gloss"><dt>PM2.5</dt><dd>Fine particulate matter with a diameter of 2.5 micrometers or less. Small enough to enter the lungs and bloodstream. Primary health-risk measure used throughout this document.</dd></dl>
+      <dl class="gloss"><dt>AQI (Air Quality Index)</dt><dd>A standardised 0–500 scale for reporting air quality to the public. This document uses the US EPA version. Higher is worse.</dd></dl>
+      <dl class="gloss"><dt>WHO Guideline · Annual</dt><dd>World Health Organization recommended maximum annual average PM2.5: 5 µg/m³ (revised downward in 2021 from the previous 10 µg/m³).</dd></dl>
+      <dl class="gloss"><dt>WHO Guideline · 24-hour</dt><dd>WHO recommended maximum daily average PM2.5: 15 µg/m³ (revised in 2021 from 25 µg/m³).</dd></dl>
+      <dl class="gloss"><dt>µg/m³</dt><dd>Micrograms per cubic metre — the standard unit for particulate concentration in ambient air.</dd></dl>
+      <dl class="gloss"><dt>KLHK</dt><dd><em>Kementerian Lingkungan Hidup dan Kehutanan</em>. Indonesia's Ministry of Environment and Forestry. Operates government air-quality stations and the ISPU portal.</dd></dl>
+      <dl class="gloss"><dt>ISPU</dt><dd><em>Indeks Standar Pencemar Udara</em>. Indonesia's national air-quality index system, published by KLHK.</dd></dl>
+      <dl class="gloss"><dt>GAIA</dt><dd>A network of low-cost community air-quality sensors coordinated through the AQICN project.</dd></dl>
+      <dl class="gloss"><dt>AirGradient</dt><dd>Open-hardware low-cost PM sensor platform. Several Bali units publish through OpenAQ.</dd></dl>
+      <dl class="gloss"><dt>OpenAQ</dt><dd>A non-profit open data platform that aggregates government and community air-quality data worldwide.</dd></dl>
+      <dl class="gloss"><dt>Median</dt><dd>The middle value in a set of readings. Used here in preference to the mean because it is less sensitive to extreme peaks and better represents typical daily air.</dd></dl>
+      <dl class="gloss"><dt>Dioxins &amp; Furans</dt><dd>Persistent organic pollutants released when plastics and mixed waste are burned. Not captured by standard PM sensors.</dd></dl>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="foot">
+    <div class="foot-grid">
+      <div>
+        <h4>Contact</h4>
+        <div><span style="font-family:'IBM Plex Mono',monospace;user-select:all;border-bottom:1px dotted var(--hairline);padding:3px 6px;margin-left:-6px;display:inline-block">baliair@protonmail.com</span></div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--ink-whisper);text-transform:uppercase;margin-top:6px">Copy &amp; paste — no mail client opens.</div>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <div>
+          <a href="/">Live Monitor</a><br>
+          <a href="/brief">Brief</a><br>
+          <a href="/articles">Dispatches</a>
+        </div>
+      </div>
+      <div>
+        <h4>Sources</h4>
+        <div>OpenAQ · AQICN · GAIA · PurpleAir · Nafas · Airly · IQAir · KLHK ISPU</div>
+      </div>
+      <div>
+        <h4>Rights</h4>
+        <div>Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</div>
+      </div>
+    </div>
+    <div style="margin-top:28px;padding-top:18px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.2em;color:var(--ink-faint)">
+      No trackers · No advertisements · No accounts · No cookies · Circulated anonymously
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>
