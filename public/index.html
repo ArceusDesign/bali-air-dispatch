@@ -199,10 +199,7 @@ body::before{
 .legend-row .sw{width:12px;height:12px;border:1px solid var(--rule);flex-shrink:0}
 .legend-row .dash{width:12px;height:12px;border:1.5px dashed var(--crimson);flex-shrink:0}
 
-/* Wind caption bottom-left */
-.wind-cap{bottom:20px;left:18px;padding:8px 12px;display:none;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
-.wind-cap.on{display:flex;align-items:center;gap:8px}
-.wind-cap .arr{color:var(--crimson)}
+/* (Wind caption card removed; wind speed/direction now in masthead top-right) */
 
 /* ============== MOBILE MAP CHROME ============== */
 @media(max-width:720px){
@@ -379,21 +376,22 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 /* DATE in masthead-top center */
 .masthead-top .c{font-weight:600;color:var(--ink-soft);letter-spacing:.18em}
 
-/* COLLAPSIBLE map cards (mobile only) */
-.map-card .card-h{cursor:default}
-.map-card .card-h .cap{display:none;font-size:11px;color:var(--ink-faint);transition:transform .2s;margin-left:6px}
+/* COLLAPSIBLE map cards (desktop AND mobile, default expanded) */
+.map-card .card-h{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding-right:10px}
+.map-card .card-h .cap{display:inline-block;font-size:11px;color:var(--ink-faint);transition:transform .2s;margin-left:6px}
 .map-card .card-body{transition:opacity .2s}
+.map-card.collapsed .card-body{display:none}
+.map-card.collapsed .card-h .cap{transform:rotate(-90deg)}
+.map-card.collapsed{padding-bottom:0}
+
 @media(max-width:720px){
-  .hud{display:block!important}        /* override the older "hide on mobile" rule */
-  .hud,.layers{min-width:140px}
-  .map-card .card-h{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding-right:10px}
-  .map-card .card-h .cap{display:inline-block}
-  .map-card.collapsed .card-body{display:none}
-  .map-card.collapsed .card-h .cap{transform:rotate(-90deg)}
-  .map-card.collapsed{padding-bottom:0}
+  /* Mobile: show HUD too (was previously hidden), align with Layers card */
+  .hud{display:block!important;top:68px;left:10px;right:auto;min-width:160px;max-width:200px}
+  .layers{top:68px;right:10px;min-width:140px}
   /* Mobile edge buffer — extra safe area on text containers */
   .wrap{padding:0 19px}
   .colophon{padding-left:19px;padding-right:19px}
+  .foot{padding-left:19px;padding-right:19px}
   .map-topbar{padding:14px 17px 18px}
   /* Date and ID on mobile shrink */
   .masthead-top{font-size:9px;letter-spacing:.1em;gap:8px}
@@ -441,14 +439,14 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <!-- MASTHEAD -->
 <header class="masthead wrap">
   <div class="masthead-top">
-    <div>Edition III · Auto-refresh 5 min</div>
+    <div data-i18n="home.editionAuto">Edition III · Auto-refresh 5 min</div>
     <div class="c" id="mt-date">—</div>
     <div class="r"><span class="dot"></span><span id="mt-ts">Syncing…</span></div>
   </div>
   <div class="nameplate">
     <div class="flourish">✦</div>
     <h1>Bali&nbsp;Air&nbsp;Dispatch</h1>
-    <div class="sub">A live register of particulate matter, measured daily.</div>
+    <div class="sub" data-i18n="home.subLive">A live register of particulate matter, measured daily.</div>
   </div>
 </header>
 
@@ -456,14 +454,15 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <nav class="navbar wrap">
   <div class="navbar-inner">
     <span class="edition">Live</span>
-    <a href="/brief">Evidence Brief</a>
-    <a href="/setup-monitor">Set up a Monitor</a>
-    <a href="/articles">Dispatches</a>
-    <a href="/history">History</a>
+    <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+    <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+    <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
+    <a href="/history" data-i18n="nav.history">History</a>
     <span class="spacer"></span>
     <span id="nav-status">—</span>
   </div>
-</nav>
+  <div id="lang-switcher"></div>
+  </nav>
 
 <!-- BULLETIN TICKER -->
 <div class="bulletin" id="bulletinBar" aria-hidden="true">
@@ -543,11 +542,9 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       </div>
     </div>
 
-    <!-- Wind caption -->
-    <div class="map-card wind-cap" id="windCap">
-      <span class="arr">↗</span>
-      <span id="windCapText">Wind at 10m · Open-Meteo · live</span>
-    </div>
+    <!-- Wind caption removed in Edition III — wind speed now lives in the
+         masthead top-right (heroWx), so the bottom-left card was redundant. -->
+
   </div>
 </section>
 
@@ -644,29 +641,29 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <footer class="foot wrap">
   <div class="foot-grid">
     <div class="foot-col">
-      <h4>Pages</h4>
-      <a href="/">Live Monitor</a>
-      <a href="/brief">Evidence Brief</a>
-      <a href="/setup-monitor">Set up a Monitor</a>
-      <a href="/articles">Dispatches</a>
-      <a href="/history">History</a>
-      <a href="/appendix">Appendix &amp; Methodology</a>
+      <h4 data-i18n="foot.h.pages">Pages</h4>
+      <a href="/" data-i18n="nav.live">Live Monitor</a>
+      <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+      <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+      <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
+      <a href="/history" data-i18n="nav.history">History</a>
+      <a href="/appendix" data-i18n="foot.appendix">Appendix &amp; Methodology</a>
     </div>
     <div class="foot-col">
-      <h4>Dispatches</h4>
-      <a href="/articles#dispatch-1">I — The daily guideline, exceeded.</a>
-      <a href="/articles#dispatch-2">II — One government sensor.</a>
-      <a href="/articles#dispatch-3">III — Seven tons of river waste.</a>
-      <a href="/articles#dispatch-4">IV — The long-term health effects.</a>
+      <h4 data-i18n="foot.h.dispatches">Dispatches</h4>
+      <a href="/articles#dispatch-1" data-i18n="foot.disp.1">I — The daily guideline, exceeded.</a>
+      <a href="/articles#dispatch-2" data-i18n="foot.disp.2">II — One government sensor.</a>
+      <a href="/articles#dispatch-3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
+      <a href="/articles#dispatch-4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
     </div>
     <div class="foot-col">
-      <h4>Contact</h4>
-      <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+      <h4 data-i18n="foot.h.contact">Contact</h4>
+      <span class="email" tabindex="0" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;color:var(--ink);user-select:all;-webkit-user-select:all;cursor:text;border-bottom:1px dotted var(--hairline);padding:1px 4px;display:inline-block">baliair@protonmail.com</span>
     </div>
   </div>
-  <div class="foot-strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
-  <div class="foot-rights"><strong>Rights.</strong> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</div>
-  <div class="foot-sources"><strong>Sources.</strong> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</div>
+  <div class="foot-strip" data-i18n="foot.strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+  <div class="foot-rights"><strong data-i18n="foot.rights.label">Rights.</strong><span data-i18n="foot.rights.body"> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</span></div>
+  <div class="foot-sources"><strong data-i18n="foot.sources.label">Sources.</strong><span data-i18n="foot.sources.body"> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</span></div>
 </footer>
 
 <script>
@@ -1372,7 +1369,8 @@ let windOn = false;
 
 async function startWind(){
   const btn = document.getElementById('lr-wind');
-  const cap = document.getElementById('windCap');
+  const cap = document.getElementById('windCap');           // may be null (caption removed Edition III)
+  const capTxt = document.getElementById('windCapText');    // may be null
   btn.style.opacity = .6;
   try{
     if(!windField) windField = await fetchWindField();
@@ -1380,15 +1378,15 @@ async function startWind(){
     seedParticles();
     windOn = true;
     animateWind();
-    cap.classList.add('on');
+    if (cap) cap.classList.add('on');
     // update hero wx
     const mid = centerSample(windField);
     document.getElementById('heroWx').innerHTML = `Wind — <b>${mid.spd.toFixed(1)} m/s</b> · <b>${mid.dirLabel}</b>`;
-    document.getElementById('windCapText').textContent = `Wind at 10m · ${mid.spd.toFixed(1)} m/s · ${mid.dirLabel} · Open-Meteo`;
+    if (capTxt) capTxt.textContent = `Wind at 10m · ${mid.spd.toFixed(1)} m/s · ${mid.dirLabel} · Open-Meteo`;
   }catch(e){
     console.warn('wind failed',e);
-    cap.classList.add('on');
-    document.getElementById('windCapText').textContent = 'Wind data unavailable';
+    if (cap) cap.classList.add('on');
+    if (capTxt) capTxt.textContent = 'Wind data unavailable';
   }finally{
     btn.style.opacity = 1;
   }
@@ -1399,7 +1397,8 @@ function stopWind(){
   if(windAnimId) cancelAnimationFrame(windAnimId);
   if(windCanvas && windCanvas.parentNode) windCanvas.parentNode.removeChild(windCanvas);
   windCanvas = null; windCtx = null;
-  document.getElementById('windCap').classList.remove('on');
+  const cap = document.getElementById('windCap');
+  if (cap) cap.classList.remove('on');
 }
 
 async function fetchWindField(){
@@ -1556,24 +1555,15 @@ table.roll th.c, table.roll td.c{text-align:center}
   updateDate();
   setInterval(updateDate, 60*1000);
 
-  // 2. Collapsible map cards (mobile collapses by default; desktop always open)
+  // 2. Collapsible map cards (default expanded on both desktop and mobile)
   window.toggleCard = function(headerEl){
     const card = headerEl.closest('.map-card');
     if (card) card.classList.toggle('collapsed');
   };
-  function applyMobileCollapseDefault(){
-    const isMobile = window.matchMedia('(max-width:720px)').matches;
-    document.querySelectorAll('.map-card.hud, .map-card.layers').forEach(c=>{
-      if (isMobile) c.classList.add('collapsed');
-      else c.classList.remove('collapsed');
-    });
-  }
-  applyMobileCollapseDefault();
-  window.matchMedia('(max-width:720px)').addEventListener('change', applyMobileCollapseDefault);
 
   // Make the HUD card visible on mobile too (previous CSS hid it on mobile)
   const hudCard = document.getElementById('hudCard');
-  if (hudCard) hudCard.style.display = ''; // unhide; CSS handles collapse
+  if (hudCard) hudCard.style.display = ''; // unhide
 
   // 3. Custom zoom controls — bound to map; positioned below the HUD card
   const zoomIn  = document.getElementById('zoomIn');
@@ -1620,5 +1610,6 @@ table.roll th.c, table.roll td.c{text-align:center}
 })();
 </script>
 
+<script src="/js/i18n.js" defer></script>
 </body>
 </html>

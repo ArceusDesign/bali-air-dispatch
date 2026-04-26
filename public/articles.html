@@ -316,7 +316,7 @@ body::before{
   <!-- MASTHEAD -->
   <header class="masthead">
     <div class="masthead-top">
-      <div>Published since April · 2026</div>
+      <div data-i18n="mast.published">Published since April · 2026</div>
       <div>Bali Air Dispatch</div>
       <div class="r">Anonymous, non-commercial</div>
     </div>
@@ -325,26 +325,27 @@ body::before{
       <div class="sub">Three dispatches from the unmonitored island.</div>
     </div>
     <div class="folio">
-      <div>Edition XVII</div>
-      <div class="c">Friday, 17 April 2026</div>
-      <div class="r">Circulated anonymously</div>
+      <div data-i18n="mast.editionXVII">Edition XVII</div>
+      <div class="c" id="mt-date">—</div>
+      <div class="r" data-i18n="mast.circulated">Circulated anonymously</div>
     </div>
   </header>
 
   <!-- NAV (universal · keep in sync across all pages) -->
   <nav class="navbar">
-    <a href="/">Live Monitor</a>
-    <a href="/brief">Evidence Brief</a>
-    <a href="/setup-monitor">Set up a Monitor</a>
-    <a href="/articles" class="on current">Dispatches</a>
-    <a href="/history">History</a>
+    <a href="/" data-i18n="nav.live">Live Monitor</a>
+    <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+    <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+    <a href="/articles" class="on current" data-i18n="nav.dispatches">Dispatches</a>
+    <a href="/history" data-i18n="nav.history">History</a>
+    <div id="lang-switcher"></div>
   </nav>
 
   <!-- BULLETIN -->
   <div class="bulletin">
     <div class="tag">Bulletin · Dispatches</div>
     <div>Three readings from the unmonitored island — filed 16–17 April 2026</div>
-    <div class="when">Last updated 17.iv.2026</div>
+    <div class="when" id="bul-when">—</div>
   </div>
 
   <!-- COLLECTION LEAD -->
@@ -436,7 +437,6 @@ body::before{
 
       <div>
         <p>What does <em>two in three days</em> mean, lived? It means that a child born in Kerobokan on the day the sensor began breathing the Bali average has, by her first birthday, received roughly twice the WHO-recommended annual dose. It means that on any given week of her life, four of its days will meet the short-term ceiling an international body considers a line of public-health consequence — and three of those four will exceed it.</p>
-        <p>That is, it is worth saying plainly, a very Indonesian number, and a not-particularly-bad one by the standards of Southeast Asia. It is also the number that is, at the moment, the only one the island is keeping.</p>
         <p><strong>Record</strong> is the quiet thing that is absent. When the Denpasar government sensor reports, it publishes an hourly AQI and a twenty-four-hour PM2.5 reading; when it does not, there is nothing on the national ISPU dashboard for the island. And on the one private long-record available, the daily guideline has been routinely exceeded for a year and a half.</p>
       </div>
 
@@ -479,8 +479,7 @@ body::before{
 
       <div>
         <p>The CREA report, in its summary of provincial coverage outside of Jakarta, described <em>"a significant coverage gap beyond the city limits into other satellite cities."</em> Bali is one of those gaps. The Denpasar Lumintang station is not, let it be said, a failure of engineering. It is operated by the Environmental Laboratory Unit of the city's Environmental Health and Cleanliness Service under the national ISPUNet programme; when it runs, it publishes hourly AQI and 24-hour PM2.5 readings in the international format.</p>
-        <p>Its absence is not an absence of capacity. It is, at the moment, an absence of continuity.</p>
-        <p>There is a temptation — shown more often in conversations with officials than with residents — to treat community sensors (AQICN, Nafas, AirGradient, PurpleAir) as a substitute for government ones. The difficulty with the substitution is not that the private data is bad. It is that public record requires public accountability, and public accountability requires instruments whose calibration, maintenance, and placement are the responsibility of a body whose legitimacy the public can address.</p>
+        <p>There is a temptation to treat community sensors (AQICN, Nafas, AirGradient, PurpleAir) as a substitute for government ones. The difficulty with the substitution is not that the private data is bad. It is that public record requires public accountability, and public accountability requires instruments whose calibration, maintenance, and placement are the obligation of an official body, not the citizens it represents.</p>
       </div>
 
       <div class="figure-box" style="grid-column:span 2">
@@ -506,13 +505,12 @@ body::before{
       </div>
 
       <div>
-        <p>When the Denpasar Lumintang instrument is running, it speaks. When it is not, the island's official record is silent — not because there are no pollutants to measure, but because there is no government instrument to measure them with. The community data, as Dispatch I set out, is the best long-running public record in the absence of the government one. It is an imperfect stand-in. An archipelago of seventeen thousand islands cannot be air-quality-measured by inference.</p>
+        <p>When the Denpasar Lumintang instrument is running, it speaks. When it is not, the island's official record is silent — not because there are no pollutants to measure, but because there is no government instrument to measure them with. The community data, as Dispatch I set out, is the best long-running public record in the absence of the government one. It is an imperfect stand-in.</p>
         <p>The proposal — it is not a new one — is modest. A handful of reference-grade monitors at Denpasar, Ubud, Canggu, Seminyak, Nusa Dua and either Singaraja or Amed. A public dashboard on the ISPU portal, updated hourly, with a clean CSV backlog for researchers. An annual uptime report, on the London LAQN model. A budget line in the provincial Dinas Lingkungan Hidup that protects these instruments from the routine budgetary losses that have taken down the Denpasar unit.</p>
       </div>
 
       <div>
-        <p>None of this is expensive. A continental-scale reference monitor — a BAM-1020 or equivalent — is on the order of US$15,000–25,000 per unit, with annual maintenance measured in thousands, not millions. Five units across the island, and a dashboard: the kind of line-item that rounds to zero on a provincial budget.</p>
-        <p>The only thing standing between the island and the record it does not yet have is a choice to begin keeping it. The next dispatch, on what has happened since the first of April, is an argument for why that choice matters now and not later.</p>
+        <p>The next dispatch, on what has happened since the first of April, is an argument for why that choice matters now and not later.</p>
       </div>
 
       <div class="sources" style="grid-column:span 2">
@@ -585,7 +583,6 @@ body::before{
       </div>
 
       <div>
-        <p><strong>What this set of dispatches argues for is not new air.</strong> Air, clean or otherwise, is not a negotiable good. What this set of dispatches argues for is a public instrument of record. A half-dozen reference-grade PM2.5 monitors, a dashboard on the national ISPU portal, and a continuity of reporting — these are the preconditions of the kind of evidence-based policy conversation the island needs to have about waste, burning, and the air its residents breathe.</p>
         <p>The Kerobokan sensor was one citizen's private record, made public at private cost. The Denpasar sensor has been a public record, reported to the public only intermittently. The island of Bali, on the morning these dispatches were filed, has no reference-grade air quality measurement being published to any national portal. That is the shape of the gap. The fix is modest. The cost is small. The moment — with burning rising and the landfill rule still young — is now.</p>
       </div>
 
@@ -688,9 +685,6 @@ body::before{
 
   <!-- CLOSING CALL -->
   <div class="call">
-    <div class="kicker">Editorial · 17 April 2026</div>
-    <h2>The air is being breathed <em>without record</em>.</h2>
-    <p>A sensor is not a solution. It is a witness. Its absence does not lower the dose the body receives; it lowers only the public's capacity to reason about it. What Bali lacks, in April of 2026, is not clean air — the question of clean air is a different and longer essay — but the means by which its cleanliness, or the failure of it, can be known to the people who breathe it.</p>
     <div class="cta">
       <a class="primary" href="/">Open the Live Monitor →</a>
       <a href="/brief">Evidence Brief →</a>
@@ -702,31 +696,54 @@ body::before{
   <footer class="foot">
     <div class="foot-grid">
       <div class="foot-col">
-        <h4>Pages</h4>
-        <a href="/">Live Monitor</a>
-        <a href="/brief">Evidence Brief</a>
-        <a href="/setup-monitor">Set up a Monitor</a>
-        <a href="/articles">Dispatches</a>
-        <a href="/history">History</a>
-        <a href="/appendix">Appendix &amp; Methodology</a>
+        <h4 data-i18n="foot.h.pages">Pages</h4>
+        <a href="/" data-i18n="nav.live">Live Monitor</a>
+        <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+        <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+        <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
+        <a href="/history" data-i18n="nav.history">History</a>
+        <a href="/appendix" data-i18n="foot.appendix">Appendix &amp; Methodology</a>
       </div>
       <div class="foot-col">
-        <h4>Dispatches</h4>
-        <a href="/articles#dispatch-1">I — The daily guideline, exceeded.</a>
-        <a href="/articles#dispatch-2">II — One government sensor.</a>
-        <a href="/articles#dispatch-3">III — Seven tons of river waste.</a>
-        <a href="/articles#dispatch-4">IV — The long-term health effects.</a>
+        <h4 data-i18n="foot.h.dispatches">Dispatches</h4>
+        <a href="/articles#dispatch-1" data-i18n="foot.disp.1">I — The daily guideline, exceeded.</a>
+        <a href="/articles#dispatch-2" data-i18n="foot.disp.2">II — One government sensor.</a>
+        <a href="/articles#dispatch-3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
+        <a href="/articles#dispatch-4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
       </div>
       <div class="foot-col">
-        <h4>Contact</h4>
-        <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+        <h4 data-i18n="foot.h.contact">Contact</h4>
+        <span class="email" tabindex="0" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;color:var(--ink);user-select:all;-webkit-user-select:all;cursor:text;border-bottom:1px dotted var(--hairline);padding:1px 4px;display:inline-block">baliair@protonmail.com</span>
       </div>
     </div>
-    <div class="foot-strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
-    <div class="foot-rights"><strong>Rights.</strong> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</div>
-    <div class="foot-sources"><strong>Sources.</strong> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</div>
+    <div class="foot-strip" data-i18n="foot.strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+    <div class="foot-rights"><strong data-i18n="foot.rights.label">Rights.</strong><span data-i18n="foot.rights.body"> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</span></div>
+    <div class="foot-sources"><strong data-i18n="foot.sources.label">Sources.</strong><span data-i18n="foot.sources.body"> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</span></div>
   </footer>
 
 </div>
+<script>
+// Dynamic WITA date for masthead folio + bulletin "when"
+(function(){
+  function update(){
+    const d = new Date();
+    const fmt = d.toLocaleDateString('en-GB',{
+      weekday:'long', day:'numeric', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    }).toUpperCase();
+    const el = document.getElementById('mt-date');
+    if (el) el.textContent = fmt;
+    const when = d.toLocaleDateString('en-GB',{
+      day:'2-digit', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    });
+    const bw = document.getElementById('bul-when');
+    if (bw) bw.textContent = 'Last updated ' + when + ' WITA';
+  }
+  update();
+  setInterval(update, 60*1000);
+})();
+</script>
+<script src="/js/i18n.js" defer></script>
 </body>
 </html>

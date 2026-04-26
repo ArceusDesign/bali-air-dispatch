@@ -93,10 +93,12 @@ export async function onRequest(context) {
   // now always report source='Airly'.
   // Edition III: 100 km from Ubud centre already covers the full island
   // (Lovina ~50 km north, Negara ~75 km west, Amlapura ~40 km east). Bumped
-  // maxResults to 50. (Tested: maxDistanceKM=200 returns empty on free tier.)
+  // maxResults to 50. Edge-cached for 30 min to stay under Airly's free-tier
+  // daily quota (the universal-snapshot worker also calls /api/live).
   try {
     const resp = await fetch('https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=100&maxResults=50', {
-      headers: { Accept: 'application/json', apikey: AIRLY_KEY }
+      headers: { Accept: 'application/json', apikey: AIRLY_KEY },
+      cf: { cacheTtl: 1800, cacheEverything: true }
     });
     const installations = await resp.json();
     if (Array.isArray(installations) && installations.length > 0) {
@@ -104,7 +106,8 @@ export async function onRequest(context) {
       for (const inst of installations) {
         try {
           const mr = await fetch(`https://airapi.airly.eu/v2/measurements/installation?installationId=${inst.id}`, {
-            headers: { Accept: 'application/json', apikey: AIRLY_KEY }
+            headers: { Accept: 'application/json', apikey: AIRLY_KEY },
+            cf: { cacheTtl: 1800, cacheEverything: true }
           });
           const md = await mr.json();
           const cur = md?.current;
