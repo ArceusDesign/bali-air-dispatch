@@ -655,6 +655,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       <a href="/articles#dispatch-2" data-i18n="foot.disp.2">II — One government sensor.</a>
       <a href="/articles#dispatch-3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
       <a href="/articles#dispatch-4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
+        <a href="/articles#dispatch-5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
     </div>
     <div class="foot-col">
       <h4 data-i18n="foot.h.contact">Contact</h4>
@@ -891,16 +892,24 @@ function renderAll(ts){
 }
 
 function renderBulletinTicker(worst,median,overWho,offN){
+  // i18n-aware string lookup with English fallback baked in.
+  const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
   const parts = [];
-  if(worst.pm25>0) parts.push(`<span>Worst now · <b>${worst.pm25.toFixed(1)} µg/m³</b> at <b>${(worst.name||'').split(' (')[0]}</b></span>`);
-  if(median!=null) parts.push(`<span>Network median · <b>${median.toFixed(1)} µg/m³</b></span>`);
-  parts.push(`<span><b>${overWho}</b> of ${liveStations.length} stations above WHO 24h (15 µg/m³)</span>`);
-  parts.push(`<span><b>${offN}</b> sensors offline · historical data preserved below</span>`);
-  parts.push(`<span>Air quality watch — citizen-maintained · anonymous · public interest</span>`);
+  if(worst.pm25>0) parts.push(`<span>${t('ticker.worstNow','Worst now')} · <b>${worst.pm25.toFixed(1)} µg/m³</b> ${t('ticker.at','at')} <b>${(worst.name||'').split(' (')[0]}</b></span>`);
+  if(median!=null) parts.push(`<span>${t('ticker.netMedian','Network median')} · <b>${median.toFixed(1)} µg/m³</b></span>`);
+  parts.push(`<span><b>${overWho}</b> ${t('ticker.aboveWhoMid','of')} ${liveStations.length} ${t('ticker.aboveWhoTail','stations above WHO 24h (15 µg/m³)')}</span>`);
+  parts.push(`<span><b>${offN}</b> ${t('ticker.offline','sensors offline · historical data preserved below')}</span>`);
+  parts.push(`<span>${t('ticker.tagline','Air quality watch — citizen-maintained · anonymous · public interest')}</span>`);
   // repeat for seamless scroll
   const body = parts.map(p=>p+'<span class="sep">·</span>').join('');
   document.getElementById('bulletinInner').innerHTML = body + body;
 }
+// Re-render the ticker if the language changes after the page is loaded.
+document.addEventListener('i18n:changed', () => {
+  if (typeof renderAll === 'function' && (window.liveStations || []).length) {
+    try { renderAll(new Date().toISOString()); } catch(_) {}
+  }
+});
 
 function hasHistory(s){
   // Live archived sources (D1-backed) — currently Nafas; non-Nafas live sources fall through
@@ -928,7 +937,7 @@ function renderRollTable(){
         <td><b>${s.name.split(' (')[0]}</b></td>
         <td>${s.source}</td>
         <td class="r">—</td>
-        <td><span class="badge off">Offline · ${dl}d</span></td>
+        <td><span class="badge off">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.offline','Offline') : 'Offline'} · ${dl}${(window.I18N && window.I18N.t) ? window.I18N.t('roll.daysShort','d') : 'd'}</span></td>
         <td class="c">${historyCell(s)}</td>
         <td class="r">${fmtDate(s.last)}</td>
       </tr>`;

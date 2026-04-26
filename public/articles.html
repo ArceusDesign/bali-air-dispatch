@@ -209,11 +209,39 @@ body::before{
 .sub-h{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 120;font-size:22px;line-height:1.1;letter-spacing:-.005em;color:var(--ink);margin:8px 0 12px}
 .chapter-body h3.sub-h{margin-top:6px}
 
-/* Dispatch sources block (Dispatch IV) */
+/* Dispatch sources block (Dispatch IV+) */
 .dispatch-sources{margin-top:34px;padding:22px 24px;border:1px solid var(--hairline);background:var(--paper-2,rgba(20,17,13,0.03))}
 .dispatch-sources h4{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;font-weight:600}
 .dispatch-sources ol{margin-left:18px;font-family:"Source Serif 4",serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft)}
 .dispatch-sources li{margin-bottom:6px}
+.dispatch-sources a{color:var(--crimson);text-decoration:none;border-bottom:1px dotted var(--crimson)}
+.dispatch-sources a:hover{background:var(--crimson);color:var(--paper)}
+
+/* Dispatch V — mask guide */
+.rec-list{font-family:"Source Serif 4",serif;font-size:14.5px;line-height:1.7;list-style:none;padding-left:0;margin:8px 0}
+.rec-list li{padding:5px 0;border-bottom:1px dotted var(--hairline)}
+.rec-list li:last-child{border-bottom:none}
+.rec-list b{color:var(--ink);font-weight:700}
+.mask-tbl-wrap{overflow-x:auto;border:1px solid var(--rule);background:var(--paper)}
+.mask-tbl{width:100%;border-collapse:collapse;font-family:"Source Serif 4",serif;font-size:13.5px}
+.mask-tbl th,.mask-tbl td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--hairline);vertical-align:top;line-height:1.45}
+.mask-tbl th{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid var(--rule);background:var(--paper-dark,#eae1d1)}
+.mask-tbl td.r,.mask-tbl th.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mask-tbl tr:last-child td{border-bottom:none}
+.mask-tbl tr.tier-prem{background:rgba(139,26,26,0.04)}
+.mask-tbl tr.tier-low{background:rgba(53,94,59,0.04)}
+.mask-tbl .badge{display:inline-block;padding:2px 9px;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;border:1px solid currentColor}
+.mask-tbl .badge.bp{color:var(--crimson)}
+.mask-tbl .badge.bm{color:var(--ochre)}
+.mask-tbl .badge.bl{color:var(--forest)}
+.mask-tbl a.ml{color:var(--ink);font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.01em;text-decoration:none;border-bottom:1px solid var(--hairline);word-break:break-all}
+.mask-tbl a.ml:hover{color:var(--crimson);border-color:var(--crimson)}
+@media(max-width:720px){.mask-tbl{font-size:12px}.mask-tbl th,.mask-tbl td{padding:8px 7px}.mask-tbl a.ml{font-size:10.5px}}
+
+.health-note{margin-top:34px;padding:24px 28px;background:var(--paper-dark,#eae1d1);border-left:4px solid var(--forest)}
+.health-note p{font-family:"Source Serif 4",serif;font-size:14.5px;line-height:1.6;color:var(--ink-soft);margin-bottom:10px}
+.health-note p:last-child{margin-bottom:0}
+.health-note p b{color:var(--ink);font-weight:700}
 
 /* ===== PULL QUOTE ===== */
 .pull{
@@ -352,11 +380,11 @@ body::before{
   <section class="collect-lead">
     <div>
       <div class="deck-kicker">Dispatch collection · April 2026</div>
-      <h1 class="collect-title">Four readings from the <em>unmonitored island</em>.</h1>
-      <p class="collect-deck">A community sensor logged four hundred and sixty-nine days of Bali's breath before it fell silent. One government monitor sits idle for 4.4 million residents. Since the first of April, seven tons of waste a day have been pulled from Denpasar's rivers — while the smoke in the alleys rises without an instrument to record it. And underneath all of that, the science: per ten micrograms a cubic metre of fine particulate matter, a toll the body keeps.</p>
+      <h1 class="collect-title" data-i18n-html="articles.collectTitle">Five readings from the <em>unmonitored island</em>.</h1>
+      <p class="collect-deck">A community sensor logged four hundred and sixty-nine days of Bali's breath before it fell silent. One government monitor sits idle for 4.4 million residents. Since the first of April, seven tons of waste a day have been pulled from Denpasar's rivers — while the smoke in the alleys rises without an instrument to record it. The science underneath: long-term exposure to fine particulate matter exacts a measurable toll on the body. And, finally, what to do about it: a practical mask guide for the daily realities of scooter, traffic and smoke.</p>
       <div class="byline">
         <span>Anonymous public-interest reporting</span>
-        <span>Data · AQICN, BPS, CREA 2024, Denpasar PUPR, Sungai Watch, WHO 2021</span>
+        <span>Data · AQICN, BPS, CREA 2024, Denpasar PUPR, Sungai Watch, WHO 2021, NIOSH</span>
         <span>Correspondence · baliair@protonmail.com</span>
       </div>
     </div>
@@ -377,8 +405,12 @@ body::before{
           <div class="m">§ III · 5-minute read · waste &amp; air</div>
         </a></li>
         <li><a href="#dispatch-4">
-          <div class="t">Per ten micrograms, a <em>toll the body keeps</em>.</div>
+          <div class="t">The long-term <em>health effects</em> of high PM2.5.</div>
           <div class="m">§ IV · 7-minute read · health</div>
+        </a></li>
+        <li><a href="#dispatch-5">
+          <div class="t">A practical mask guide for <em>scooter, traffic, and smoke</em>.</div>
+          <div class="m">§ V · 4-minute read · practical</div>
         </a></li>
       </ol>
     </aside>
@@ -390,10 +422,10 @@ body::before{
   <section class="chapter" id="dispatch-1">
     <div class="chapter-head">
       <div class="chapter-no">Dispatch · I</div>
-      <div class="chapter-title">Two in three days, the <em>daily guideline</em> is exceeded.</div>
+      <div class="chapter-title" data-i18n-html="disp.1.title">Two in three days, the <em>daily guideline</em> is exceeded.</div>
       <div class="chapter-meta">Filed · 16 April 2026<br>Approx. 5-minute read</div>
     </div>
-    <p class="chapter-lede">A community sensor in Kerobokan logged four hundred and sixty-nine days of Bali's breath before it fell silent on 15 March — and on roughly two in three of them, the twenty-four-hour reading was above the line the World Health Organization now sets for a single day's exposure.</p>
+    <p class="chapter-lede" data-i18n-html="disp.1.lede">A community sensor in Kerobokan logged four hundred and sixty-nine days of Bali's breath before it fell silent on 15 March — and on roughly two in three of them, the twenty-four-hour reading was above the line the World Health Organization now sets for a single day's exposure.</p>
 
     <div class="chapter-body">
       <div>
@@ -465,7 +497,7 @@ body::before{
   <section class="chapter" id="dispatch-2">
     <div class="chapter-head">
       <div class="chapter-no">Dispatch · II</div>
-      <div class="chapter-title">One government sensor for an island of <em>4.4&nbsp;million</em>.</div>
+      <div class="chapter-title" data-i18n-html="disp.2.title">One government sensor for an island of <em>4.4&nbsp;million</em>.</div>
       <div class="chapter-meta">Filed · 16 April 2026<br>Approx. 4-minute read</div>
     </div>
     <p class="chapter-lede">Bali's projected 2025 population is 4.46&nbsp;million. The number of KLHK reference-grade PM2.5 monitors serving it on the national ISPU portal is one — and it has not reported in months.</p>
@@ -533,7 +565,7 @@ body::before{
   <section class="chapter" id="dispatch-3">
     <div class="chapter-head">
       <div class="chapter-no">Dispatch · III</div>
-      <div class="chapter-title">Seven tons of river waste a day, and <em>no air data to match</em>.</div>
+      <div class="chapter-title" data-i18n-html="disp.3.title">Seven tons of river waste a day, and <em>no air data to match</em>.</div>
       <div class="chapter-meta">Filed · 17 April 2026<br>Approx. 5-minute read</div>
     </div>
     <p class="chapter-lede">Since the 1 April sorted-waste rule, Denpasar's Public Works office has pulled up to seven tons of waste a day from the city's rivers. Open household burning has risen visibly — and no government instrument is publishing an air-quality number against which the rise can be measured.</p>
@@ -602,15 +634,15 @@ body::before{
   </section>
 
   <!-- ===========================================================
-       DISPATCH IV — Per ten micrograms, a toll
+       DISPATCH IV — The long-term health effects of high PM2.5
        =========================================================== -->
   <section class="chapter" id="dispatch-4">
     <div class="chapter-head">
       <div class="chapter-no">Dispatch · IV</div>
-      <div class="chapter-title">Per ten micrograms, <em>a toll the body keeps</em>.</div>
+      <div class="chapter-title" data-i18n-html="disp.4.title">The long-term <em>health effects</em> of high PM2.5.</div>
       <div class="chapter-meta">Filed · 26 April 2026<br>Approx. 7-minute read</div>
     </div>
-    <p class="chapter-lede">When the World Health Organization halved its safe-exposure ceiling for fine particulate matter in 2021, it did so because the underlying epidemiology had stopped finding a floor. The harm scales with the dose; the dose is what we breathe; and on Bali — where the dominant local source is the open burning of plastics and household waste — the chemistry inside a microgram is unusually toxic.</p>
+    <p class="chapter-lede" data-i18n-html="disp.4.lede">When the World Health Organization halved its safe-exposure ceiling for fine particulate matter in 2021, it did so because the underlying epidemiology had stopped finding a floor. The harm scales with the dose; the dose is what we breathe.</p>
 
     <div class="chapter-body">
       <div>
@@ -683,6 +715,134 @@ body::before{
     </div>
   </section>
 
+  <!-- ===========================================================
+       DISPATCH V — A practical mask guide
+       =========================================================== -->
+  <section class="chapter" id="dispatch-5">
+    <div class="chapter-head">
+      <div class="chapter-no">Dispatch · V</div>
+      <div class="chapter-title" data-i18n-html="disp.5.title">A practical <em>mask guide</em> for scooter, traffic, and smoke.</div>
+      <div class="chapter-meta">Filed · 27 April 2026<br>Approx. 4-minute read</div>
+    </div>
+    <p class="chapter-lede" data-i18n-html="disp.5.lede">A simple, non-affiliate shortlist of masks that actually filter fine particulate matter — for the daily realities of riding a scooter through Denpasar traffic, walking past a roadside burn pile, or stepping outside on a high-AQI morning.</p>
+
+    <div class="chapter-body">
+      <div>
+        <p class="first">The first thing to say plainly: <strong>a cloth or fabric mask is not a filter</strong>. The bandanas, scarves, single-layer surgical sheets, and woven-fabric face coverings sold at most warungs and minimarts are designed for cosmetic, droplet, or comfort purposes. They do not stop the fine particulate matter (PM2.5, PM0.3) produced by burning waste, scooter and truck exhaust, or kitchen smoke. To filter combustion smoke and traffic particles you need a mask that has been independently tested at a respirator standard — N95, KN95, KF94, FFP2, FFP3, or P2.</p>
+        <p>What separates a good mask from a bad one comes down to four things: <strong>filtration rating</strong> (look for the standards above, or a clearly published PM2.5 / PM0.3 efficiency number); <strong>face seal</strong> (a high-rated mask leaks if it gapes at the nose, cheeks or chin); <strong>breathability</strong> (in Bali heat and humidity, a mask that's hard to inhale through will not be worn consistently); and <strong>filter cost</strong> (daily city use means filters need regular replacement, so the cheapest model is rarely the cheapest over a year).</p>
+        <p>The shortlist below is not exhaustive and contains no affiliate links. Every URL goes directly to the manufacturer's product page. If a brand is not represented here, that is not an endorsement of its absence — it simply was not on the shortlist behind the original guide.</p>
+      </div>
+      <div>
+        <h3 class="sub-h">A short recommendation, by use case.</h3>
+        <ul class="rec-list">
+          <li><b>Best reusable daily mask:</b> Flo Mask Pro</li>
+          <li><b>Best premium scooter / cycling mask:</b> R-PUR Nano Light</li>
+          <li><b>Best stylish city mask:</b> Airinum Urban Mask 2.0</li>
+          <li><b>Best low-cost high-protection disposable:</b> 3M Aura 9205+ N95</li>
+          <li><b>Best low-cost hot-weather disposable:</b> Moldex AirWave 4650 N95</li>
+        </ul>
+        <p style="margin-top:14px;font-style:italic;color:var(--ink-soft);font-size:14px">A note on the science baseline: an N95 respirator is tested to filter at least 95 % of certain non-oil airborne particles. The US National Institute for Occupational Safety and Health emphasises that <em>fit</em> is essential — even a NIOSH-certified mask filters poorly if it does not seal closely to the face.</p>
+      </div>
+
+      <!-- TABLE -->
+      <div style="grid-column:span 2;margin-top:18px">
+        <h3 class="sub-h" style="margin-bottom:10px">The shortlist.</h3>
+        <div class="mask-tbl-wrap">
+          <table class="mask-tbl">
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>Product</th>
+                <th>Why it works for PM2.5</th>
+                <th class="r">Approx. price</th>
+                <th>Manufacturer link</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="tier-prem">
+                <td><span class="badge bp">Premium</span></td>
+                <td><b>R-PUR Nano Light</b></td>
+                <td>Designed for PM10, PM2.5 and very fine particles; marketed specifically for urban / cycling pollution.</td>
+                <td class="r">&gt; $100</td>
+                <td><a class="ml" href="https://r-pur.id/product/r-pur-nano-light-mask" rel="noopener noreferrer" target="_blank">r-pur.id/product/r-pur-nano-light-mask</a></td>
+              </tr>
+              <tr class="tier-mid">
+                <td><span class="badge bm">Mid</span></td>
+                <td><b>Flo Mask Pro</b></td>
+                <td>Reusable mask with replaceable filters and a strong face-seal design; good for PM2.5-focused daily use.</td>
+                <td class="r">$80–$100</td>
+                <td><a class="ml" href="https://flomask.com/products/flo-mask-pro-adult-mask" rel="noopener noreferrer" target="_blank">flomask.com/products/flo-mask-pro-adult-mask</a></td>
+              </tr>
+              <tr class="tier-mid">
+                <td><span class="badge bm">Mid</span></td>
+                <td><b>Airinum Urban Mask 2.0</b></td>
+                <td>Claims high PM2.5 filtration; uses replaceable filters; designed for city air pollution.</td>
+                <td class="r">~$79–$108</td>
+                <td><a class="ml" href="https://airinum.com/products/urban-air-mask-2-0" rel="noopener noreferrer" target="_blank">airinum.com/products/urban-air-mask-2-0</a></td>
+              </tr>
+              <tr class="tier-mid">
+                <td><span class="badge bm">Mid</span></td>
+                <td><b>AusAir AirFlex</b></td>
+                <td>Claims filtration for PM0.1, PM0.3, PM2.5 and PM10; designed as a reusable city-pollution mask.</td>
+                <td class="r">~$40–$70</td>
+                <td><a class="ml" href="https://ausair.com/products/airflex-reuseable-mask" rel="noopener noreferrer" target="_blank">ausair.com/products/airflex-reuseable-mask</a></td>
+              </tr>
+              <tr class="tier-mid">
+                <td><span class="badge bm">Mid</span></td>
+                <td><b>Respro CE Techno Mask</b></td>
+                <td>HEPA-type particle layer plus an activated-charcoal cloth layer for gases / vapours, per the brand description.</td>
+                <td class="r">~$40–$70</td>
+                <td><a class="ml" href="https://respro.com/product/ce-techno-mask/" rel="noopener noreferrer" target="_blank">respro.com/product/ce-techno-mask/</a></td>
+              </tr>
+              <tr class="tier-low">
+                <td><span class="badge bl">Low</span></td>
+                <td><b>3M Aura 9205+ N95</b></td>
+                <td>NIOSH-approved N95; at least 95 % filtration against certain non-oil airborne particles.</td>
+                <td class="r">&lt; $10 each</td>
+                <td><a class="ml" href="https://www.3m.com/3M/en_US/p/d/b00051022" rel="noopener noreferrer" target="_blank">3m.com/3M/en_US/p/d/b00051022</a></td>
+              </tr>
+              <tr class="tier-low">
+                <td><span class="badge bl">Low</span></td>
+                <td><b>Moldex N95</b></td>
+                <td>NIOSH-approved N95 with a larger surface-area design for easier breathing in heat.</td>
+                <td class="r">&lt; $10 each</td>
+                <td><a class="ml" href="https://www.moldex.com/category/respiratory-protection/disposable-respirators/n95/" rel="noopener noreferrer" target="_blank">moldex.com/category/respiratory-protection/disposable-respirators/n95/</a></td>
+              </tr>
+              <tr class="tier-low">
+                <td><span class="badge bl">Low</span></td>
+                <td><b>BNX H95W N95</b></td>
+                <td>NIOSH-approved N95; the brand publishes its approval number and 95 % filtration class.</td>
+                <td class="r">&lt; $10 each</td>
+                <td><a class="ml" href="https://bnx.com/products/n95-mask-made-in-usa-bifold-h95w" rel="noopener noreferrer" target="_blank">bnx.com/products/n95-mask-made-in-usa-bifold-h95w</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-faint);margin-top:10px;letter-spacing:.04em">No affiliate links. Every URL above is the manufacturer's own page.</p>
+      </div>
+    </div>
+
+    <!-- HOME-FILTRATION HEALTH NOTE -->
+    <div class="health-note">
+      <h3 class="sub-h" style="margin-bottom:8px">Indoors, the mask is your air conditioner.</h3>
+      <p>A good mask only helps when you are wearing it. Most people in Bali spend the majority of their day indoors — at home, in a villa, at work, in a school, in a kos — which means the air that determines long-term exposure is the indoor air.</p>
+      <p>Three small habits make a measurable difference. <b>Keep AC filters clean</b> — a clogged split-unit filter recirculates dust rather than clearing it; pull the front cover, rinse the foam mesh in warm water, dry, and replace, ideally once a fortnight in burning season. <b>Run a HEPA air purifier</b> in the bedroom and main living space; even a single mid-range unit (Xiaomi, IKEA, Coway, Levoit, BlueAir — anything rated for PM2.5 with a true-HEPA filter) cuts indoor PM2.5 dramatically when the windows are closed. <b>Close the windows when the air outside is bad</b>; this site exists in part to make that decision easier.</p>
+      <p>None of this is a substitute for source control — for fewer burn piles, cleaner exhaust, and a public monitoring network. But it is the part you can act on yourself, today.</p>
+    </div>
+
+    <!-- SOURCES -->
+    <div class="dispatch-sources">
+      <h4>Notes &amp; Sources · Dispatch V</h4>
+      <div class="dispatch-sources-grid">
+        <ol>
+          <li>NIOSH (US National Institute for Occupational Safety and Health) — N95 respirator filtration testing standard (≥ 95 % efficiency against non-oil airborne particles). <a href="https://www.cdc.gov/niosh/npptl/topics/respirators/disp_part/respsource.html" rel="noopener" target="_blank">cdc.gov/niosh</a></li>
+          <li>Original product specifications — see each manufacturer link in the table above. No third-party reseller, marketplace, or affiliate intermediary is used or recommended.</li>
+          <li>Indoor PM2.5 reduction with HEPA filtration — multiple peer-reviewed studies summarised by US EPA. <a href="https://www.epa.gov/indoor-air-quality-iaq/air-cleaners-and-air-filters-home" rel="noopener" target="_blank">epa.gov · air cleaners and air filters in the home</a></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
   <!-- CLOSING CALL -->
   <div class="call">
     <div class="cta">
@@ -710,6 +870,7 @@ body::before{
         <a href="/articles#dispatch-2" data-i18n="foot.disp.2">II — One government sensor.</a>
         <a href="/articles#dispatch-3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
         <a href="/articles#dispatch-4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
+        <a href="/articles#dispatch-5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
       </div>
       <div class="foot-col">
         <h4 data-i18n="foot.h.contact">Contact</h4>
