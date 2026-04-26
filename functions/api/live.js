@@ -1,277 +1,365 @@
-// Cloudflare Pages Function — fetches live air quality data server-side
-// API keys stored in Cloudflare env vars (Settings → Environment Variables), never exposed to browser
-// Sources: PurpleAir, AQICN, IQAir, Airly, Nafas (public JSON feed), OpenAQ (AirGradient)
+// Cloudflare Pages Function — fetches live air quality data server-side.
+// API keys stored in Cloudflare env vars (Settings → Environment Variables),
+// never exposed to browser.
+// Sources: PurpleAir, AQICN, IQAir, Airly, Nafas (public JSON feed),
+// OpenAQ (AirGradient).
+//
+// Edition III iter 5 — first-paint speed pass:
+//   1. D1 FAST PATH. If the universal `stations` + `station_snapshots`
+//      tables hold a recent (≤ 10 min) snapshot for ≥ 5 stations, serve
+//      that response immediately (sub-200 ms). Most visitors hit this path.
+//   2. UPSTREAM PARALLEL FALLBACK. When D1 is empty, stale, or sparse,
+//      fall through to the upstream aggregator — but every source now runs
+//      via Promise.allSettled. The slowest source dictates total time.
+//   3. CACHE. Edge cache 1 h, stale-while-revalidate 24 h: subsequent
+//      visitors get an instant cached response while we revalidate quietly.
 
-export async function onRequest(context) {
-  const env = context.env;
-  const PURPLEAIR_KEY = env.PURPLEAIR_API_KEY;
-  const AQICN_TOKEN = env.AQICN_TOKEN;
-  const IQAIR_KEY = env.IQAIR_API_KEY;
-  const AIRLY_KEY = env.AIRLY_API_KEY;
-  const OPENAQ_KEY = env.OPENAQ_API_KEY;
-
-  const results = { ts: new Date().toISOString(), sources: 0, stations: [], errors: [] };
-
-  function aqiToPm25(aqi) {
-    if (aqi <= 50) return +(aqi * 12.0 / 50).toFixed(1);
-    if (aqi <= 100) return +(12.1 + (aqi - 51) * (35.4 - 12.1) / 49).toFixed(1);
-    if (aqi <= 150) return +(35.5 + (aqi - 101) * (55.4 - 35.5) / 49).toFixed(1);
-    if (aqi <= 200) return +(55.5 + (aqi - 151) * (150.4 - 55.5) / 49).toFixed(1);
-    if (aqi <= 300) return +(150.5 + (aqi - 201) * (250.4 - 150.5) / 99).toFixed(1);
-    return +(250.5 + (aqi - 301) * (500.4 - 250.5) / 199).toFixed(1);
-  }
-
-  function pm25Category(pm) {
-    if (pm == null) return { cat: 'Unknown', cls: 'unknown' };
-    if (pm <= 12) return { cat: 'Good', cls: 'good' };
-    if (pm <= 25) return { cat: 'Moderate', cls: 'mod' };
-    if (pm <= 35.4) return { cat: 'Moderate (above WHO 24hr)', cls: 'mod' };
-    if (pm <= 55.4) return { cat: 'Unhealthy for Sensitive Groups', cls: 'usg' };
-    if (pm <= 150.4) return { cat: 'Unhealthy', cls: 'unh' };
-    if (pm <= 250.4) return { cat: 'Very Unhealthy', cls: 'vunh' };
-    return { cat: 'Hazardous', cls: 'haz' };
-  }
-
-  function isRecent(isoStr) {
-    if (!isoStr) return false;
-    return (Date.now() - new Date(isoStr).getTime()) < 6 * 60 * 60 * 1000;
-  }
-
-  // ── 1. PurpleAir ──
-  // Bali bbox covers the whole island including the north (Lovina, Singaraja)
-  // and the southern tip (Uluwatu). Extends a touch into the surrounding sea.
-  try {
-    const resp = await fetch('https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,last_seen&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78', {
-      headers: { 'X-API-Key': PURPLEAIR_KEY }
-    });
-    const data = await resp.json();
-    if (data.data) {
-      results.sources++;
-      const f = data.fields;
-      for (const row of data.data) {
-        const pm = row[f.indexOf('pm2.5')];
-        const { cat, cls } = pm25Category(pm);
-        results.stations.push({
-          id: `pa-${row[0]}`, name: row[f.indexOf('name')], source: 'PurpleAir', type: 'Community sensor',
-          lat: row[f.indexOf('latitude')], lon: row[f.indexOf('longitude')],
-          pm25: pm != null ? +pm.toFixed(1) : null, aqi: null, category: cat, cls,
-          lastSeen: row[f.indexOf('last_seen')] ? new Date(row[f.indexOf('last_seen')] * 1000).toISOString() : null,
-        });
-      }
+// ── Helpers ───────────────────────────────────────────────────────────
+function aqiToPm25(aqi) {
+  if (aqi <= 50) return +(aqi * 12.0 / 50).toFixed(1);
+  if (aqi <= 100) return +(12.1 + (aqi - 51) * (35.4 - 12.1) / 49).toFixed(1);
+  if (aqi <= 150) return +(35.5 + (aqi - 101) * (55.4 - 35.5) / 49).toFixed(1);
+  if (aqi <= 200) return +(55.5 + (aqi - 151) * (150.4 - 55.5) / 49).toFixed(1);
+  if (aqi <= 300) return +(150.5 + (aqi - 201) * (250.4 - 150.5) / 99).toFixed(1);
+  return +(250.5 + (aqi - 301) * (500.4 - 250.5) / 199).toFixed(1);
+}
+function pm25Category(pm) {
+  if (pm == null) return { cat: 'Unknown', cls: 'unknown' };
+  if (pm <= 12) return { cat: 'Good', cls: 'good' };
+  if (pm <= 25) return { cat: 'Moderate', cls: 'mod' };
+  if (pm <= 35.4) return { cat: 'Moderate (above WHO 24hr)', cls: 'mod' };
+  if (pm <= 55.4) return { cat: 'Unhealthy for Sensitive Groups', cls: 'usg' };
+  if (pm <= 150.4) return { cat: 'Unhealthy', cls: 'unh' };
+  if (pm <= 250.4) return { cat: 'Very Unhealthy', cls: 'vunh' };
+  return { cat: 'Hazardous', cls: 'haz' };
+}
+function isRecent(isoStr) {
+  if (!isoStr) return false;
+  return (Date.now() - new Date(isoStr).getTime()) < 6 * 60 * 60 * 1000;
+}
+function jsonResponse(body, extraHeaders = {}) {
+  return new Response(JSON.stringify(body), {
+    headers: {
+      'Content-Type': 'application/json',
+      // Tight edge cache; stale-while-revalidate keeps hot responses warm
+      // for a full day so a single revalidation per hour serves everything.
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+      'Access-Control-Allow-Origin': '*',
+      ...extraHeaders,
     }
-  } catch (e) { results.errors.push({ source: 'PurpleAir', error: e.message }); }
+  });
+}
 
-  // ── 2. AQICN ──
-  try {
-    const resp = await fetch(`https://api.waqi.info/v2/map/bounds?latlng=-8.92,114.4,-8.0,115.78&networks=all&token=${AQICN_TOKEN}`);
-    const data = await resp.json();
-    if (data.status === 'ok' && data.data) {
-      results.sources++;
-      for (const s of data.data) {
-        try {
-          const dr = await fetch(`https://api.waqi.info/feed/@${s.uid}/?token=${AQICN_TOKEN}`);
-          const dd = await dr.json();
-          const pm25 = dd?.data?.iaqi?.pm25?.v;
-          const { cat, cls } = pm25Category(pm25);
-          const isGov = dd?.data?.attributions?.[0]?.name?.includes('KLHK') || dd?.data?.attributions?.[0]?.name?.includes('Kementerian');
-          results.stations.push({
-            id: `aq-${s.uid}`, name: s.station?.name || 'Unknown', source: 'AQICN',
-            type: isGov ? 'Government (KLHK)' : 'GAIA Network',
-            lat: s.lat, lon: s.lon, pm25: pm25 != null ? +pm25 : null, aqi: +s.aqi || null,
-            category: cat, cls, lastSeen: dd?.data?.time?.iso || null,
-          });
-        } catch (_) {}
-      }
-    }
-  } catch (e) { results.errors.push({ source: 'AQICN', error: e.message }); }
+// ── D1 FAST PATH ──────────────────────────────────────────────────────
+// One SQL: every station catalog row joined to its most-recent snapshot
+// (within the last 30 min — the worker writes every 15 min so this catches
+// every station between cron ticks). If we get ≥ 5 fresh rows back, this
+// is good enough to serve immediately.
+async function fastPathFromD1(db) {
+  const cutoff = Math.floor(Date.now() / 1000) - 30 * 60;
+  const rows = await db.prepare(`
+    SELECT s.station_id, s.source, s.name, s.lat, s.lon, s.type,
+           sn.pm25, sn.pm10, sn.pm1, sn.aqi, sn.temperature, sn.humidity,
+           sn.station_till, sn.ts
+    FROM stations s
+    JOIN station_snapshots sn ON sn.station_id = s.station_id
+    WHERE sn.ts = (
+      SELECT MAX(ts) FROM station_snapshots WHERE station_id = s.station_id
+    )
+    AND sn.ts >= ?1
+    ORDER BY s.source, s.name
+  `).bind(cutoff).all();
+  const results = rows.results || [];
+  if (results.length < 5) return null;  // not enough fresh data, fall through
 
-  // ── 3. Airly network ──
-  // Note: historically we relabelled `sponsor.name ∈ {Nafas, DBS}` Airly installations
-  // as "Nafas", on the assumption they were the same hardware. Verified against the
-  // Nafas public station list (outdoor.nafas.co.id /api/v1/location/all) — no Bali
-  // UUID overlap. The relabel was incorrect and has been removed. Airly stations
-  // now always report source='Airly'.
-  // Edition III: Airly free tier = 100 requests / day / API key, resets at
-  // midnight UTC. With 2 Bali installations (1 nearest call + 2 measurement
-  // calls = 3 calls per /api/live execution, when cache misses) we must
-  // cache aggressively. Strategy:
-  //   - cf.cacheTtl = 7200 (2h) on installations/nearest — installations
-  //     don't change daily; cache for 2 hours.
-  //   - cf.cacheTtl = 3600 (1h) on per-installation measurements — readings
-  //     update every 10-15 min upstream, but a 1-hour cache is plenty.
-  //   - Worst case hourly: 1 fresh nearest call + 2 fresh measurements = 3
-  //     calls. 24 hours × 3 = 72 calls / day. Under the 100 ceiling.
-  //   - HTTP 429 → bail out cleanly so we don't burn through more quota.
-  // Per Airly TOS we also display the Airly logo where their data is shown.
-  try {
-    const resp = await fetch('https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=100&maxResults=50', {
-      headers: { Accept: 'application/json', apikey: AIRLY_KEY },
+  const stations = results.map(r => {
+    const pm25 = r.pm25 != null ? +(+r.pm25).toFixed(1) : null;
+    const { cat, cls } = pm25Category(pm25);
+    return {
+      id: r.station_id,
+      name: r.name,
+      source: r.source,
+      type: r.type || null,
+      lat: r.lat,
+      lon: r.lon,
+      pm25,
+      pm10: r.pm10 != null ? +(+r.pm10).toFixed(1) : null,
+      pm1:  r.pm1  != null ? +(+r.pm1).toFixed(1)  : null,
+      aqi: r.aqi != null ? +r.aqi : null,
+      temperature: r.temperature != null ? +(+r.temperature).toFixed(1) : null,
+      humidity:    r.humidity    != null ? +(+r.humidity).toFixed(1)    : null,
+      category: cat,
+      cls,
+      lastSeen: r.station_till || null,
+    };
+  });
+
+  const sources = new Set(stations.map(s => s.source)).size;
+  return {
+    ts: new Date().toISOString(),
+    sources,
+    stations,
+    fast_path: true,            // signals to debug we served from D1
+  };
+}
+
+// ── UPSTREAM SOURCE FETCHERS — each returns an array of station objects ──
+// All fetchers run in parallel via Promise.allSettled.
+
+async function fetchPurpleAir(env) {
+  // Whole-Bali bbox (north -8.0 → south -8.92, west 114.4 → east 115.78)
+  const r = await fetch(
+    'https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,last_seen&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78',
+    { headers: { 'X-API-Key': env.PURPLEAIR_API_KEY } }
+  );
+  const data = await r.json();
+  if (!data?.data) return [];
+  const f = data.fields;
+  return data.data.map(row => {
+    const pm = row[f.indexOf('pm2.5')];
+    const { cat, cls } = pm25Category(pm);
+    return {
+      id: `pa-${row[0]}`,
+      name: row[f.indexOf('name')],
+      source: 'PurpleAir',
+      type: 'Community sensor',
+      lat: row[f.indexOf('latitude')],
+      lon: row[f.indexOf('longitude')],
+      pm25: pm != null ? +pm.toFixed(1) : null,
+      aqi: null,
+      category: cat,
+      cls,
+      lastSeen: row[f.indexOf('last_seen')]
+        ? new Date(row[f.indexOf('last_seen')] * 1000).toISOString()
+        : null,
+    };
+  });
+}
+
+async function fetchAQICN(env) {
+  // bounds first, then per-station detail in PARALLEL (was sequential)
+  const r = await fetch(
+    `https://api.waqi.info/v2/map/bounds?latlng=-8.92,114.4,-8.0,115.78&networks=all&token=${env.AQICN_TOKEN}`
+  );
+  const data = await r.json();
+  if (data.status !== 'ok' || !data.data) return [];
+  const details = await Promise.all(data.data.map(async (s) => {
+    try {
+      const dr = await fetch(`https://api.waqi.info/feed/@${s.uid}/?token=${env.AQICN_TOKEN}`);
+      const dd = await dr.json();
+      return { s, dd };
+    } catch { return { s, dd: null }; }
+  }));
+  return details.map(({ s, dd }) => {
+    const pm25 = dd?.data?.iaqi?.pm25?.v;
+    const { cat, cls } = pm25Category(pm25);
+    const attribution = dd?.data?.attributions?.[0]?.name || '';
+    const isGov = attribution.includes('KLHK') || attribution.includes('Kementerian');
+    return {
+      id: `aq-${s.uid}`,
+      name: s.station?.name || 'Unknown',
+      source: 'AQICN',
+      type: isGov ? 'Government (KLHK)' : 'GAIA Network',
+      lat: s.lat,
+      lon: s.lon,
+      pm25: pm25 != null ? +pm25 : null,
+      aqi: +s.aqi || null,
+      category: cat,
+      cls,
+      lastSeen: dd?.data?.time?.iso || null,
+    };
+  });
+}
+
+async function fetchAirly(env) {
+  // Aggressive cf cache: nearest 2h, measurements 1h. Free-tier safe.
+  const resp = await fetch(
+    'https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=100&maxResults=50',
+    {
+      headers: { Accept: 'application/json', apikey: env.AIRLY_API_KEY },
       cf: { cacheTtl: 7200, cacheEverything: true }
-    });
-    if (resp.status === 429) throw new Error('Airly rate limit (429)');
-    const installations = await resp.json();
-    if (Array.isArray(installations) && installations.length > 0) {
-      results.sources++;
-      for (const inst of installations) {
-        try {
-          const mr = await fetch(`https://airapi.airly.eu/v2/measurements/installation?installationId=${inst.id}`, {
-            headers: { Accept: 'application/json', apikey: AIRLY_KEY },
-            cf: { cacheTtl: 3600, cacheEverything: true }
-          });
-          if (mr.status === 429) continue;  // skip this installation; quota guard
-          const md = await mr.json();
-          const cur = md?.current;
-          if (!cur) continue;
-          let pm25=null, pm1=null, pm10=null, temp=null, humidity=null;
-          for (const v of (cur.values||[])) {
-            if (v.name==='PM25') pm25=+v.value.toFixed(1);
-            if (v.name==='PM1') pm1=+v.value.toFixed(1);
-            if (v.name==='PM10') pm10=+v.value.toFixed(1);
-            if (v.name==='TEMPERATURE') temp=+v.value.toFixed(1);
-            if (v.name==='HUMIDITY') humidity=+v.value.toFixed(1);
-          }
-          const { cat, cls } = pm25Category(pm25);
-          const addr = inst.address||{};
-          const sponsor = inst.sponsor?.name||'';
-          results.stations.push({
-            id: `airly-${inst.id}`,
-            name: [addr.displayAddress1, addr.displayAddress2].filter(Boolean).join(', ') || `Airly #${inst.id}`,
-            source: 'Airly',
-            type: sponsor ? `${sponsor}-sponsored Airly sensor` : 'Airly sensor',
-            lat: inst.location?.latitude, lon: inst.location?.longitude,
-            pm25, pm1, pm10, temperature: temp, humidity,
-            aqi: cur.indexes?.[0]?.value ? +cur.indexes[0].value.toFixed(0) : null,
-            category: cat, cls, lastSeen: cur.tillDateTime || null,
-          });
-        } catch (_) {}
+    }
+  );
+  if (resp.status === 429) throw new Error('Airly 429');
+  const installations = await resp.json();
+  if (!Array.isArray(installations) || installations.length === 0) return [];
+
+  const measurements = await Promise.all(installations.map(async (inst) => {
+    try {
+      const mr = await fetch(
+        `https://airapi.airly.eu/v2/measurements/installation?installationId=${inst.id}`,
+        {
+          headers: { Accept: 'application/json', apikey: env.AIRLY_API_KEY },
+          cf: { cacheTtl: 3600, cacheEverything: true }
+        }
+      );
+      if (mr.status === 429) return { inst, md: null };
+      const md = await mr.json();
+      return { inst, md };
+    } catch { return { inst, md: null }; }
+  }));
+
+  return measurements.flatMap(({ inst, md }) => {
+    const cur = md?.current;
+    if (!cur) return [];
+    let pm25=null, pm1=null, pm10=null, temp=null, humidity=null;
+    for (const v of (cur.values||[])) {
+      if (v.name==='PM25') pm25=+v.value.toFixed(1);
+      else if (v.name==='PM1') pm1=+v.value.toFixed(1);
+      else if (v.name==='PM10') pm10=+v.value.toFixed(1);
+      else if (v.name==='TEMPERATURE') temp=+v.value.toFixed(1);
+      else if (v.name==='HUMIDITY') humidity=+v.value.toFixed(1);
+    }
+    const { cat, cls } = pm25Category(pm25);
+    const addr = inst.address||{};
+    const sponsor = inst.sponsor?.name||'';
+    return [{
+      id: `airly-${inst.id}`,
+      name: [addr.displayAddress1, addr.displayAddress2].filter(Boolean).join(', ') || `Airly #${inst.id}`,
+      source: 'Airly',
+      type: sponsor ? `${sponsor}-sponsored Airly sensor` : 'Airly sensor',
+      lat: inst.location?.latitude,
+      lon: inst.location?.longitude,
+      pm25, pm1, pm10, temperature: temp, humidity,
+      aqi: cur.indexes?.[0]?.value ? +cur.indexes[0].value.toFixed(0) : null,
+      category: cat,
+      cls,
+      lastSeen: cur.tillDateTime || null,
+    }];
+  });
+}
+
+async function fetchNafas() {
+  const allResp = await fetch('https://outdoor.nafas.co.id/api/v1/location/all', {
+    headers: { Accept: 'application/json' },
+    cf: { cacheTtl: 300, cacheEverything: true },  // bumped from 180 → 300
+  });
+  if (!allResp.ok) return [];
+  const allData = await allResp.json();
+  if (!allData?.success || !Array.isArray(allData.body)) return [];
+  const BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
+  const baliStations = allData.body.filter(loc => {
+    const lat = +loc.latitude, lon = +loc.longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+    if (loc.visible === false) return false;
+    return lat >= BALI.latMin && lat <= BALI.latMax &&
+           lon >= BALI.lonMin && lon <= BALI.lonMax;
+  });
+  const details = await Promise.all(baliStations.map(async (loc) => {
+    try {
+      const dr = await fetch(`https://outdoor.nafas.co.id/api/v1/location/detail/${loc.uuid}`, {
+        headers: { Accept: 'application/json' },
+        cf: { cacheTtl: 300, cacheEverything: true },
+      });
+      if (!dr.ok) return { loc, detail: null };
+      const dd = await dr.json();
+      return { loc, detail: dd?.body || null };
+    } catch { return { loc, detail: null }; }
+  }));
+  const num = (v) => {
+    if (v == null || v === '') return null;
+    const n = +v;
+    return Number.isFinite(n) ? +n.toFixed(1) : null;
+  };
+  return details.map(({ loc, detail }) => {
+    const d = detail || loc;
+    const pm25 = num(d.pm25);
+    const { cat, cls } = pm25Category(pm25);
+    const aqi = d.aqi != null ? +d.aqi : (loc.aqi != null ? +loc.aqi : null);
+    return {
+      id: `nafas-${loc.uuid}`,
+      name: loc.name || `Nafas ${String(loc.uuid).slice(0,8)}`,
+      source: 'Nafas',
+      type: 'Nafas Foundation sensor',
+      lat: +loc.latitude,
+      lon: +loc.longitude,
+      pm25,
+      pm1: num(d.pm1),
+      pm10: num(d.pm10),
+      temperature: num(d.temperature),
+      humidity: num(d.humidity),
+      aqi: Number.isFinite(aqi) ? aqi : null,
+      category: cat,
+      cls,
+      lastSeen: d.till || loc.till || null,
+      nafas_uuid: loc.uuid,
+    };
+  });
+}
+
+async function fetchOpenAQ(env) {
+  // 6 search centers, parallel discovery, then parallel detail per station.
+  // De-dup by id.
+  const centers = [
+    {lat:-8.16, lon:115.10},
+    {lat:-8.50, lon:115.26},
+    {lat:-8.65, lon:115.22},
+    {lat:-8.80, lon:115.14},
+    {lat:-8.35, lon:114.65},
+    {lat:-8.45, lon:115.65},
+  ];
+  const headers = { Accept: 'application/json', 'X-API-Key': env.OPENAQ_API_KEY };
+  const centerHits = await Promise.all(centers.map(async (c) => {
+    try {
+      const r = await fetch(
+        `https://api.openaq.org/v3/locations?coordinates=${c.lat},${c.lon}&radius=25000&limit=20`,
+        { headers, cf: { cacheTtl: 1800, cacheEverything: true } }
+      );
+      const d = await r.json();
+      return d.results || [];
+    } catch { return []; }
+  }));
+  const seen = new Set();
+  const unique = [];
+  for (const list of centerHits) {
+    for (const loc of list) {
+      if (seen.has(loc.id)) continue;
+      seen.add(loc.id);
+      unique.push(loc);
+    }
+  }
+  const latest = await Promise.all(unique.map(async (loc) => {
+    try {
+      const lr = await fetch(`https://api.openaq.org/v3/locations/${loc.id}/latest`, {
+        headers, cf: { cacheTtl: 1800, cacheEverything: true }
+      });
+      const ld = await lr.json();
+      return { loc, ld };
+    } catch { return { loc, ld: null }; }
+  }));
+  const out = [];
+  for (const { loc, ld } of latest) {
+    if (!ld) continue;
+    let pm25=null, lastSeen=null;
+    for (const r of (ld.results||[])) {
+      const pn = r.parameter?.name||'';
+      if (pn.toLowerCase().includes('pm25') || pn.toLowerCase().includes('pm2')) {
+        pm25 = r.value!=null ? +r.value.toFixed(1) : null;
+        lastSeen = r.datetime?.local || r.datetime?.utc || null;
       }
     }
-  } catch (e) { results.errors.push({ source: 'Airly', error: e.message }); }
-
-  // ── 3b. Nafas Foundation — Indonesia-specific PM/met sensor network ──
-  // Public JSON backend (same endpoint that share.nafas.co.id consumes).
-  // No auth, no rate limiting. Nafas devices are PM + met only (no gas sensors).
-  // Polling cadence here (per request) is well below their ~15 min refresh.
-  try {
-    const allResp = await fetch('https://outdoor.nafas.co.id/api/v1/location/all', {
-      headers: { Accept: 'application/json' },
-      cf: { cacheTtl: 180, cacheEverything: true },
+    if (!lastSeen || (Date.now() - new Date(lastSeen).getTime()) > 30*24*60*60*1000) continue;
+    const { cat, cls } = pm25Category(pm25);
+    out.push({
+      id: `oq-${loc.id}`,
+      name: loc.name || `OpenAQ #${loc.id}`,
+      source: 'OpenAQ',
+      type: `${loc.provider?.name || '?'} sensor`,
+      lat: loc.coordinates?.latitude,
+      lon: loc.coordinates?.longitude,
+      pm25, aqi: null,
+      category: cat, cls,
+      lastSeen,
+      stale: !isRecent(lastSeen),
     });
-    if (allResp.ok) {
-      const allData = await allResp.json();
-      if (allData?.success && Array.isArray(allData.body)) {
-        // Bali bbox filter — ingest only Bali stations, not all 184 nationwide.
-        const BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
-        const baliStations = allData.body.filter(loc => {
-          const lat = +loc.latitude, lon = +loc.longitude;
-          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
-          if (loc.visible === false) return false;
-          return lat >= BALI.latMin && lat <= BALI.latMax &&
-                 lon >= BALI.lonMin && lon <= BALI.lonMax;
-        });
+  }
+  return out;
+}
 
-        if (baliStations.length > 0) results.sources++;
-
-        // Fetch per-station detail in parallel (6 stations → 6 concurrent requests)
-        const details = await Promise.all(baliStations.map(async (loc) => {
-          try {
-            const dr = await fetch(`https://outdoor.nafas.co.id/api/v1/location/detail/${loc.uuid}`, {
-              headers: { Accept: 'application/json' },
-              cf: { cacheTtl: 180, cacheEverything: true },
-            });
-            if (!dr.ok) return { loc, detail: null };
-            const dd = await dr.json();
-            return { loc, detail: dd?.body || null };
-          } catch { return { loc, detail: null }; }
-        }));
-
-        for (const { loc, detail } of details) {
-          const num = (v) => {
-            if (v == null || v === '') return null;
-            const n = +v;
-            return Number.isFinite(n) ? +n.toFixed(1) : null;
-          };
-          const d = detail || loc; // fall back to /all row if detail failed
-          const pm25 = num(d.pm25);
-          const pm10 = num(d.pm10);
-          const pm1  = num(d.pm1);
-          const temp = num(d.temperature);
-          const hum  = num(d.humidity);
-          const aqi  = d.aqi != null ? +d.aqi : (loc.aqi != null ? +loc.aqi : null);
-          const { cat, cls } = pm25Category(pm25);
-          results.stations.push({
-            id: `nafas-${loc.uuid}`,
-            name: loc.name || `Nafas ${String(loc.uuid).slice(0, 8)}`,
-            source: 'Nafas',
-            type: 'Nafas Foundation sensor',
-            lat: +loc.latitude,
-            lon: +loc.longitude,
-            pm25, pm1, pm10, temperature: temp, humidity: hum,
-            aqi: Number.isFinite(aqi) ? aqi : null,
-            category: cat, cls,
-            lastSeen: d.till || loc.till || null,
-            nafas_uuid: loc.uuid,
-          });
-        }
-      }
-    }
-  } catch (e) { results.errors.push({ source: 'Nafas', error: e.message }); }
-
-  // ── 4. OpenAQ (AirGradient sensors) ──
-  // Edition III: 5 search centres covering full Bali — north (Lovina), centre (Ubud),
-  // south Denpasar/Kuta, west (Negara/Tabanan), east (Amed/Karangasem). 25 km radius
-  // each. Stations are de-duped by id below.
-  try {
-    const centers = [
-      {lat:-8.16, lon:115.10},  // North coast (Lovina, Singaraja)
-      {lat:-8.50, lon:115.26},  // Ubud / centre
-      {lat:-8.65, lon:115.22},  // Denpasar / south-central
-      {lat:-8.80, lon:115.14},  // Kuta / Jimbaran
-      {lat:-8.35, lon:114.65},  // West (Tabanan / Negara)
-      {lat:-8.45, lon:115.65},  // East (Amlapura / Karangasem)
-    ];
-    const seenIds = new Set();
-    let foundAny = false;
-    for (const c of centers) {
-      try {
-        const resp = await fetch(`https://api.openaq.org/v3/locations?coordinates=${c.lat},${c.lon}&radius=25000&limit=20`, {
-          headers: { Accept: 'application/json', 'X-API-Key': OPENAQ_KEY }
-        });
-        const data = await resp.json();
-        for (const loc of (data.results||[])) {
-          if (seenIds.has(loc.id)) continue;
-          seenIds.add(loc.id);
-          try {
-            const lr = await fetch(`https://api.openaq.org/v3/locations/${loc.id}/latest`, {
-              headers: { Accept: 'application/json', 'X-API-Key': OPENAQ_KEY }
-            });
-            const ld = await lr.json();
-            let pm25=null, lastSeen=null;
-            for (const r of (ld.results||[])) {
-              const pn = r.parameter?.name||'';
-              if (pn.toLowerCase().includes('pm25')||pn.toLowerCase().includes('pm2')) {
-                pm25 = r.value!=null ? +r.value.toFixed(1) : null;
-                lastSeen = r.datetime?.local || r.datetime?.utc || null;
-              }
-            }
-            if (!lastSeen || (Date.now()-new Date(lastSeen).getTime()) > 30*24*60*60*1000) continue;
-            const { cat, cls } = pm25Category(pm25);
-            if (!foundAny) { results.sources++; foundAny=true; }
-            results.stations.push({
-              id: `oq-${loc.id}`, name: loc.name||`OpenAQ #${loc.id}`, source: 'OpenAQ',
-              type: `${loc.provider?.name||'?'} sensor`,
-              lat: loc.coordinates?.latitude, lon: loc.coordinates?.longitude,
-              pm25, aqi: null, category: cat, cls, lastSeen, stale: !isRecent(lastSeen),
-            });
-          } catch (_) {}
-        }
-      } catch (_) {}
-    }
-  } catch (e) { results.errors.push({ source: 'OpenAQ', error: e.message }); }
-
-  // ── 5. IQAir (rate limited — last) ──
-  // Edition III: add north (Lovina), east (Amlapura), and Bedugul to the
-  // nearest_city probes so any IQAir contributor in those regions appears.
+async function fetchIQAir(env) {
+  // 7 nearest_city probes — were sequential with 1.2s sleeps (8.4s total).
+  // Now PARALLEL. Free tier is 10 req/min so 7-in-parallel-then-done is OK.
+  // 429s are caught per-call.
   const iqLocs = [
     {label:'Denpasar',           lat:-8.65, lon:115.22},
     {label:'Ubud',               lat:-8.50, lon:115.26},
@@ -281,38 +369,88 @@ export async function onRequest(context) {
     {label:'Amlapura (east)',    lat:-8.45, lon:115.61},
     {label:'Bedugul (mountains)',lat:-8.28, lon:115.16},
   ];
-  let iqOk = false;
-  for (const loc of iqLocs) {
+  const probes = await Promise.all(iqLocs.map(async (loc) => {
     try {
-      const resp = await fetch(`https://api.airvisual.com/v2/nearest_city?lat=${loc.lat}&lon=${loc.lon}&key=${IQAIR_KEY}`);
-      const data = await resp.json();
-      if (data.status==='success') {
-        if (!iqOk) { results.sources++; iqOk=true; }
-        const d=data.data, aqi=d.current?.pollution?.aqius, mp=d.current?.pollution?.mainus;
-        const pm25Est = mp==='p2' ? aqiToPm25(aqi) : null;
-        const { cat, cls } = pm25Category(pm25Est!=null ? pm25Est : aqiToPm25(aqi));
-        const dk = `iq-${d.city}`;
-        if (!results.stations.find(s=>s.id===dk)) {
-          results.stations.push({
-            id: dk, name: `${loc.label} (${d.city})`, source: 'IQAir', type: 'Private sensor',
-            lat: d.location?.coordinates?.[1], lon: d.location?.coordinates?.[0],
-            pm25: pm25Est, pm25_estimated: mp==='p2', aqi, category: cat, cls,
-            lastSeen: d.current?.pollution?.ts || null,
-          });
-        }
-      }
-    } catch (_) {}
-    await new Promise(r => setTimeout(r, 1200));
+      const r = await fetch(
+        `https://api.airvisual.com/v2/nearest_city?lat=${loc.lat}&lon=${loc.lon}&key=${env.IQAIR_API_KEY}`,
+        { cf: { cacheTtl: 3600, cacheEverything: true } }
+      );
+      if (r.status === 429) return null;
+      const d = await r.json();
+      return d.status === 'success' ? { loc, d } : null;
+    } catch { return null; }
+  }));
+  const seen = new Set();
+  const out = [];
+  for (const probe of probes) {
+    if (!probe) continue;
+    const { loc, d } = probe;
+    const dd = d.data;
+    const aqi = dd.current?.pollution?.aqius;
+    const mp = dd.current?.pollution?.mainus;
+    const pm25Est = mp === 'p2' ? aqiToPm25(aqi) : null;
+    const { cat, cls } = pm25Category(pm25Est != null ? pm25Est : aqiToPm25(aqi));
+    const dk = `iq-${dd.city}`;
+    if (seen.has(dk)) continue;
+    seen.add(dk);
+    out.push({
+      id: dk,
+      name: `${loc.label} (${dd.city})`,
+      source: 'IQAir',
+      type: 'Private sensor',
+      lat: dd.location?.coordinates?.[1],
+      lon: dd.location?.coordinates?.[0],
+      pm25: pm25Est,
+      pm25_estimated: mp === 'p2',
+      aqi,
+      category: cat,
+      cls,
+      lastSeen: dd.current?.pollution?.ts || null,
+    });
+  }
+  return out;
+}
+
+// ── ENTRYPOINT ────────────────────────────────────────────────────────
+export async function onRequest(context) {
+  const env = context.env;
+  const url = new URL(context.request.url);
+  const noFast = url.searchParams.get('fresh') === '1';
+
+  // 1. D1 FAST PATH — sub-200 ms response from cached snapshots.
+  // ?fresh=1 bypasses the fast path (useful for diagnostics).
+  if (env.ARCHIVE_DB && !noFast) {
+    try {
+      const fast = await fastPathFromD1(env.ARCHIVE_DB);
+      if (fast) return jsonResponse(fast);
+    } catch (e) {
+      // Fall through to upstream
+    }
   }
 
-  // Clean up empty errors array
-  if (results.errors.length === 0) delete results.errors;
-
-  return new Response(JSON.stringify(results), {
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
-      'Access-Control-Allow-Origin': '*',
+  // 2. UPSTREAM PARALLEL FALLBACK — runs all 6 sources concurrently.
+  const sourceFetchers = [
+    ['PurpleAir', () => fetchPurpleAir(env)],
+    ['AQICN',     () => fetchAQICN(env)],
+    ['Airly',     () => fetchAirly(env)],
+    ['Nafas',     () => fetchNafas()],
+    ['OpenAQ',    () => fetchOpenAQ(env)],
+    ['IQAir',     () => fetchIQAir(env)],
+  ];
+  const settled = await Promise.allSettled(sourceFetchers.map(([_, fn]) => fn()));
+  const results = { ts: new Date().toISOString(), sources: 0, stations: [], errors: [] };
+  settled.forEach((r, i) => {
+    const [name] = sourceFetchers[i];
+    if (r.status === 'fulfilled') {
+      const stns = r.value || [];
+      if (stns.length > 0) {
+        results.sources++;
+        results.stations.push(...stns);
+      }
+    } else {
+      results.errors.push({ source: name, error: String(r.reason).slice(0, 200) });
     }
   });
+  if (results.errors.length === 0) delete results.errors;
+  return jsonResponse(results);
 }
