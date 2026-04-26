@@ -91,10 +91,11 @@ export async function onRequest(context) {
   // Nafas public station list (outdoor.nafas.co.id /api/v1/location/all) — no Bali
   // UUID overlap. The relabel was incorrect and has been removed. Airly stations
   // now always report source='Airly'.
-  // Edition III: widen the search radius to 200 km from Ubud centre to ensure we
-  // see anything north of Bedugul / east of Karangasem. Up to 50 results.
+  // Edition III: 100 km from Ubud centre already covers the full island
+  // (Lovina ~50 km north, Negara ~75 km west, Amlapura ~40 km east). Bumped
+  // maxResults to 50. (Tested: maxDistanceKM=200 returns empty on free tier.)
   try {
-    const resp = await fetch('https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=200&maxResults=50', {
+    const resp = await fetch('https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=100&maxResults=50', {
       headers: { Accept: 'application/json', apikey: AIRLY_KEY }
     });
     const installations = await resp.json();
