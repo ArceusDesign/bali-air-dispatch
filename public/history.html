@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>History — Bali Air Dispatch</title>
+<meta name="description" content="The historical record of every monitor we keep counting on. Multi-station overlay charts, archived snapshots, and the silenced sensors.">
+<meta name="referrer" content="no-referrer">
+<link rel="preload" as="style" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --paper:#f3ece0; --paper-2:#ebe1ce; --paper-3:#dcd2be;
+  --ink:#14110d; --ink-soft:#34302a; --ink-faint:#6a635a; --ink-whisper:#9a9181;
+  --rule:#2b2620; --hairline:#c0b9a8;
+  --crimson:#8b1a1a; --ochre:#a7742e; --forest:#355e3b; --teal:#2d5e6f; --plum:#5a2d6e;
+  --aqi-good:#4f7a3f; --aqi-mod:#b8892a; --aqi-usg:#c25d22;
+  --aqi-unh:#a32020; --aqi-vunh:#6e1414; --aqi-haz:#4a1142;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;scroll-behavior:smooth}
+body{font-family:"Source Serif 4",Georgia,serif;font-optical-sizing:auto;font-size:16px;line-height:1.55;padding-bottom:0}
+.wrap{max-width:1320px;margin:0 auto;padding:0 32px}
+@media(max-width:720px){.wrap{padding:0 19px}}
+
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.32;
+}
+
+/* MASTHEAD */
+.masthead{border-bottom:3px double var(--rule);padding:22px 0 18px 0}
+.masthead-top{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:10px;border-bottom:1px solid var(--hairline)}
+.masthead-top .r{text-align:right}
+.nameplate{text-align:center;padding:22px 0 14px 0}
+.nameplate h1{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(34px,5vw,62px);line-height:.94;letter-spacing:-.015em}
+.nameplate .sub{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(14px,1.6vw,18px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em}
+
+.navbar{border-bottom:1px solid var(--rule);padding:12px 0;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;display:flex;justify-content:center;gap:26px;flex-wrap:wrap}
+.navbar a{color:var(--ink);text-decoration:none}
+.navbar a:hover{color:var(--crimson)}
+.navbar a.current{color:var(--crimson);border-bottom:2px solid var(--crimson);padding-bottom:2px}
+
+/* HERO */
+.hero{padding:50px 0 28px;border-bottom:1px solid var(--rule)}
+.hero .kicker{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--crimson);margin-bottom:12px}
+.hero h1{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144;font-size:clamp(36px,5.4vw,68px);line-height:.98;letter-spacing:-.02em;color:var(--ink)}
+.hero h1 em{font-style:italic;color:var(--crimson);font-weight:500}
+.hero .deck{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(17px,1.9vw,21px);line-height:1.45;color:var(--ink-soft);margin-top:18px;max-width:820px}
+
+/* CONTROLS BAR */
+.controls{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;padding:18px 0 14px;border-bottom:1px solid var(--hairline);font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.04em;flex-wrap:wrap}
+@media(max-width:760px){.controls{grid-template-columns:1fr}}
+.range-pills{display:flex;gap:0;flex-wrap:wrap}
+.range-pill{padding:7px 13px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer;font-family:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;border-right-width:0;transition:background .12s,color .12s}
+.range-pill:last-child{border-right-width:1px}
+.range-pill.on{background:var(--ink);color:var(--paper)}
+.range-pill:hover:not(.on){background:var(--paper-2)}
+.controls-meta{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-faint);letter-spacing:.06em}
+
+/* LAYOUT — 2 cols sidebar + chart */
+.h-grid{display:grid;grid-template-columns:280px 1fr;gap:28px;padding:24px 0 40px}
+@media(max-width:920px){.h-grid{grid-template-columns:1fr}}
+
+.h-side{font-family:"IBM Plex Mono",monospace}
+.h-side h3{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
+.h-stations{max-height:540px;overflow-y:auto;border:1px solid var(--hairline);background:var(--paper);padding:6px}
+.h-stn{display:grid;grid-template-columns:auto 12px 1fr auto;gap:9px;align-items:center;padding:7px 8px;border-bottom:1px dotted var(--hairline);cursor:pointer;font-size:11.5px;line-height:1.3;transition:background .1s}
+.h-stn:last-child{border-bottom:none}
+.h-stn:hover{background:var(--paper-2)}
+.h-stn input[type=checkbox]{accent-color:var(--crimson);width:14px;height:14px;cursor:pointer}
+.h-stn .swatch{width:11px;height:11px;border:1px solid var(--ink)}
+.h-stn .stn-name{color:var(--ink);font-family:"Source Serif 4",serif;font-size:13px;line-height:1.25;font-weight:600}
+.h-stn .stn-meta{color:var(--ink-faint);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+.h-stn .stn-pm{font-family:"Fraunces",serif;font-weight:700;font-size:13.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.h-stn.no-data{opacity:.55}
+.h-stn.no-data .stn-pm{color:var(--ink-whisper);font-style:italic;font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:400}
+
+.h-info{font-size:11px;color:var(--ink-faint);line-height:1.45;margin-top:14px;padding:10px 12px;background:var(--paper-2);border-left:2px solid var(--crimson)}
+.h-info b{color:var(--ink);font-weight:600}
+
+/* CHART */
+.h-chart-wrap{position:relative;background:var(--paper);border:1px solid var(--rule);padding:16px 18px 20px}
+.h-chart-wrap::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--crimson)}
+.h-chart-title{font-family:"Fraunces",serif;font-weight:700;font-size:18px;line-height:1.15;margin-bottom:6px;color:var(--ink)}
+.h-chart-sub{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;color:var(--ink-faint);margin-bottom:14px}
+.h-canvas-wrap{position:relative;height:420px}
+@media(max-width:720px){.h-canvas-wrap{height:340px}}
+.h-canvas-wrap canvas{display:block;width:100%!important;height:100%!important}
+.h-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:"Source Serif 4",serif;color:var(--ink-faint);padding:24px;font-style:italic}
+.h-empty .big{font-family:"Fraunces",serif;font-size:22px;font-style:italic;margin-bottom:8px;color:var(--ink-soft)}
+
+/* ===== SECTIONS ===== */
+.section{padding:50px 0 12px;border-top:3px double var(--rule);margin-top:24px}
+.section .kicker{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson);margin-bottom:6px;font-weight:600}
+.section h2{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 120;font-size:clamp(26px,3.4vw,38px);letter-spacing:-.015em;line-height:1.05;margin-bottom:16px;border-bottom:1px solid var(--rule);padding-bottom:8px}
+.section h2 em{font-style:italic;color:var(--crimson);font-weight:500}
+.section .lede{font-family:"Source Serif 4",serif;font-size:15px;line-height:1.65;color:var(--ink-soft);max-width:760px;margin-bottom:24px}
+
+/* ===== ARCHIVE OF SILENCE — sparkline cards (mirrors homepage style) ===== */
+.archive{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:22px}
+.arc-card{background:var(--paper);border:1px solid var(--rule);padding:18px 18px 14px;position:relative}
+.arc-card::before{content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:3px;background:var(--crimson)}
+.arc-lab{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;color:var(--crimson);text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.arc-name{font-family:"Fraunces",serif;font-weight:700;font-size:21px;line-height:1.1;letter-spacing:-.005em;color:var(--ink);margin-bottom:6px}
+.arc-sub{font-family:"Source Serif 4",serif;font-style:italic;color:var(--ink-soft);font-size:12.5px;margin-bottom:14px}
+.arc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;font-family:"IBM Plex Mono",monospace}
+.arc-stats .s .k{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:2px}
+.arc-stats .s .v{font-family:"Fraunces",serif;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
+.arc-card canvas{display:block;width:100%!important;height:90px!important}
+.arc-act{display:block;margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--crimson);cursor:pointer;text-align:center;padding:6px 10px;border:1px solid var(--crimson);text-decoration:none}
+.arc-act:hover{background:var(--crimson);color:var(--paper)}
+
+/* ===== POINTERS ===== */
+.pointers{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:14px}
+.pointer{padding:18px 20px;background:var(--paper);border:1px solid var(--hairline);font-family:"Source Serif 4",serif;font-size:14px;line-height:1.5;color:var(--ink-soft);text-decoration:none;display:block;transition:border-color .15s,background .15s}
+.pointer:hover{border-color:var(--crimson);background:var(--paper-2)}
+.pointer .lab{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.18em;color:var(--crimson);text-transform:uppercase;font-weight:600;margin-bottom:6px;display:block}
+.pointer b{font-family:"Fraunces",serif;font-size:17px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;line-height:1.2}
+
+/* ===== FOOTER ===== */
+.foot{border-top:3px double var(--rule);margin-top:50px;padding:34px 0 60px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.65;color:var(--ink-soft)}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1.6fr 1fr;gap:36px;margin-bottom:30px}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:22px}}
+.foot-col h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
+.foot-col a{display:block;color:var(--ink);text-decoration:none;padding:3px 0;border-bottom:none;letter-spacing:.02em}
+.foot-col a:hover{color:var(--crimson)}
+.foot-strip{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;text-align:center}
+.foot-rights,.foot-sources{margin-top:14px;font-size:11px;line-height:1.55;color:var(--ink-faint);max-width:920px;margin-left:auto;margin-right:auto;text-align:center;letter-spacing:.02em}
+.foot-rights strong,.foot-sources strong{color:var(--ink-soft);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px;margin-right:6px}
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<header class="masthead wrap">
+  <div class="masthead-top">
+    <div>Edition III · Auto-refresh 5 min</div>
+    <div class="c" id="mt-date">—</div>
+    <div class="r"><span id="mt-ts">Bali Air Dispatch</span></div>
+  </div>
+  <div class="nameplate">
+    <h1>Bali&nbsp;Air&nbsp;Dispatch</h1>
+    <div class="sub">A live register of particulate matter, measured daily.</div>
+  </div>
+</header>
+
+<!-- NAV (universal · keep in sync across all pages) -->
+<nav class="navbar">
+  <a href="/">Live Monitor</a>
+  <a href="/brief">Evidence Brief</a>
+  <a href="/setup-monitor">Set up a Monitor</a>
+  <a href="/articles">Dispatches</a>
+  <a href="/history" class="current">History</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero wrap">
+  <div class="kicker">Historical record · Multi-station</div>
+  <h1>Every monitor we <em>keep counting on</em>.</h1>
+  <div class="deck">Pick any combination of sensors. The chart overlays them on the same axes, with the WHO twenty-four-hour guideline drawn in for reference. Tracking begins the day a sensor enters the archive. Sensors that have gone silent are preserved at the bottom of the page.</div>
+</section>
+
+<!-- CONTROLS + CHART -->
+<section class="wrap">
+  <div class="controls">
+    <div class="range-pills" id="rangePills">
+      <button class="range-pill" data-range="24h">24h</button>
+      <button class="range-pill" data-range="7d">7d</button>
+      <button class="range-pill on" data-range="30d">30d</button>
+      <button class="range-pill" data-range="90d">90d</button>
+      <button class="range-pill" data-range="all">All</button>
+    </div>
+    <div class="controls-meta" id="metaInfo">Loading the catalog…</div>
+  </div>
+
+  <div class="h-grid">
+    <aside class="h-side">
+      <h3>Stations</h3>
+      <div class="h-stations" id="stationList">
+        <div style="padding:14px;color:var(--ink-faint);font-style:italic;font-family:'Source Serif 4',serif">Loading…</div>
+      </div>
+      <div class="h-info">
+        <b>How this works.</b> Live sensors are snapshotted every fifteen minutes into our archive. Historical depth varies by source: <b>Nafas</b> stations have the deepest record; <b>PurpleAir, AQICN, IQAir, Airly</b> begin tracking the day they joined the archive. Silenced sensors at the bottom carry their full pre-silence record.
+      </div>
+    </aside>
+
+    <div>
+      <div class="h-chart-wrap">
+        <div class="h-chart-title" id="chartTitle">PM2.5 — selected stations</div>
+        <div class="h-chart-sub" id="chartSub">Pick stations from the list to chart. Default selection is the three highest current readings with archive data.</div>
+        <div class="h-canvas-wrap">
+          <canvas id="historyChart"></canvas>
+          <div class="h-empty" id="emptyState" style="display:none">
+            <div class="big">No data yet for this selection.</div>
+            <div>Pick at least one station from the list, or change the time range.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHIVE OF SILENCE -->
+<section class="section wrap" id="silence">
+  <div class="kicker">§ A — The Archive of Silence</div>
+  <h2>The sensors that <em>used to be listening</em>.</h2>
+  <p class="lede">Each card below shows a Bali sensor that reported daily readings until the day it went dark. The historical record is preserved here in full so the silence is not also a deletion.</p>
+  <div class="archive" id="archiveGrid"></div>
+</section>
+
+<!-- POINTERS -->
+<section class="section wrap" id="pointers">
+  <div class="kicker">§ B — Long-form historical reading</div>
+  <h2>Where the longer records <em>live</em>.</h2>
+  <p class="lede">Two adjacent surfaces carry historical material that complements this page.</p>
+  <div class="pointers">
+    <a class="pointer" href="/brief#history">
+      <span class="lab">Evidence Brief · § VII</span>
+      <b>Kerobokan — 469 days, daily median.</b>
+      The fullest single-sensor record we have, drawn against the WHO guideline and the EPA bands. Now offline since 15 March 2026.
+    </a>
+    <a class="pointer" href="/brief#sensors">
+      <span class="lab">Evidence Brief · § VI</span>
+      <b>The two PurpleAir continuities.</b>
+      Klungkung and Jimbaran — together about two years of running data on the south and east coasts.
+    </a>
+    <a class="pointer" href="/articles#dispatch-1">
+      <span class="lab">Dispatch · I</span>
+      <b>Two in three days, the daily guideline is exceeded.</b>
+      The narrative reading of the Kerobokan record, with the regulatory context.
+    </a>
+  </div>
+</section>
+
+<!-- UNIVERSAL FOOTER · keep in sync across all pages -->
+<footer class="foot wrap">
+  <div class="foot-grid">
+    <div class="foot-col">
+      <h4>Pages</h4>
+      <a href="/">Live Monitor</a>
+      <a href="/brief">Evidence Brief</a>
+      <a href="/setup-monitor">Set up a Monitor</a>
+      <a href="/articles">Dispatches</a>
+      <a href="/history">History</a>
+      <a href="/appendix">Appendix &amp; Methodology</a>
+    </div>
+    <div class="foot-col">
+      <h4>Dispatches</h4>
+      <a href="/articles#dispatch-1">I — The daily guideline, exceeded.</a>
+      <a href="/articles#dispatch-2">II — One government sensor.</a>
+      <a href="/articles#dispatch-3">III — Seven tons of river waste.</a>
+      <a href="/articles#dispatch-4">IV — The long-term health effects.</a>
+    </div>
+    <div class="foot-col">
+      <h4>Contact</h4>
+      <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+    </div>
+  </div>
+  <div class="foot-strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+  <div class="foot-rights"><strong>Rights.</strong> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</div>
+  <div class="foot-sources"><strong>Sources.</strong> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</div>
+</footer>
+
+<script>
+/* =========================================================
+   HISTORY PAGE — multi-station overlay
+   ========================================================= */
+
+// API base — works both on prod and local (python http.server) preview
+const API_BASE = (location.hostname === 'baliair.pages.dev' || location.hostname.endsWith('.pages.dev'))
+  ? '' : 'https://baliair.pages.dev';
+
+// Embedded historical data for offline OpenAQ sensors (mirrors index.html)
+const OFFLINE_HISTORY = {"ubud_rozendal":{"name":"Ubud (Rozendal)","lat":-8.53036,"lon":115.26932,"first":"2025-06-22","last":"2025-12-05","daily":[["2025-06-22",69.5],["2025-06-23",18.5],["2025-06-24",9.5],["2025-06-25",6.2],["2025-06-26",7.8],["2025-06-27",17.1],["2025-06-28",10],["2025-06-29",5.0],["2025-06-30",6.0],["2025-07-01",13.5],["2025-07-02",18.3],["2025-07-03",9.6],["2025-07-04",3.9],["2025-07-05",6.6],["2025-07-06",11.5],["2025-07-07",20],["2025-07-08",29.1],["2025-07-09",20.1],["2025-07-10",17.1],["2025-07-11",28.2],["2025-07-12",29.8],["2025-07-13",23.5],["2025-07-14",23.3],["2025-07-15",13.6],["2025-07-16",11.9],["2025-07-17",20.3],["2025-07-18",26.1],["2025-07-19",21.1],["2025-07-20",17.5],["2025-07-21",28.7],["2025-07-22",33],["2025-07-23",30.2],["2025-07-24",31.1],["2025-07-25",18.8],["2025-07-26",17.6],["2025-07-27",26.8],["2025-07-28",19.7],["2025-07-29",5.0],["2025-07-30",5.7],["2025-07-31",3.5],["2025-08-01",6.3],["2025-08-02",23.8],["2025-08-03",33.8],["2025-08-04",27.6],["2025-08-05",18.9],["2025-08-06",18.3],["2025-08-07",25.7],["2025-08-08",33.4],["2025-08-09",30.3],["2025-08-10",28.1],["2025-08-11",24.7],["2025-08-12",18.7],["2025-08-13",21.7],["2025-08-14",17.5],["2025-08-15",23],["2025-08-16",22.1],["2025-08-17",32.7],["2025-08-18",26.6],["2025-08-19",29.9],["2025-08-20",33.2],["2025-08-21",32.8],["2025-08-22",38.9],["2025-08-23",40.7],["2025-08-24",40.9],["2025-08-25",35.6],["2025-08-26",24.4],["2025-08-27",12.5],["2025-08-28",2.7],["2025-08-29",5.0],["2025-08-30",6.7],["2025-08-31",20.3],["2025-09-01",25.1],["2025-09-02",27.5],["2025-09-03",27.2],["2025-09-04",26.3],["2025-09-05",21.9],["2025-09-06",20.3],["2025-09-07",23.1],["2025-09-08",14.9],["2025-09-09",0.2],["2025-09-10",2.5],["2025-09-11",6.4],["2025-09-12",6.4],["2025-09-13",8.3],["2025-09-14",5.9],["2025-09-15",10.5],["2025-09-16",14.6],["2025-09-17",16.8],["2025-09-18",8.4],["2025-09-19",9.2],["2025-09-20",11.7],["2025-09-21",10.8],["2025-09-22",21.6],["2025-09-23",37.3],["2025-09-24",32.7],["2025-09-25",23.9],["2025-09-26",25.1],["2025-09-27",21.1],["2025-09-28",19.2],["2025-09-29",15],["2025-09-30",20.6],["2025-10-01",21.3],["2025-10-02",25.5],["2025-10-03",27],["2025-10-04",16.7],["2025-10-05",28.6],["2025-10-06",26.3],["2025-10-07",27.3],["2025-10-08",26.8],["2025-10-09",13.1],["2025-10-10",12.2],["2025-10-11",5.8],["2025-10-12",8.5],["2025-10-13",8.8],["2025-10-14",18],["2025-10-15",12.4],["2025-10-16",14],["2025-10-17",19.1],["2025-10-18",22],["2025-10-19",12.2],["2025-10-20",25],["2025-10-21",17.6],["2025-10-22",15.5],["2025-10-23",22],["2025-10-24",16.5],["2025-10-25",29],["2025-10-26",19.8],["2025-10-27",29.8],["2025-10-28",30.9],["2025-10-29",27.5],["2025-10-30",16.3],["2025-10-31",8.0],["2025-11-01",11.4],["2025-11-02",17.1],["2025-11-03",12.1],["2025-11-04",15.2],["2025-11-05",19.9],["2025-11-06",6.4],["2025-11-07",7.9],["2025-11-08",21.8],["2025-11-09",12.7],["2025-11-10",19.8],["2025-11-11",23.8],["2025-11-12",18.3],["2025-11-13",2.9],["2025-11-14",0.5],["2025-11-15",2.2],["2025-11-16",8.5],["2025-11-17",12.6],["2025-11-18",0.7],["2025-11-19",4.4],["2025-11-20",10.7],["2025-11-21",14.5],["2025-11-22",21.6],["2025-11-23",14.9],["2025-11-24",4.2],["2025-11-25",4.6],["2025-11-26",7.9],["2025-11-27",1.4],["2025-11-28",4.9],["2025-11-29",1.5],["2025-11-30",7.2],["2025-12-01",9.4],["2025-12-02",5.1],["2025-12-03",14],["2025-12-04",12.5],["2025-12-05",11.1]]},"balangan":{"name":"Balangan","lat":-8.8071,"lon":115.1408,"first":"2025-07-12","last":"2025-08-06","daily":[["2025-07-12",25.5],["2025-07-13",24.6],["2025-07-14",24.4],["2025-07-15",12.6],["2025-07-16",9.1],["2025-07-17",10],["2025-07-18",13.5],["2025-07-19",15],["2025-07-20",12.2],["2025-07-21",24.7],["2025-07-22",28.3],["2025-07-23",18.6],["2025-07-24",25.3],["2025-07-25",16.3],["2025-07-26",13.6],["2025-07-27",18.4],["2025-07-28",6.1],["2025-07-29",5.8],["2025-07-30",3.7],["2025-07-31",4.1],["2025-08-01",1.5],["2025-08-02",16.9],["2025-08-03",21.9],["2025-08-04",21.9],["2025-08-05",12.7],["2025-08-06",12.7]]},"kopernik":{"name":"Kopernik (Ubud)","lat":-8.554,"lon":115.272,"first":"2025-10-22","last":"2026-03-02","daily":[["2025-10-22",44.4],["2025-10-23",46.0],["2025-10-24",31.4],["2025-10-25",37.5],["2025-10-26",37.0],["2025-10-27",42.3],["2025-10-28",40.6],["2025-10-29",38.6],["2025-10-30",21.8],["2025-10-31",24.7],["2025-11-01",19.9],["2025-11-02",29.0],["2025-11-03",24.6],["2025-11-04",28.4],["2025-11-05",30.4],["2025-11-06",14.4],["2025-11-07",25.6],["2025-11-08",34.6],["2025-11-09",19.9],["2025-11-10",33.4],["2025-11-11",38.9],["2025-11-12",28.5],["2025-11-13",16.5],["2025-11-14",4.0],["2025-11-15",22.0],["2025-11-16",15.8],["2025-11-17",23.7],["2025-11-18",11.8],["2025-11-20",16.8],["2025-11-21",15.8],["2026-01-18",36.7],["2026-02-26",111.0],["2026-02-27",45.1],["2026-02-28",78.0],["2026-03-01",15.5],["2026-03-02",19.3]]}};
+
+const OFFLINE_OTHER = [
+  { id:'aq-umalas',         name:'Umalas (Fusion) — Kerobokan', source:'AQICN', last:'2026-03-15', reason:'offline · last reported March 2026' },
+  { id:'aq-denp-lumintang', name:'Denpasar Lumintang',          source:'AQICN/KLHK', last:'2025-08-09', reason:'removed from ISPU portal · no data since Aug 2025' }
+];
+
+// Dispatch palette for chart series — distinguishable across many overlays
+const PALETTE = [
+  '#8b1a1a', '#2d5e6f', '#5a2d6e', '#a7742e', '#355e3b',
+  '#b85a1f', '#3a4cb4', '#7d3ea8', '#9a4f1e', '#1e6b53'
+];
+
+let liveCatalog = [];        // from /api/live
+let archiveCatalog = [];     // from /api/history (D1)
+let selectedIds = new Set(); // currently checked station ids
+let currentRange = '30d';
+let chartInstance = null;
+
+/* ---------- date helpers ---------- */
+function updateDate(){
+  const d = new Date();
+  const fmt = d.toLocaleDateString('en-GB',{
+    weekday:'long', day:'numeric', month:'long', year:'numeric'
+  }).toUpperCase();
+  const el = document.getElementById('mt-date');
+  if (el) el.textContent = fmt;
+}
+updateDate();
+setInterval(updateDate, 60*1000);
+
+/* ---------- load catalogs ---------- */
+async function loadCatalogs(){
+  // Live catalog
+  let live = [];
+  try{
+    const r = await fetch(API_BASE + '/api/live', { cache:'no-cache' });
+    if (r.ok){
+      const d = await r.json();
+      live = d.stations || [];
+    }
+  }catch(e){ console.warn('live failed', e); }
+  liveCatalog = live;
+
+  // Archive catalog (D1)
+  let arch = [];
+  try{
+    const r = await fetch(API_BASE + '/api/history', { cache:'no-cache' });
+    if (r.ok){
+      const d = await r.json();
+      arch = d.stations || [];
+    }
+  }catch(e){ console.warn('history catalog failed', e); }
+  archiveCatalog = arch;
+
+  buildStationList();
+  // Default selection: top-3 worst current PM2.5 from stations that have D1 archive
+  const archivedLive = liveCatalog
+    .filter(s => isArchived(s))
+    .filter(s => Number.isFinite(+s.pm25))
+    .sort((a,b)=>(+b.pm25)-(+a.pm25));
+  archivedLive.slice(0,3).forEach(s => selectedIds.add(s.id));
+  // If we still don't have any selections (no archive yet for any live), show Kerobokan & friends from offline
+  if (selectedIds.size === 0){
+    Object.keys(OFFLINE_HISTORY).slice(0,3).forEach(k => selectedIds.add('off-'+k));
+  }
+  syncCheckboxes();
+  renderChart();
+  renderArchiveCards();
+  document.getElementById('metaInfo').textContent =
+    `${liveCatalog.length} live · ${arch.length} archived · ${Object.keys(OFFLINE_HISTORY).length + OFFLINE_OTHER.length} silenced`;
+}
+
+function isArchived(stn){
+  // True if this station's id has snapshots in D1
+  return archiveCatalog.some(a => a.uuid && stn.id === ('nafas-' + a.uuid));
+  // (When the universal snapshot worker ships, this will become a generic id match.)
+}
+
+/* ---------- station list (sidebar) ---------- */
+function buildStationList(){
+  const tgt = document.getElementById('stationList');
+  if (!tgt) return;
+
+  // Grouping order: live with archive · live without archive · silenced
+  const liveArchived = liveCatalog.filter(s => isArchived(s));
+  const liveNoArch   = liveCatalog.filter(s => !isArchived(s));
+  const silenced     = [
+    ...Object.entries(OFFLINE_HISTORY).map(([key,s])=>({
+      id: 'off-'+key, name: s.name, source: 'OpenAQ',
+      pm25: s.daily[s.daily.length-1]?.[1] ?? null,
+      lastSeen: s.last, archived: true, offline: true
+    })),
+    ...OFFLINE_OTHER.map(s => ({
+      id: s.id, name: s.name, source: s.source, pm25: null,
+      lastSeen: s.last, archived: false, offline: true
+    }))
+  ];
+
+  const renderRow = (s, idx) => {
+    const colour = PALETTE[idx % PALETTE.length];
+    const archived = isArchived(s) || s.archived;
+    const pmTxt = s.pm25 != null ? (+s.pm25).toFixed(1)
+                 : (archived ? '—' : 'no data');
+    const cls = archived ? '' : 'no-data';
+    const subtitle = (s.source || '') + (s.offline ? ' · silenced' : '');
+    return `<div class="h-stn ${cls}" data-id="${s.id}" data-archived="${archived?1:0}">
+      <input type="checkbox" data-id="${s.id}" ${selectedIds.has(s.id)?'checked':''}>
+      <span class="swatch" style="background:${colour}"></span>
+      <div>
+        <div class="stn-name">${escapeHtml((s.name||'').split(' (')[0])}</div>
+        <div class="stn-meta">${escapeHtml(subtitle)}</div>
+      </div>
+      <div class="stn-pm">${pmTxt}</div>
+    </div>`;
+  };
+
+  let idx = 0;
+  let html = '';
+  if (liveArchived.length){
+    html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;color:var(--ink-faint);padding:6px 4px 4px;text-transform:uppercase">Live · archived</div>`;
+    liveArchived.forEach(s => { html += renderRow(s, idx); idx++; });
+  }
+  if (liveNoArch.length){
+    html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;color:var(--ink-faint);padding:8px 4px 4px;text-transform:uppercase">Live · archive starting</div>`;
+    liveNoArch.forEach(s => { html += renderRow(s, idx); idx++; });
+  }
+  if (silenced.length){
+    html += `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;color:var(--ink-faint);padding:8px 4px 4px;text-transform:uppercase">Silenced</div>`;
+    silenced.forEach(s => { html += renderRow(s, idx); idx++; });
+  }
+  tgt.innerHTML = html;
+
+  // Wire row click → toggle checkbox
+  tgt.querySelectorAll('.h-stn').forEach(row=>{
+    const id = row.dataset.id;
+    const archived = row.dataset.archived === '1';
+    if (!archived){ return; } // can't select stations with no data
+    row.addEventListener('click',(ev)=>{
+      const cb = row.querySelector('input[type=checkbox]');
+      if (ev.target !== cb) cb.checked = !cb.checked;
+      if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+      renderChart();
+    });
+  });
+}
+
+function syncCheckboxes(){
+  document.querySelectorAll('#stationList input[type=checkbox]').forEach(cb=>{
+    cb.checked = selectedIds.has(cb.dataset.id);
+  });
+}
+
+/* ---------- chart rendering ---------- */
+async function renderChart(){
+  const cv = document.getElementById('historyChart');
+  if (!cv) return;
+  const empty = document.getElementById('emptyState');
+  if (chartInstance){ chartInstance.destroy(); chartInstance = null; }
+
+  if (selectedIds.size === 0){
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const datasets = [];
+  let cidx = 0;
+  for (const id of selectedIds){
+    const points = await pointsFor(id);
+    if (!points.length) continue;
+    const colour = PALETTE[cidx % PALETTE.length];
+    datasets.push({
+      label: nameFor(id),
+      data: points.map(p => ({ x: p[0], y: p[1] })),
+      borderColor: colour,
+      backgroundColor: colour + '22',
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.18,
+      spanGaps: true
+    });
+    cidx++;
+  }
+
+  if (!datasets.length){
+    empty.style.display = 'flex';
+    return;
+  }
+
+  // WHO 24-hour guideline reference line (scriptable on a hidden synthetic dataset, drawn via plugin)
+  const whoPlugin = {
+    id: 'who-line',
+    afterDatasetsDraw(chart){
+      const {ctx, chartArea, scales} = chart;
+      if (!chartArea || !scales.y) return;
+      const y = scales.y.getPixelForValue(15);
+      if (y < chartArea.top || y > chartArea.bottom) return;
+      ctx.save();
+      ctx.strokeStyle = '#8b1a1a';
+      ctx.setLineDash([6,4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(chartArea.left, y);
+      ctx.lineTo(chartArea.right, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#8b1a1a';
+      ctx.font = '11px "IBM Plex Mono", monospace';
+      ctx.fillText('WHO 24h · 15 µg/m³', chartArea.right - 138, y - 5);
+      ctx.restore();
+    }
+  };
+
+  chartInstance = new Chart(cv, {
+    type: 'line',
+    data: { datasets },
+    plugins: [whoPlugin],
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'nearest', intersect:false, axis:'x' },
+      scales: {
+        x: {
+          type: 'category',
+          ticks: { color:'#6a635a', font:{ family:'"IBM Plex Mono", monospace', size:10 }, maxTicksLimit:8 },
+          grid: { color:'rgba(20,17,13,0.06)' }
+        },
+        y: {
+          beginAtZero: true,
+          title: { display:true, text:'PM2.5 · µg/m³', color:'#34302a', font:{ family:'"IBM Plex Mono", monospace', size:11 } },
+          ticks: { color:'#6a635a', font:{ family:'"IBM Plex Mono", monospace', size:10 }, callback: v => v + '' },
+          grid: { color:'rgba(20,17,13,0.08)' }
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { color:'#34302a', font:{ family:'"IBM Plex Mono", monospace', size:11 }, boxWidth:14, boxHeight:2, padding:14 }
+        },
+        tooltip: {
+          backgroundColor: '#14110d', titleColor: '#f3ece0', bodyColor: '#f3ece0',
+          callbacks: {
+            label: (it) => `${it.dataset.label}: ${(+it.parsed.y).toFixed(1)} µg/m³`
+          }
+        }
+      }
+    }
+  });
+
+  document.getElementById('chartTitle').textContent =
+    `PM2.5 — ${datasets.length} station${datasets.length===1?'':'s'} · ${currentRange.toUpperCase()}`;
+  document.getElementById('chartSub').textContent =
+    `Hover any line for the daily reading. WHO twenty-four-hour guideline at 15 µg/m³.`;
+}
+
+function nameFor(id){
+  if (id.startsWith('off-')){
+    const key = id.slice(4);
+    return OFFLINE_HISTORY[key]?.name || id;
+  }
+  const stn = liveCatalog.find(s => s.id === id);
+  return stn ? (stn.name || '').split(' (')[0] : id;
+}
+
+async function pointsFor(id){
+  // Returns [[label, value], ...] for the chart
+  if (id.startsWith('off-')){
+    const key = id.slice(4);
+    const data = OFFLINE_HISTORY[key];
+    if (!data) return [];
+    return filterByRange(data.daily);
+  }
+  // Live + archived: hit /api/history?uuid=<uuid>
+  if (id.startsWith('nafas-')){
+    const uuid = id.slice(6);
+    try{
+      const r = await fetch(API_BASE + `/api/history?uuid=${encodeURIComponent(uuid)}&range=daily`, { cache:'no-cache' });
+      if (!r.ok) return [];
+      const d = await r.json();
+      const pts = (d.points || []).map(p => [p.date, p.pm25]).filter(p => p[1] != null);
+      return filterByRange(pts);
+    }catch(e){ return []; }
+  }
+  // Other live (not yet archived) → empty for now; chart shows just the labelled series with no data
+  return [];
+}
+
+function filterByRange(daily){
+  if (!daily || !daily.length) return [];
+  const today = new Date();
+  let cutoff = null;
+  if (currentRange === '24h') return daily.slice(-1);
+  if (currentRange === '7d')  cutoff = new Date(today.getTime() - 7*86400000);
+  if (currentRange === '30d') cutoff = new Date(today.getTime() - 30*86400000);
+  if (currentRange === '90d') cutoff = new Date(today.getTime() - 90*86400000);
+  if (!cutoff) return daily;
+  const c = cutoff.toISOString().slice(0,10);
+  return daily.filter(p => p[0] >= c);
+}
+
+/* ---------- range pill controls ---------- */
+document.getElementById('rangePills').addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('.range-pill');
+  if (!btn) return;
+  document.querySelectorAll('.range-pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  currentRange = btn.dataset.range;
+  renderChart();
+});
+
+/* ---------- archive of silence cards ---------- */
+function renderArchiveCards(){
+  const grid = document.getElementById('archiveGrid');
+  grid.innerHTML = '';
+  Object.entries(OFFLINE_HISTORY).forEach(([key,s])=>{
+    const mean = s.daily.reduce((a,b)=>a+b[1],0)/s.daily.length;
+    const peak = Math.max(...s.daily.map(d=>d[1]));
+    const days = daysBetween(s.last, new Date());
+    const el = document.createElement('div');
+    el.className = 'arc-card';
+    el.innerHTML = `
+      <div class="arc-lab">§ ${key.replace(/_/g,' ').toUpperCase()}</div>
+      <div class="arc-name">${escapeHtml(s.name)}</div>
+      <div class="arc-sub">Reported from ${fmtDate(s.first)} → ${fmtDate(s.last)} · silent for ${days} days</div>
+      <div class="arc-stats">
+        <div class="s"><div class="k">Days of data</div><div class="v">${s.daily.length}</div></div>
+        <div class="s"><div class="k">Mean PM2.5</div><div class="v">${mean.toFixed(1)}</div></div>
+        <div class="s"><div class="k">Peak</div><div class="v">${peak.toFixed(0)}</div></div>
+      </div>
+      <canvas id="hsp-${key}"></canvas>
+      <a class="arc-act" data-key="${key}" href="#">Add to chart →</a>
+    `;
+    grid.appendChild(el);
+    drawSparkline('hsp-'+key, s.daily);
+    el.querySelector('.arc-act').addEventListener('click',(ev)=>{
+      ev.preventDefault();
+      const id = 'off-'+key;
+      selectedIds.add(id);
+      syncCheckboxes();
+      renderChart();
+      // Scroll back to chart
+      document.getElementById('historyChart').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+  OFFLINE_OTHER.forEach(s=>{
+    const days = daysBetween(s.last, new Date());
+    const el = document.createElement('div');
+    el.className = 'arc-card';
+    el.style.opacity = '0.85';
+    el.innerHTML = `
+      <div class="arc-lab">§ ${escapeHtml(s.name.toUpperCase())}</div>
+      <div class="arc-name">${escapeHtml(s.name)}</div>
+      <div class="arc-sub">Last reading ${fmtDate(s.last)} · silent for ${days} days · ${escapeHtml(s.reason)}</div>
+      <div class="arc-stats">
+        <div class="s"><div class="k">Source</div><div class="v" style="font-size:11px;font-family:'IBM Plex Mono',monospace">${escapeHtml(s.source)}</div></div>
+        <div class="s"><div class="k">Status</div><div class="v" style="color:var(--crimson)">Offline</div></div>
+        <div class="s"><div class="k">Archive</div><div class="v" style="font-size:11px;font-family:'IBM Plex Mono',monospace">No daily</div></div>
+      </div>
+    `;
+    grid.appendChild(el);
+  });
+}
+
+function drawSparkline(id, daily){
+  const c = document.getElementById(id);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.clientWidth || 280;
+  const h = 90;
+  c.width = w * (window.devicePixelRatio||1);
+  c.height = h * (window.devicePixelRatio||1);
+  ctx.scale(window.devicePixelRatio||1, window.devicePixelRatio||1);
+  ctx.clearRect(0,0,w,h);
+  if (!daily || !daily.length) return;
+  const xs = daily.map(d=>new Date(d[0]).getTime());
+  const ys = daily.map(d=>d[1]);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMax = Math.max(15, ...ys);
+  const px = x => 6 + (x - xMin)/(xMax - xMin) * (w - 12);
+  const py = y => h - 6 - (y / yMax) * (h - 12);
+  // WHO 15 line
+  ctx.strokeStyle = 'rgba(139,26,26,0.5)';
+  ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(0, py(15)); ctx.lineTo(w, py(15)); ctx.stroke();
+  ctx.setLineDash([]);
+  // Line
+  ctx.strokeStyle = '#8b1a1a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  daily.forEach((d,i)=>{
+    const x = px(xs[i]); const y = py(ys[i]);
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+
+/* ---------- utils ---------- */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDate(s){ if(!s) return '—'; const d=new Date(s); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+
+/* ---------- BOOT ---------- */
+loadCatalogs();
+</script>
+
+</body>
+</html>

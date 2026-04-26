@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set up a Monitor — Bali Air Dispatch</title>
+<meta name="description" content="Bali Air Dispatch — live PM2.5 monitoring across the island.">
+<meta name="referrer" content="no-referrer">
+<link rel="preload" as="style" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --paper:#f3ece0; --paper-dark:#eae1d1; --paper-3:#dcd2be;
+  --ink:#14110d; --ink-soft:#34302a; --ink-faint:#6a635a; --ink-whisper:#9a9181;
+  --rule:#2b2620; --hairline:#c0b9a8;
+  --crimson:#8b1a1a; --ochre:#a7742e; --forest:#355e3b;
+  --good:#2f6b3a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:"Source Serif 4",Georgia,serif;font-optical-sizing:auto;font-size:16px;line-height:1.55;padding:0 0 80px 0}
+.wrap{max-width:1100px;margin:0 auto;padding:0 32px}
+@media(max-width:720px){.wrap{padding:0 19px}}
+
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.32;
+}
+
+/* preview banner */
+
+.masthead{border-bottom:3px double var(--rule);padding:22px 0 18px 0}
+.masthead-top{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:10px;border-bottom:1px solid var(--hairline)}
+.masthead-top .r{text-align:right}
+.nameplate{text-align:center;padding:22px 0 14px 0}
+.nameplate h1{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(34px,5vw,62px);line-height:.94;letter-spacing:-.015em}
+.nameplate .sub{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(14px,1.6vw,18px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em}
+
+.navbar{border-bottom:1px solid var(--rule);padding:12px 0;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;display:flex;justify-content:center;gap:26px;flex-wrap:wrap}
+.navbar a{color:var(--ink);text-decoration:none}
+.navbar a:hover{color:var(--crimson)}
+.navbar a.current{color:var(--crimson);border-bottom:2px solid var(--crimson);padding-bottom:2px}
+
+.hero{padding:60px 0 30px 0;border-bottom:1px solid var(--rule)}
+.hero .kicker{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--crimson);margin-bottom:12px}
+.hero h1{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144;font-size:clamp(40px,6vw,76px);line-height:.98;letter-spacing:-.02em;color:var(--ink)}
+.hero h1 em{font-style:italic;color:var(--crimson);font-weight:500}
+.hero .deck{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(18px,2vw,22px);line-height:1.45;color:var(--ink-soft);margin-top:20px;max-width:780px}
+
+.argument{padding:34px 0 14px 0}
+.argument p{font-size:17px;line-height:1.65;max-width:740px;margin-bottom:14px}
+.argument p strong{color:var(--ink);font-weight:700;border-bottom:2px solid var(--ochre)}
+
+.chapter{padding:46px 0 22px 0;border-top:3px double var(--rule);margin-top:14px}
+.chapter-head{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:baseline;border-bottom:1px solid var(--rule);padding-bottom:14px;margin-bottom:24px}
+.chapter-no{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--crimson);border:1px solid var(--crimson);padding:6px 12px}
+.chapter-title{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144,"SOFT" 10;font-size:clamp(28px,3.6vw,46px);line-height:1;letter-spacing:-.015em}
+.chapter-meta{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);text-align:right}
+@media(max-width:720px){.chapter-head{grid-template-columns:1fr;gap:10px}.chapter-meta{text-align:left}}
+.chapter-lede{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(17px,1.9vw,21px);line-height:1.45;color:var(--ink-soft);max-width:780px;margin-bottom:24px}
+
+/* PLATFORM CARDS */
+.opts{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin-top:22px}
+@media(max-width:780px){.opts{grid-template-columns:1fr}}
+.opt{border:1px solid var(--rule);background:var(--paper);padding:24px 24px 22px;display:flex;flex-direction:column;position:relative}
+.opt::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--crimson)}
+.opt.nafas::before{background:var(--forest)}
+.opt.purpleair::before{background:#7d3ea8}
+.opt.iqair::before{background:var(--ochre)}
+.opt.airgradient::before{background:var(--crimson)}
+.opt-tag{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+.opt-name{font-family:"Fraunces",serif;font-weight:800;font-variation-settings:"opsz" 120;font-size:28px;line-height:1.05;margin-bottom:4px}
+.opt-name em{font-style:italic;font-weight:500;color:var(--ink-soft);font-size:.7em}
+.opt-price{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.1em;color:var(--crimson);margin-bottom:14px}
+.opt-summary{font-size:14.5px;line-height:1.55;color:var(--ink-soft);margin-bottom:16px}
+.opt-rows{font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.7;border-top:1px dotted var(--hairline);padding-top:12px;margin-bottom:14px}
+.opt-rows .r{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:5px 0;border-bottom:1px dotted var(--hairline)}
+.opt-rows .r:last-child{border-bottom:none}
+.opt-rows .k{color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;font-size:9.5px;align-self:center}
+.opt-rows .v{color:var(--ink-soft)}
+.opt-rows .v.good{color:var(--forest);font-weight:600}
+.opt-rows .v.warn{color:var(--ochre);font-weight:600}
+.opt-pros,.opt-cons{font-size:13.5px;line-height:1.55;margin:8px 0}
+.opt-pros{color:var(--ink-soft)}
+.opt-pros::before{content:"+ ";color:var(--forest);font-weight:700}
+.opt-cons{color:var(--ink-soft)}
+.opt-cons::before{content:"− ";color:var(--crimson);font-weight:700}
+.opt-link{display:inline-block;margin-top:auto;padding:9px 14px;border:1px solid var(--ink);font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);text-decoration:none;align-self:flex-start;transition:background .12s,color .12s}
+.opt-link:hover{background:var(--ink);color:var(--paper)}
+
+/* COMPARISON TABLE */
+.cmp{width:100%;border-collapse:collapse;font-family:"IBM Plex Mono",monospace;font-size:12px;margin-top:18px}
+.cmp th,.cmp td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--hairline);vertical-align:top}
+.cmp th{font-weight:500;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);border-bottom:2px solid var(--rule)}
+.cmp td .nm{font-family:"Fraunces",serif;font-size:15px;font-weight:700}
+.cmp .y{color:var(--forest);font-weight:700}
+.cmp .n{color:var(--ink-faint)}
+.cmp .p{color:var(--crimson);font-weight:600}
+@media(max-width:720px){.cmp{font-size:11px}.cmp th,.cmp td{padding:8px 6px}}
+
+/* STEP LIST */
+.steps{counter-reset:step;display:grid;grid-template-columns:1fr;gap:18px;margin:20px 0;max-width:880px}
+.step{display:grid;grid-template-columns:54px 1fr;gap:18px;align-items:start;padding:16px 18px;background:var(--paper-dark);border-left:3px solid var(--crimson)}
+.step::before{counter-increment:step;content:counter(step,decimal-leading-zero);font-family:"Fraunces",serif;font-weight:900;font-size:30px;color:var(--crimson);line-height:1}
+.step h4{font-family:"Fraunces",serif;font-weight:700;font-size:18px;line-height:1.15;margin-bottom:6px}
+.step p{font-size:14.5px;line-height:1.55;color:var(--ink-soft)}
+
+.aftermath{padding:34px 0;background:var(--paper-dark);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin-top:30px}
+.aftermath .wrap{max-width:880px}
+.aftermath h3{font-family:"Fraunces",serif;font-weight:700;font-size:24px;margin-bottom:10px}
+.aftermath p{font-size:15px;line-height:1.6;color:var(--ink-soft);margin-bottom:10px}
+
+/* COLOPHON / FOOTER (universal across all pages) */
+.foot{border-top:3px double var(--rule);margin-top:50px;padding:34px 0 60px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.65;color:var(--ink-soft)}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1.6fr 1fr;gap:36px;margin-bottom:30px}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:22px}}
+.foot-col h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
+.foot-col a{display:block;color:var(--ink);text-decoration:none;padding:3px 0;border-bottom:none;letter-spacing:.02em}
+.foot-col a:hover{color:var(--crimson)}
+.foot-strip{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;text-align:center}
+.foot-rights,.foot-sources{margin-top:14px;font-size:11px;line-height:1.55;color:var(--ink-faint);max-width:920px;margin-left:auto;margin-right:auto;text-align:center;letter-spacing:.02em}
+.foot-rights strong,.foot-sources strong{color:var(--ink-soft);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px;margin-right:6px}
+</style>
+</head>
+<body>
+
+
+<header class="masthead wrap">
+  <div class="masthead-top">
+    <div>Edition III · Auto-refresh 5 min</div>
+    <div class="c" id="mt-date">—</div>
+    <div class="r">Bali Air Dispatch</div>
+  </div>
+  <div class="nameplate">
+    <h1>Bali&nbsp;Air&nbsp;Dispatch</h1>
+    <div class="sub">A live register of particulate matter, measured daily.</div>
+  </div>
+</header>
+
+<nav class="navbar">
+  <a href="/">Live Monitor</a>
+  <a href="/brief">Evidence Brief</a>
+  <a href="/setup-monitor" class="current">Set up a Monitor</a>
+  <a href="/articles">Dispatches</a>
+  <a href="/history">History</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero wrap">
+  <div class="kicker">Install · A Practical Guide</div>
+  <h1>Set up a <em>monitor.</em></h1>
+  <div class="deck">There are fifteen public air-quality sensors across Bali at the time of writing. The island has 4.4 million residents and 5,780 km². The argument for adding one more is straightforward: every additional monitor turns a guess into a number, and a number is the only thing a regulator, a school, or a journalist can act on.</div>
+</section>
+
+<!-- ARGUMENT -->
+<section class="argument wrap">
+  <p>The <strong>cheapest reliable PM2.5 sensor</strong> capable of contributing to a public network costs about as much as a long weekend in Seminyak. The data it produces — once it joins one of the international platforms — is auditable, timestamped, and impossible to politely walk back. It becomes part of the historical record this site already aggregates.</p>
+  <p>Bali's monitoring blind spots are not the fault of any one platform. They are the cumulative absence of small decisions to install. North Bali (Lovina, Singaraja), the eastern regencies (Karangasem, Amlapura), and the inland mountain belt (Bedugul, Kintamani) currently appear in our data as silence. A single sensor in any of those places would change that.</p>
+  <p>What follows is a short comparison of the four platforms most practical for Bali, then a generic install checklist that applies to all four.</p>
+</section>
+
+<!-- CHAPTER A — THE FOUR OPTIONS -->
+<section class="chapter wrap" id="options">
+  <div class="chapter-head">
+    <div class="chapter-no">A</div>
+    <div class="chapter-title">The four practical options</div>
+    <div class="chapter-meta">As of April 2026</div>
+  </div>
+  <p class="chapter-lede">Every option below publishes data to a public network this site already reads. Whichever you choose, your readings will appear on the Live Monitor map within one refresh cycle of going online.</p>
+
+  <div class="opts">
+
+    <!-- NAFAS -->
+    <article class="opt nafas">
+      <div class="opt-tag">Indonesia · Subscription</div>
+      <div class="opt-name">Nafas <em>· Indonesia-built</em></div>
+      <div class="opt-price">Subscription model · contact for pricing</div>
+      <div class="opt-summary">A Jakarta-based company that installs PM2.5 + temperature + humidity outdoor sensors and runs the most popular consumer air-quality app in Indonesia. They handle installation, hardware replacement and notifications themselves.</div>
+      <div class="opt-rows">
+        <div class="r"><div class="k">Hardware</div><div class="v">Outdoor PM/met sensor (vendor-supplied)</div></div>
+        <div class="r"><div class="k">Pollutants</div><div class="v">PM1 · PM2.5 · PM10 · temp · humidity</div></div>
+        <div class="r"><div class="k">Power</div><div class="v">Mains; outdoor enclosure</div></div>
+        <div class="r"><div class="k">Internet</div><div class="v">WiFi + cellular fallback (varies)</div></div>
+        <div class="r"><div class="k">Public data</div><div class="v good">Yes · nafas.co.id share-link, app, this site</div></div>
+        <div class="r"><div class="k">Refresh</div><div class="v">~15 minutes</div></div>
+        <div class="r"><div class="k">Best for</div><div class="v">Schools, hotels, neighbourhood associations who want install + service handled</div></div>
+      </div>
+      <div class="opt-pros">Fully managed. Real Indonesia-side support. Bahasa Indonesia interface. Already part of this site's live feed.</div>
+      <div class="opt-cons">Pricing is not published; consumer route is now app-led with the older self-service web dashboard retired. Best to contact via their site.</div>
+      <a class="opt-link" href="https://nafas.co.id" target="_blank" rel="noopener noreferrer">nafas.co.id →</a>
+    </article>
+
+    <!-- PURPLEAIR -->
+    <article class="opt purpleair">
+      <div class="opt-tag">USA · Buy outright</div>
+      <div class="opt-name">PurpleAir <em>· Most public-network friendly</em></div>
+      <div class="opt-price">USD 269–299 + shipping &amp; import duty</div>
+      <div class="opt-summary">A Utah-based community sensor that has become the world's largest public PM2.5 network. The two PurpleAir units in Bali (Jimbaran, Klungkung) provide some of the longest continuous datasets we have. Their public map updates every 80 seconds.</div>
+      <div class="opt-rows">
+        <div class="r"><div class="k">Hardware</div><div class="v">Classic ($269) · Touch with screen ($299)</div></div>
+        <div class="r"><div class="k">Pollutants</div><div class="v">PM1 · PM2.5 · PM10 · temp · humidity · pressure</div></div>
+        <div class="r"><div class="k">Power</div><div class="v">USB · 5V outdoor-grade adapter</div></div>
+        <div class="r"><div class="k">Internet</div><div class="v">WiFi 2.4 GHz</div></div>
+        <div class="r"><div class="k">Public data</div><div class="v good">Yes · map.purpleair.com (default opt-in)</div></div>
+        <div class="r"><div class="k">Refresh</div><div class="v">Every 80 seconds (the fastest of the four)</div></div>
+        <div class="r"><div class="k">Best for</div><div class="v">Households, businesses, anyone who wants the data to be unambiguously public</div></div>
+      </div>
+      <div class="opt-pros">Simple install. Open data with raw CSV downloads. Strong global community. Already part of this site's live feed.</div>
+      <div class="opt-cons">No Indonesia distributor — order from the US site or AliExpress; expect ~10–14 day shipping and modest import duty.</div>
+      <a class="opt-link" href="https://www2.purpleair.com/products/list" target="_blank" rel="noopener noreferrer">purpleair.com →</a>
+    </article>
+
+    <!-- IQAIR -->
+    <article class="opt iqair">
+      <div class="opt-tag">Switzerland · Buy outright</div>
+      <div class="opt-name">IQAir AirVisual <em>· Polished hardware</em></div>
+      <div class="opt-price">USD 269–299 (indoor) · USD 800+ (outdoor AVO)</div>
+      <div class="opt-summary">A Swiss company with the largest commercial air-quality network in the world. Their Pro line is the most refined consumer hardware in this list — colour screen, app-friendly, frequently used by hotels and clinics. Public data goes through the iqair.com map.</div>
+      <div class="opt-rows">
+        <div class="r"><div class="k">Hardware</div><div class="v">AirVisual Pro (indoor, $269) · AVO (outdoor, ~$800+)</div></div>
+        <div class="r"><div class="k">Pollutants</div><div class="v">PM2.5 · CO2 · temp · humidity (Pro) · adds NO2/O3 on AVO</div></div>
+        <div class="r"><div class="k">Power</div><div class="v">USB-C; battery option</div></div>
+        <div class="r"><div class="k">Internet</div><div class="v">WiFi 2.4 GHz</div></div>
+        <div class="r"><div class="k">Public data</div><div class="v warn">Optional · opt-in to "contributor map"</div></div>
+        <div class="r"><div class="k">Refresh</div><div class="v">10 minutes</div></div>
+        <div class="r"><div class="k">Best for</div><div class="v">Indoor hospitality (hotels, restaurants); outdoor scientific deployments where budget is not the constraint</div></div>
+      </div>
+      <div class="opt-pros">Best-built consumer hardware. CO2 sensor included. Already part of this site's feed when public-contributor mode is enabled.</div>
+      <div class="opt-cons">Public data is opt-in, not default. Their AVO outdoor monitor is significantly more expensive than the alternatives.</div>
+      <a class="opt-link" href="https://www.iqair.com/air-quality-monitors" target="_blank" rel="noopener noreferrer">iqair.com →</a>
+    </article>
+
+    <!-- AIRGRADIENT -->
+    <article class="opt airgradient">
+      <div class="opt-tag">Thailand · Open hardware</div>
+      <div class="opt-name">AirGradient <em>· Open source · regional</em></div>
+      <div class="opt-price">USD 165–249 · DIY kit or assembled</div>
+      <div class="opt-summary">A Chiang-Mai-based company building open-source air-quality monitors specifically for South-East Asia. Their hardware is the easiest to source from this region (no trans-Pacific shipping) and their data flows into OpenAQ — a fully public, research-grade aggregator.</div>
+      <div class="opt-rows">
+        <div class="r"><div class="k">Hardware</div><div class="v">ONE Open Hardware kit ($195) · ONE Pro pre-built ($249)</div></div>
+        <div class="r"><div class="k">Pollutants</div><div class="v">PM1 · PM2.5 · PM10 · CO2 · TVOC · NOx · temp · humidity</div></div>
+        <div class="r"><div class="k">Power</div><div class="v">USB-C</div></div>
+        <div class="r"><div class="k">Internet</div><div class="v">WiFi 2.4 GHz</div></div>
+        <div class="r"><div class="k">Public data</div><div class="v good">Yes · OpenAQ + AirGradient global map</div></div>
+        <div class="r"><div class="k">Refresh</div><div class="v">10 minutes</div></div>
+        <div class="r"><div class="k">Best for</div><div class="v">Schools, makerspaces, anyone who wants open hardware they can open up and modify</div></div>
+      </div>
+      <div class="opt-pros">Cheapest credible option. Ships from Thailand (much faster than the US). Open hardware + open firmware. Most pollutants per dollar.</div>
+      <div class="opt-cons">DIY kit requires light soldering or screw-together assembly. Their previous Bali deployments (Ubud Rozendal, Balangan, Kopernik) all went silent in 2025 — suggests the network needs active maintenance.</div>
+      <a class="opt-link" href="https://www.airgradient.com/outdoor/" target="_blank" rel="noopener noreferrer">airgradient.com →</a>
+    </article>
+
+  </div>
+</section>
+
+<!-- CHAPTER B — COMPARISON -->
+<section class="chapter wrap" id="comparison">
+  <div class="chapter-head">
+    <div class="chapter-no">B</div>
+    <div class="chapter-title">At a glance</div>
+    <div class="chapter-meta">Side-by-side</div>
+  </div>
+  <p class="chapter-lede">A side-by-side of price, refresh cadence, public-data behaviour, and shipping reality for Bali.</p>
+
+  <table class="cmp">
+    <thead><tr>
+      <th>Sensor</th>
+      <th>Approx. price</th>
+      <th>Public data</th>
+      <th>Refresh</th>
+      <th>Indoor / outdoor</th>
+      <th>Ships to Bali</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><div class="nm">Nafas</div></td>
+        <td>Subscription</td>
+        <td class="y">Default · public</td>
+        <td>~15 min</td>
+        <td>Outdoor</td>
+        <td class="y">Indonesian company</td>
+      </tr>
+      <tr>
+        <td><div class="nm">PurpleAir Classic</div></td>
+        <td>USD 269</td>
+        <td class="y">Default · public</td>
+        <td>80 sec</td>
+        <td>Outdoor</td>
+        <td class="p">From US · 10–14 days</td>
+      </tr>
+      <tr>
+        <td><div class="nm">IQAir AirVisual Pro</div></td>
+        <td>USD 269</td>
+        <td class="n">Opt-in</td>
+        <td>10 min</td>
+        <td>Indoor (Pro) · Outdoor (AVO)</td>
+        <td class="p">From CH · ~14 days</td>
+      </tr>
+      <tr>
+        <td><div class="nm">AirGradient ONE</div></td>
+        <td>USD 165–249</td>
+        <td class="y">Default · public</td>
+        <td>10 min</td>
+        <td>Outdoor</td>
+        <td class="y">From Thailand · 5–8 days</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- CHAPTER C — INSTALL -->
+<section class="chapter wrap" id="install">
+  <div class="chapter-head">
+    <div class="chapter-no">C</div>
+    <div class="chapter-title">How to install (any of the four)</div>
+    <div class="chapter-meta">Five steps · about 30 minutes</div>
+  </div>
+  <p class="chapter-lede">The mechanical install is the easy part. Picking the right spot is what determines whether the data is meaningful.</p>
+
+  <ol class="steps">
+    <li class="step">
+      <div>
+        <h4>Pick a spot, not just a wall.</h4>
+        <p>Three to six metres above ground, away from a kitchen exhaust, away from a chimney, away from a busy parking spot. Direct exposure to outdoor air, but sheltered from horizontal rain. A balcony rail or a north-facing eave is usually right; the inside of a kitchen window is wrong.</p>
+      </div>
+    </li>
+    <li class="step">
+      <div>
+        <h4>Power, then mount.</h4>
+        <p>All four options need 5V USB. Run the cable through a window or a wall pass-through and seal it with silicon. The unit itself mounts with a single screw or a zip-tie; nothing is heavy.</p>
+      </div>
+    </li>
+    <li class="step">
+      <div>
+        <h4>Connect it to WiFi.</h4>
+        <p>Each platform has its own setup app. PurpleAir and AirGradient use simple captive-portal flows; IQAir and Nafas use first-party apps. All four require 2.4 GHz; some 5 GHz mesh routers will refuse the pairing — temporarily disable 5 GHz or use a guest 2.4 GHz network during setup.</p>
+      </div>
+    </li>
+    <li class="step">
+      <div>
+        <h4>Register and name it.</h4>
+        <p>Give the sensor a descriptive name (<em>"Ubud — Jl Raya Goa Gajah"</em>) rather than the default hex string. Set its location accurately. Mark it as <strong>public</strong> when prompted; this is the toggle that lets us — and everyone else — see your data.</p>
+      </div>
+    </li>
+    <li class="step">
+      <div>
+        <h4>Wait twenty minutes.</h4>
+        <p>The first reading appears on the platform's own map immediately. Within one refresh cycle of this site (5 minutes), it will appear here too. We do not curate or approve; if your sensor is on the public network, it is on this map.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<!-- CHAPTER D — AFTERMATH -->
+<div class="aftermath">
+  <div class="wrap">
+    <h3>What happens after.</h3>
+    <p>Your sensor's hourly and daily readings become part of the public record. They are downloadable from the source platform as raw CSVs, queryable through this site's archive, and citable in any future report on Bali's air. We do not own the data; you do.</p>
+    <p>If your sensor goes offline for more than two weeks, it will appear in the <a href="/" style="color:var(--ink);border-bottom:1px solid var(--hairline)">Archive of Silence</a> on the homepage rather than disappearing without record. The historical readings remain.</p>
+  </div>
+</div>
+
+<!-- UNIVERSAL FOOTER · keep in sync across all pages -->
+<footer class="foot wrap">
+  <div class="foot-grid">
+    <div class="foot-col">
+      <h4>Pages</h4>
+      <a href="/">Live Monitor</a>
+      <a href="/brief">Evidence Brief</a>
+      <a href="/setup-monitor">Set up a Monitor</a>
+      <a href="/articles">Dispatches</a>
+      <a href="/history">History</a>
+      <a href="/appendix">Appendix &amp; Methodology</a>
+    </div>
+    <div class="foot-col">
+      <h4>Dispatches</h4>
+      <a href="/articles#dispatch-1">I — The daily guideline, exceeded.</a>
+      <a href="/articles#dispatch-2">II — One government sensor.</a>
+      <a href="/articles#dispatch-3">III — Seven tons of river waste.</a>
+      <a href="/articles#dispatch-4">IV — The long-term health effects.</a>
+    </div>
+    <div class="foot-col">
+      <h4>Contact</h4>
+      <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
+    </div>
+  </div>
+  <div class="foot-strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+  <div class="foot-rights"><strong>Rights.</strong> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</div>
+  <div class="foot-sources"><strong>Sources.</strong> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</div>
+</footer>
+
+<script>
+// Dynamic date in masthead-top center
+function updateDate(){
+  const d = new Date();
+  const fmt = d.toLocaleDateString('en-GB',{
+    weekday:'long', day:'numeric', month:'long', year:'numeric'
+  }).toUpperCase();
+  const el = document.getElementById('mt-date');
+  if (el) el.textContent = fmt;
+}
+updateDate();
+setInterval(updateDate, 60*1000);
+</script>
+
+</body>
+</html>

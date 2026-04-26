@@ -205,6 +205,16 @@ body::before{
 .figure-cell .n small{font-size:22px;color:var(--ink-soft);font-weight:500}
 .figure-cell .l{margin-top:10px;font-size:13px;line-height:1.45;color:var(--ink-soft)}
 
+/* Sub-headings within a dispatch chapter */
+.sub-h{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 120;font-size:22px;line-height:1.1;letter-spacing:-.005em;color:var(--ink);margin:8px 0 12px}
+.chapter-body h3.sub-h{margin-top:6px}
+
+/* Dispatch sources block (Dispatch IV) */
+.dispatch-sources{margin-top:34px;padding:22px 24px;border:1px solid var(--hairline);background:var(--paper-2,rgba(20,17,13,0.03))}
+.dispatch-sources h4{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;font-weight:600}
+.dispatch-sources ol{margin-left:18px;font-family:"Source Serif 4",serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft)}
+.dispatch-sources li{margin-bottom:6px}
+
 /* ===== PULL QUOTE ===== */
 .pull{
   grid-column:span 2;
@@ -281,12 +291,15 @@ body::before{
 .call .cta a.primary:hover{background:var(--crimson);border-color:var(--crimson)}
 
 /* ===== FOOTER ===== */
-.foot{padding:40px 0 0 0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;color:var(--ink-soft);line-height:1.8;text-transform:uppercase}
-.foot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px}
-@media(max-width:720px){.foot-grid{grid-template-columns:repeat(2,1fr)}}
-.foot h4{font-family:"Fraunces",serif;font-weight:700;font-size:15px;text-transform:none;letter-spacing:0;margin-bottom:10px;color:var(--ink)}
-.foot a{color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted var(--hairline)}
-.foot a:hover{color:var(--crimson);border-color:var(--crimson)}
+.foot{padding:34px 0 60px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.65;color:var(--ink-soft);text-transform:none;letter-spacing:.02em;border-top:3px double var(--rule);margin-top:50px}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1.6fr 1fr;gap:36px;margin-bottom:30px}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:22px}}
+.foot-col h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
+.foot-col a{display:block;color:var(--ink);text-decoration:none;padding:3px 0;border-bottom:none;letter-spacing:.02em}
+.foot-col a:hover{color:var(--crimson)}
+.foot-strip{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;text-align:center}
+.foot-rights,.foot-sources{margin-top:14px;font-size:11px;line-height:1.55;color:var(--ink-faint);max-width:920px;margin-left:auto;margin-right:auto;text-align:center;letter-spacing:.02em}
+.foot-rights strong,.foot-sources strong{color:var(--ink-soft);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px;margin-right:6px}
 .foot .mail{
   font-family:"IBM Plex Mono",ui-monospace,monospace;color:var(--ink);
   font-size:13px;letter-spacing:.02em;padding:4px 8px;margin-left:-8px;
@@ -318,12 +331,13 @@ body::before{
     </div>
   </header>
 
-  <!-- NAV -->
+  <!-- NAV (universal · keep in sync across all pages) -->
   <nav class="navbar">
     <a href="/">Live Monitor</a>
     <a href="/brief">Evidence Brief</a>
-    <a href="/articles" class="on">Dispatches</a>
-    <a href="/appendix">Appendix</a>
+    <a href="/setup-monitor">Set up a Monitor</a>
+    <a href="/articles" class="on current">Dispatches</a>
+    <a href="/history">History</a>
   </nav>
 
   <!-- BULLETIN -->
@@ -337,11 +351,11 @@ body::before{
   <section class="collect-lead">
     <div>
       <div class="deck-kicker">Dispatch collection · April 2026</div>
-      <h1 class="collect-title">Three readings from the <em>unmonitored island</em>.</h1>
-      <p class="collect-deck">A community sensor logged four hundred and sixty-nine days of Bali's breath before it fell silent. One government monitor sits idle for 4.4 million residents. And since the first of April, seven tons of waste a day have been pulled from Denpasar's rivers — while the smoke in the alleys rises without an instrument to record it.</p>
+      <h1 class="collect-title">Four readings from the <em>unmonitored island</em>.</h1>
+      <p class="collect-deck">A community sensor logged four hundred and sixty-nine days of Bali's breath before it fell silent. One government monitor sits idle for 4.4 million residents. Since the first of April, seven tons of waste a day have been pulled from Denpasar's rivers — while the smoke in the alleys rises without an instrument to record it. And underneath all of that, the science: per ten micrograms a cubic metre of fine particulate matter, a toll the body keeps.</p>
       <div class="byline">
         <span>Anonymous public-interest reporting</span>
-        <span>Data · AQICN, BPS, CREA 2024, Denpasar PUPR, Sungai Watch</span>
+        <span>Data · AQICN, BPS, CREA 2024, Denpasar PUPR, Sungai Watch, WHO 2021</span>
         <span>Correspondence · baliair@protonmail.com</span>
       </div>
     </div>
@@ -360,6 +374,10 @@ body::before{
         <li><a href="#dispatch-3">
           <div class="t">Seven tons of river waste a day, and <em>no air data to match</em>.</div>
           <div class="m">§ III · 5-minute read · waste &amp; air</div>
+        </a></li>
+        <li><a href="#dispatch-4">
+          <div class="t">Per ten micrograms, a <em>toll the body keeps</em>.</div>
+          <div class="m">§ IV · 7-minute read · health</div>
         </a></li>
       </ol>
     </aside>
@@ -586,6 +604,88 @@ body::before{
     </div>
   </section>
 
+  <!-- ===========================================================
+       DISPATCH IV — Per ten micrograms, a toll
+       =========================================================== -->
+  <section class="chapter" id="dispatch-4">
+    <div class="chapter-head">
+      <div class="chapter-no">Dispatch · IV</div>
+      <div class="chapter-title">Per ten micrograms, <em>a toll the body keeps</em>.</div>
+      <div class="chapter-meta">Filed · 26 April 2026<br>Approx. 7-minute read</div>
+    </div>
+    <p class="chapter-lede">When the World Health Organization halved its safe-exposure ceiling for fine particulate matter in 2021, it did so because the underlying epidemiology had stopped finding a floor. The harm scales with the dose; the dose is what we breathe; and on Bali — where the dominant local source is the open burning of plastics and household waste — the chemistry inside a microgram is unusually toxic.</p>
+
+    <div class="chapter-body">
+      <div>
+        <p class="first">For every additional ten micrograms a cubic metre of long-term PM2.5, pooled meta-analyses commissioned for the WHO 2021 guideline review report a 9.5% increase in all-cause mortality, a 12.7% rise in circulatory mortality, a 14.3% rise in ischaemic heart disease mortality, a 14.6% rise in cerebrovascular mortality, a 13.8% rise in mortality from chronic obstructive pulmonary disease, and a 9.3% rise in lung-cancer mortality. The all-cause estimate alone implies an attributable fraction of about <strong>8.7% per ten-microgram increment</strong>, if the association is causal.</p>
+        <p>These are not edge-case findings. The Global Burden of Disease project attributes <strong>more than four million deaths in 2019</strong> to long-term ambient PM2.5. A separate global modelling study estimates that the open burning of domestic waste alone — the activity overhanging Bali in April of 2026 — produces roughly <strong>270,000 premature deaths a year</strong>, although that source-specific figure assumes the toxicity per microgram is the same as that of average urban PM2.5. The toxicology suggests it is probably worse.</p>
+        <p>Plastic and household-waste smoke is chemically distinct from typical urban PM. It is dominated by carbon — more than seventy per cent in one source-profile study — and enriched in polycyclic aromatic hydrocarbons, polychlorinated and polybrominated dioxins and furans, and transition metals including lead, cadmium, chromium, nickel, copper, zinc, and antimony. Co-emitted gases include benzene, styrene, formaldehyde, vinyl chloride, and 1,3-butadiene. The mixture has high oxidative potential and contains environmentally persistent free radicals; in cell-free assays it generates hydrogen peroxide, hydroxyl radicals, and reactive chlorine species.</p>
+      </div>
+
+      <div>
+        <p>The mechanism is not mysterious. Inhaled PM2.5 deposits in the deep lung. From there it triggers oxidative stress and chronic inflammation, with vascular endothelial dysfunction and autonomic-nervous-system imbalance following on. The downstream pathology spans cardiovascular disease, respiratory disease, cancer, and — increasingly — the nervous system. A 2022 meta-analysis reported a 40 per cent increase in dementia risk per ten micrograms of long-term PM2.5; a more conservative 2025 burden-of-proof analysis reports at least a fourteen per cent average increase across the range of exposures observed in the published cohorts. For autism-spectrum disorder, the prenatal-exposure literature suggests a thirty-one per cent increase per ten micrograms during pregnancy and sixty-four per cent during early childhood.</p>
+        <p>Pregnancy outcomes show a coherent dose response. A 2021 global meta-regression estimated that each ten-microgram rise in ambient PM2.5 during pregnancy reduces birth weight by twenty-two grams, raises low-birth-weight risk by eleven per cent, and raises preterm-birth risk by twelve per cent. These outcomes matter especially for the Bali context, because waste burning happens close to homes, repeats episodically, and falls hardest on neighbourhoods without formal collection.</p>
+        <p>The Kerobokan sensor recorded a 469-day mean of 21.9&nbsp;µg/m³ — sixteen-point-nine micrograms above the WHO five-microgram annual guideline. Applied naively to the all-cause coefficient, that delta corresponds to roughly a fifteen per cent excess long-term mortality risk, if the relationship holds at this concentration band. The honest caveat is that the published coefficients are for total ambient PM2.5; the source-specific coefficient for plastic-burning PM has not been estimated. Multiple lines of toxicology suggest the true number is probably higher.</p>
+      </div>
+
+      <!-- FIGURE -->
+      <div class="figure-box" style="grid-column:span 2">
+        <div class="figure-grid">
+          <div class="figure-cell">
+            <div class="n">8.7<small>%</small></div>
+            <div class="l">All-cause mortality attributable fraction per ten-microgram-per-cubic-metre increment in long-term PM2.5. Pooled estimate from the WHO 2021-aligned meta-analysis.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">14.3<small>%</small></div>
+            <div class="l">Excess ischaemic-heart-disease mortality per ten-microgram-per-cubic-metre rise. One of the largest single-cause coefficients in the pooled record.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">270k</div>
+            <div class="l">Estimated annual premature deaths globally attributable to PM2.5 from open burning of domestic waste, per CCAC-aligned modelling. Source-equal-toxicity assumption is conservative.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">~15<small>%</small></div>
+            <div class="l">Approximate excess all-cause mortality risk implied by Kerobokan's 21.9&nbsp;µg/m³ mean against the WHO 5&nbsp;µg/m³ annual guideline, applying the pooled coefficient. <em>Plastic-burning PM is plausibly more harmful per microgram than this estimate.</em></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chapter-body" style="margin-top:30px">
+      <div>
+        <h3 class="sub-h">Who pays the toll first.</h3>
+        <p>The vulnerable populations are the predictable ones: children, pregnant people and their fetuses, older adults, anyone with pre-existing cardiopulmonary disease, informal waste workers, and the residents of neighbourhoods without reliable collection. Lower socioeconomic status amplifies the risk through cumulative exposure and reduced access to filtration, medical care, and the option to leave. Across the cohort literature, no clear threshold has been established below which chronic cardiovascular harm disappears.</p>
+        <p>The 2021 guideline of five micrograms a cubic metre — and the twenty-four-hour ceiling of fifteen — were not picked at random. They were the level at which the meta-analyses stopped showing improvement with further reductions in exposure. Indonesia's national ambient standard, codified in Peraturan Pemerintah 22 of 2021, remains at fifty-five micrograms. Under domestic law, most of Bali's bad-air days are still formally normal.</p>
+      </div>
+      <div>
+        <h3 class="sub-h">What the published evidence does not tell you.</h3>
+        <p>The strongest limitation in the literature is that almost every long-term effect estimate is for total ambient PM2.5, not for the fraction specifically derived from plastic and household waste burning. Source-resolved cohort studies near open burns do not yet exist at scale; toxicology suggests the per-microgram harm is worse than average; the actual coefficient is unspecified.</p>
+        <p>For the purposes of this dispatch, the prudent reading is that chronic exposure to PM2.5 from burning plastics and household waste is unlikely to be safer than typical urban PM2.5, and may be substantially more harmful per unit mass. The exact excess risk in Bali — over a Bali-specific population, over multi-year follow-up, with adjustment for tobacco and cooking exposure — has not been measured. The first step toward measuring it is the same as the first step toward fixing it: a denser network of monitors than this island currently has.</p>
+      </div>
+    </div>
+
+    <!-- SOURCES -->
+    <div class="dispatch-sources">
+      <h4>Sources for this dispatch</h4>
+      <div class="dispatch-sources-grid">
+        <ol>
+          <li>WHO Global Air Quality Guidelines 2021 — annual mean 5&nbsp;µg/m³, 24-hour mean 15&nbsp;µg/m³; harm reported below previously assumed thresholds.</li>
+          <li>Chen &amp; Hoek 2020 (meta-analysis commissioned for WHO 2021 review) — pooled relative-risk estimates per 10&nbsp;µg/m³ for all-cause, circulatory, IHD, cerebrovascular, COPD and lung-cancer mortality.</li>
+          <li>Global Burden of Disease 2019 — ambient PM2.5 attributable mortality.</li>
+          <li>Kodros et al. 2016 (and follow-ups) — global modelled premature deaths from open burning of domestic waste.</li>
+          <li>Velis &amp; Cook 2021; Kumar et al. 2023 — chemical profile of plastic and waste-combustion PM (PAHs, dioxins/furans, transition metals, persistent free radicals, oxidative potential).</li>
+          <li>Wei et al. 2024 (California cohort) — incident AMI, IHD mortality, CV mortality below older regulatory standards.</li>
+          <li>Wilker et al. 2023; Power et al. 2025 — long-term PM2.5 and dementia risk.</li>
+          <li>Volk et al. 2013; meta-analyses 2017–2023 — prenatal and early-life PM2.5 and ASD.</li>
+          <li>Ghosh et al. 2021 — global meta-regression on gestational PM2.5 and birth weight, low-birth-weight, preterm birth.</li>
+          <li>IARC 2013 — outdoor air pollution and PM as Group 1 carcinogen.</li>
+          <li>Climate &amp; Clean Air Coalition (CCAC) CLOCC programme — open burning as a dominant PM2.5 source in Indonesian communities with incomplete waste collection.</li>
+          <li>Peraturan Pemerintah 22 / 2021 (Indonesia) — domestic ambient PM2.5 standard at 55&nbsp;µg/m³.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
   <!-- CLOSING CALL -->
   <div class="call">
     <div class="kicker">Editorial · 17 April 2026</div>
@@ -598,34 +698,33 @@ body::before{
     </div>
   </div>
 
-  <!-- FOOTER -->
+  <!-- UNIVERSAL FOOTER · keep in sync across all pages -->
   <footer class="foot">
     <div class="foot-grid">
-      <div>
-        <h4>Contact</h4>
-        <div><span class="mail" tabindex="0">baliair@protonmail.com</span></div>
-        <div class="mail-note">Copy &amp; paste — no mail client will open.</div>
-      </div>
-      <div>
+      <div class="foot-col">
         <h4>Pages</h4>
-        <div>
-          <a href="/">Live Monitor</a><br>
-          <a href="/brief">Evidence Brief</a><br>
-          <a href="/appendix">Appendix &amp; Methodology</a>
-        </div>
+        <a href="/">Live Monitor</a>
+        <a href="/brief">Evidence Brief</a>
+        <a href="/setup-monitor">Set up a Monitor</a>
+        <a href="/articles">Dispatches</a>
+        <a href="/history">History</a>
+        <a href="/appendix">Appendix &amp; Methodology</a>
       </div>
-      <div>
-        <h4>Sources</h4>
-        <div>AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU</div>
+      <div class="foot-col">
+        <h4>Dispatches</h4>
+        <a href="/articles#dispatch-1">I — The daily guideline, exceeded.</a>
+        <a href="/articles#dispatch-2">II — One government sensor.</a>
+        <a href="/articles#dispatch-3">III — Seven tons of river waste.</a>
+        <a href="/articles#dispatch-4">IV — The long-term health effects.</a>
       </div>
-      <div>
-        <h4>Rights</h4>
-        <div>Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</div>
+      <div class="foot-col">
+        <h4>Contact</h4>
+        <a href="mailto:baliair@protonmail.com">baliair@protonmail.com</a>
       </div>
     </div>
-    <div style="margin-top:28px;padding-top:18px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.2em;color:var(--ink-faint)">
-      No trackers · No advertisements · No accounts · No cookies · Circulated anonymously
-    </div>
+    <div class="foot-strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+    <div class="foot-rights"><strong>Rights.</strong> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</div>
+    <div class="foot-sources"><strong>Sources.</strong> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</div>
   </footer>
 
 </div>

@@ -38,8 +38,10 @@ export async function onRequest(context) {
   }
 
   // ── 1. PurpleAir ──
+  // Bali bbox covers the whole island including the north (Lovina, Singaraja)
+  // and the southern tip (Uluwatu). Extends a touch into the surrounding sea.
   try {
-    const resp = await fetch('https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,last_seen&location_type=0&nwlat=-8.1&nwlng=114.4&selat=-8.85&selng=115.7', {
+    const resp = await fetch('https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,last_seen&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78', {
       headers: { 'X-API-Key': PURPLEAIR_KEY }
     });
     const data = await resp.json();
@@ -61,7 +63,7 @@ export async function onRequest(context) {
 
   // ── 2. AQICN ──
   try {
-    const resp = await fetch(`https://api.waqi.info/v2/map/bounds?latlng=-8.85,114.4,-8.1,115.7&networks=all&token=${AQICN_TOKEN}`);
+    const resp = await fetch(`https://api.waqi.info/v2/map/bounds?latlng=-8.92,114.4,-8.0,115.78&networks=all&token=${AQICN_TOKEN}`);
     const data = await resp.json();
     if (data.status === 'ok' && data.data) {
       results.sources++;
@@ -89,8 +91,10 @@ export async function onRequest(context) {
   // Nafas public station list (outdoor.nafas.co.id /api/v1/location/all) — no Bali
   // UUID overlap. The relabel was incorrect and has been removed. Airly stations
   // now always report source='Airly'.
+  // Edition III: widen the search radius to 200 km from Ubud centre to ensure we
+  // see anything north of Bedugul / east of Karangasem. Up to 50 results.
   try {
-    const resp = await fetch('https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=100&maxResults=25', {
+    const resp = await fetch('https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=200&maxResults=50', {
       headers: { Accept: 'application/json', apikey: AIRLY_KEY }
     });
     const installations = await resp.json();
@@ -200,8 +204,18 @@ export async function onRequest(context) {
   } catch (e) { results.errors.push({ source: 'Nafas', error: e.message }); }
 
   // ── 4. OpenAQ (AirGradient sensors) ──
+  // Edition III: 5 search centres covering full Bali — north (Lovina), centre (Ubud),
+  // south Denpasar/Kuta, west (Negara/Tabanan), east (Amed/Karangasem). 25 km radius
+  // each. Stations are de-duped by id below.
   try {
-    const centers = [{lat:-8.5,lon:115.26},{lat:-8.65,lon:115.22},{lat:-8.8,lon:115.14}];
+    const centers = [
+      {lat:-8.16, lon:115.10},  // North coast (Lovina, Singaraja)
+      {lat:-8.50, lon:115.26},  // Ubud / centre
+      {lat:-8.65, lon:115.22},  // Denpasar / south-central
+      {lat:-8.80, lon:115.14},  // Kuta / Jimbaran
+      {lat:-8.35, lon:114.65},  // West (Tabanan / Negara)
+      {lat:-8.45, lon:115.65},  // East (Amlapura / Karangasem)
+    ];
     const seenIds = new Set();
     let foundAny = false;
     for (const c of centers) {
@@ -242,9 +256,16 @@ export async function onRequest(context) {
   } catch (e) { results.errors.push({ source: 'OpenAQ', error: e.message }); }
 
   // ── 5. IQAir (rate limited — last) ──
+  // Edition III: add north (Lovina), east (Amlapura), and Bedugul to the
+  // nearest_city probes so any IQAir contributor in those regions appears.
   const iqLocs = [
-    {label:'Denpasar',lat:-8.65,lon:115.22},{label:'Ubud',lat:-8.50,lon:115.26},
-    {label:'Kerobokan / Seminyak',lat:-8.67,lon:115.15},{label:'Jimbaran',lat:-8.79,lon:115.17},
+    {label:'Denpasar',           lat:-8.65, lon:115.22},
+    {label:'Ubud',               lat:-8.50, lon:115.26},
+    {label:'Kerobokan / Seminyak',lat:-8.67, lon:115.15},
+    {label:'Jimbaran',           lat:-8.79, lon:115.17},
+    {label:'Lovina (north)',     lat:-8.16, lon:115.02},
+    {label:'Amlapura (east)',    lat:-8.45, lon:115.61},
+    {label:'Bedugul (mountains)',lat:-8.28, lon:115.16},
   ];
   let iqOk = false;
   for (const loc of iqLocs) {

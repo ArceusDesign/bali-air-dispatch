@@ -124,6 +124,58 @@ function buildDailyStmt(db) {
   `);
 }
 
+// ── Universal snapshot helpers (Edition III) ───────────────────────────
+// Snapshot every station from /api/live into the universal tables, in
+// addition to the Nafas-specific deep dive (hourly/daily aggregates).
+async function fetchUnifiedLive(originBase) {
+  // CF-to-CF fetch — calls our own /api/live aggregator from the worker.
+  // originBase is set via env.LIVE_ORIGIN (defaults to baliair.pages.dev).
+  const url = (originBase || 'https://baliair.pages.dev').replace(/\/$/,'') + '/api/live';
+  const r = await fetch(url, { headers: { Accept:'application/json' }, cf:{ cacheTtl:60 } });
+  if (!r.ok) throw new Error('live HTTP '+r.status);
+  return await r.json();
+}
+
+async function snapshotUniversal(db, live, nowSec) {
+  if (!live?.stations?.length) return { stationsSeen:0, snapshots:0 };
+  const stmtStation = db.prepare(`
+    INSERT INTO stations (station_id, source, name, lat, lon, type, first_seen, last_seen)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
+    ON CONFLICT(station_id) DO UPDATE SET
+      source = excluded.source,
+      name   = excluded.name,
+      lat    = excluded.lat,
+      lon    = excluded.lon,
+      type   = excluded.type,
+      last_seen = excluded.last_seen
+  `);
+  const stmtSnap = db.prepare(`
+    INSERT OR IGNORE INTO station_snapshots
+      (station_id, ts, pm25, pm10, pm1, aqi, temperature, humidity, station_till)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+  `);
+
+  const stationBatch = [];
+  const snapBatch = [];
+  for (const s of live.stations) {
+    if (!s?.id || !Number.isFinite(+s.lat) || !Number.isFinite(+s.lon)) continue;
+    stationBatch.push(stmtStation.bind(
+      s.id, s.source || 'Unknown', s.name || s.id,
+      +s.lat, +s.lon, s.type || null, nowSec
+    ));
+    snapBatch.push(stmtSnap.bind(
+      s.id, nowSec,
+      toNumberOrNull(s.pm25), toNumberOrNull(s.pm10), toNumberOrNull(s.pm1),
+      toIntOrNull(s.aqi),
+      toNumberOrNull(s.temperature), toNumberOrNull(s.humidity),
+      s.lastSeen || null
+    ));
+  }
+  if (stationBatch.length) await db.batch(stationBatch);
+  if (snapBatch.length)    await db.batch(snapBatch);
+  return { stationsSeen: live.stations.length, snapshots: snapBatch.length };
+}
+
 async function archiveOnce(env) {
   const t0 = Date.now();
   const nowSec = Math.floor(t0 / 1000);
@@ -131,7 +183,19 @@ async function archiveOnce(env) {
   if (!db) throw new Error('ARCHIVE_DB binding missing');
 
   let stationsSeen = 0, snapshots = 0, hourly = 0, daily = 0;
+  let universalStations = 0, universalSnaps = 0;
   let ok = 1, errMsg = null;
+
+  // ── Universal pass: snapshot every station from /api/live ────────────
+  try {
+    const live = await fetchUnifiedLive(env.LIVE_ORIGIN);
+    const u = await snapshotUniversal(db, live, nowSec);
+    universalStations = u.stationsSeen;
+    universalSnaps = u.snapshots;
+  } catch (e) {
+    // Non-fatal — Nafas-specific path below still runs.
+    console.warn('universal snapshot failed', e.message);
+  }
 
   try {
     const stations = await fetchBaliStations();
@@ -194,14 +258,26 @@ async function archiveOnce(env) {
 
   const duration = Date.now() - t0;
   try {
+    // archive_runs schema only knows about Nafas counters; encode universal
+    // counts into the higher columns via simple addition for visibility.
     await db.prepare(`
       INSERT OR REPLACE INTO archive_runs
         (ts, stations_seen, snapshots_written, hourly_upserts, daily_upserts, duration_ms, ok, error)
       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-    `).bind(nowSec, stationsSeen, snapshots, hourly, daily, duration, ok, errMsg).run();
+    `).bind(
+      nowSec,
+      stationsSeen + universalStations,
+      snapshots + universalSnaps,
+      hourly, daily, duration, ok, errMsg
+    ).run();
   } catch (_) { /* never fail on log write */ }
 
-  return { ok: !!ok, ts: nowSec, stationsSeen, snapshots, hourly, daily, duration, error: errMsg };
+  return {
+    ok: !!ok, ts: nowSec,
+    nafasStations: stationsSeen, nafasSnapshots: snapshots,
+    universalStations, universalSnapshots: universalSnaps,
+    hourly, daily, duration, error: errMsg
+  };
 }
 
 export default {
