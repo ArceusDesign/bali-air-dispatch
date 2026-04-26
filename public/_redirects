@@ -1,3 +1,9 @@
 # /monitor used to be the live map page. The map is now the homepage.
 /monitor  /  301
 /monitor.html  /  301
+# Old in-page dispatch anchors → new standalone pages (Edition III iter 4)
+/articles/dispatch-1  /dispatches/1  301
+/articles/dispatch-2  /dispatches/2  301
+/articles/dispatch-3  /dispatches/3  301
+/articles/dispatch-4  /dispatches/4  301
+/articles/dispatch-5  /dispatches/5  301

@@ -78,6 +78,9 @@ body::before{
 .opt.purpleair::before{background:#7d3ea8}
 .opt.iqair::before{background:var(--ochre)}
 .opt.airgradient::before{background:var(--crimson)}
+.opt.recommended{box-shadow:0 0 0 2px var(--crimson),0 4px 0 var(--paper-3)}
+.opt-rec{position:absolute;top:-1px;right:-1px;background:var(--crimson);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;padding:5px 11px;border-bottom-left-radius:0}
+.opt-summary strong{color:var(--ink);font-weight:700}
 .opt-tag{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
 .opt-name{font-family:"Fraunces",serif;font-weight:800;font-variation-settings:"opsz" 120;font-size:28px;line-height:1.05;margin-bottom:4px}
 .opt-name em{font-style:italic;font-weight:500;color:var(--ink-soft);font-size:.7em}
@@ -197,24 +200,25 @@ body::before{
 
   <div class="opts">
 
-    <!-- NAFAS -->
-    <article class="opt nafas">
-      <div class="opt-tag">Indonesia · Subscription</div>
-      <div class="opt-name">Nafas <em>· Indonesia-built</em></div>
-      <div class="opt-price">Subscription model · contact for pricing</div>
-      <div class="opt-summary">A Jakarta-based company that installs PM2.5 + temperature + humidity outdoor sensors and runs the most popular consumer air-quality app in Indonesia. They handle installation, hardware replacement and notifications themselves.</div>
+    <!-- AIRGRADIENT — recommended -->
+    <article class="opt airgradient recommended">
+      <div class="opt-rec">★ Recommended</div>
+      <div class="opt-tag">Thailand · Open hardware</div>
+      <div class="opt-name">AirGradient <em>· Open source · regional</em></div>
+      <div class="opt-price">USD 165–249 · DIY kit or assembled</div>
+      <div class="opt-summary">A Chiang-Mai-based company building open-source air-quality monitors specifically for South-East Asia. Their hardware is the easiest to source from this region (no trans-Pacific shipping) and their data flows into OpenAQ — a fully public, research-grade aggregator. By price-per-pollutant and by openness, it is the strongest option for Bali.</div>
       <div class="opt-rows">
-        <div class="r"><div class="k">Hardware</div><div class="v">Outdoor PM/met sensor (vendor-supplied)</div></div>
-        <div class="r"><div class="k">Pollutants</div><div class="v">PM1 · PM2.5 · PM10 · temp · humidity</div></div>
-        <div class="r"><div class="k">Power</div><div class="v">Mains; outdoor enclosure</div></div>
-        <div class="r"><div class="k">Internet</div><div class="v">WiFi + cellular fallback (varies)</div></div>
-        <div class="r"><div class="k">Public data</div><div class="v good">Yes · nafas.co.id share-link, app, this site</div></div>
-        <div class="r"><div class="k">Refresh</div><div class="v">~15 minutes</div></div>
-        <div class="r"><div class="k">Best for</div><div class="v">Schools, hotels, neighbourhood associations who want install + service handled</div></div>
+        <div class="r"><div class="k">Hardware</div><div class="v">ONE Open Hardware kit ($195) · ONE Pro pre-built ($249)</div></div>
+        <div class="r"><div class="k">Pollutants</div><div class="v">PM1 · PM2.5 · PM10 · CO2 · TVOC · NOx · temp · humidity</div></div>
+        <div class="r"><div class="k">Power</div><div class="v">USB-C</div></div>
+        <div class="r"><div class="k">Internet</div><div class="v">WiFi 2.4 GHz</div></div>
+        <div class="r"><div class="k">Public data</div><div class="v good">Yes · OpenAQ + AirGradient global map</div></div>
+        <div class="r"><div class="k">Refresh</div><div class="v">10 minutes</div></div>
+        <div class="r"><div class="k">Best for</div><div class="v">Schools, households, makerspaces, anyone who wants open hardware they can open up and modify</div></div>
       </div>
-      <div class="opt-pros">Fully managed. Real Indonesia-side support. Bahasa Indonesia interface. Already part of this site's live feed.</div>
-      <div class="opt-cons">Pricing is not published; consumer route is now app-led with the older self-service web dashboard retired. Best to contact via their site.</div>
-      <a class="opt-link" href="https://nafas.co.id" target="_blank" rel="noopener noreferrer">nafas.co.id →</a>
+      <div class="opt-pros">Cheapest credible option. Ships from Thailand (much faster than the US). Open hardware + open firmware. Most pollutants per dollar.</div>
+      <div class="opt-cons">DIY kit requires light soldering or screw-together assembly. Their previous Bali deployments (Ubud Rozendal, Balangan, Kopernik) all went silent in 2025 — suggests the network needs active maintenance.</div>
+      <a class="opt-link" href="https://www.airgradient.com/outdoor/" target="_blank" rel="noopener noreferrer">airgradient.com →</a>
     </article>
 
     <!-- PURPLEAIR -->
@@ -257,24 +261,24 @@ body::before{
       <a class="opt-link" href="https://www.iqair.com/air-quality-monitors" target="_blank" rel="noopener noreferrer">iqair.com →</a>
     </article>
 
-    <!-- AIRGRADIENT -->
-    <article class="opt airgradient">
-      <div class="opt-tag">Thailand · Open hardware</div>
-      <div class="opt-name">AirGradient <em>· Open source · regional</em></div>
-      <div class="opt-price">USD 165–249 · DIY kit or assembled</div>
-      <div class="opt-summary">A Chiang-Mai-based company building open-source air-quality monitors specifically for South-East Asia. Their hardware is the easiest to source from this region (no trans-Pacific shipping) and their data flows into OpenAQ — a fully public, research-grade aggregator.</div>
+    <!-- NAFAS -->
+    <article class="opt nafas">
+      <div class="opt-tag">Indonesia · Subscription</div>
+      <div class="opt-name">Nafas <em>· Indonesia-based reseller</em></div>
+      <div class="opt-price">Subscription model · contact for pricing</div>
+      <div class="opt-summary">A Jakarta-based company that installs outdoor PM/met sensors and runs the most popular consumer air-quality app in Indonesia. They handle installation, hardware replacement and notifications themselves. <strong>Note:</strong> based on their public photos and product pages, the underlying hardware appears to be AirGradient outdoor units rebranded for the local market — i.e. you can buy the same sensor directly from AirGradient (above) for materially less, with the same data quality.</div>
       <div class="opt-rows">
-        <div class="r"><div class="k">Hardware</div><div class="v">ONE Open Hardware kit ($195) · ONE Pro pre-built ($249)</div></div>
-        <div class="r"><div class="k">Pollutants</div><div class="v">PM1 · PM2.5 · PM10 · CO2 · TVOC · NOx · temp · humidity</div></div>
-        <div class="r"><div class="k">Power</div><div class="v">USB-C</div></div>
-        <div class="r"><div class="k">Internet</div><div class="v">WiFi 2.4 GHz</div></div>
-        <div class="r"><div class="k">Public data</div><div class="v good">Yes · OpenAQ + AirGradient global map</div></div>
-        <div class="r"><div class="k">Refresh</div><div class="v">10 minutes</div></div>
-        <div class="r"><div class="k">Best for</div><div class="v">Schools, makerspaces, anyone who wants open hardware they can open up and modify</div></div>
+        <div class="r"><div class="k">Hardware</div><div class="v">Outdoor PM/met sensor (appears to be AirGradient-based)</div></div>
+        <div class="r"><div class="k">Pollutants</div><div class="v">PM1 · PM2.5 · PM10 · temp · humidity</div></div>
+        <div class="r"><div class="k">Power</div><div class="v">Mains; outdoor enclosure</div></div>
+        <div class="r"><div class="k">Internet</div><div class="v">WiFi + cellular fallback (varies)</div></div>
+        <div class="r"><div class="k">Public data</div><div class="v good">Yes · nafas.co.id share-link, app, this site</div></div>
+        <div class="r"><div class="k">Refresh</div><div class="v">~15 minutes</div></div>
+        <div class="r"><div class="k">Best for</div><div class="v">Schools, hotels, neighbourhood associations who specifically want install + service handled in-country and an Indonesian app</div></div>
       </div>
-      <div class="opt-pros">Cheapest credible option. Ships from Thailand (much faster than the US). Open hardware + open firmware. Most pollutants per dollar.</div>
-      <div class="opt-cons">DIY kit requires light soldering or screw-together assembly. Their previous Bali deployments (Ubud Rozendal, Balangan, Kopernik) all went silent in 2025 — suggests the network needs active maintenance.</div>
-      <a class="opt-link" href="https://www.airgradient.com/outdoor/" target="_blank" rel="noopener noreferrer">airgradient.com →</a>
+      <div class="opt-pros">Fully managed. Real Indonesia-side support. Bahasa Indonesia interface. Already part of this site's live feed.</div>
+      <div class="opt-cons">Pricing not published; consumer route is now app-led, the older self-service web dashboard is retired. If the underlying hardware is indeed AirGradient, the same data is available at lower cost by ordering direct.</div>
+      <a class="opt-link" href="https://nafas.co.id" target="_blank" rel="noopener noreferrer">nafas.co.id →</a>
     </article>
 
   </div>
@@ -401,11 +405,11 @@ body::before{
     </div>
     <div class="foot-col">
       <h4 data-i18n="foot.h.dispatches">Dispatches</h4>
-      <a href="/articles#dispatch-1" data-i18n="foot.disp.1">I — The daily guideline, exceeded.</a>
-      <a href="/articles#dispatch-2" data-i18n="foot.disp.2">II — One government sensor.</a>
-      <a href="/articles#dispatch-3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
-      <a href="/articles#dispatch-4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
-        <a href="/articles#dispatch-5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
+      <a href="/dispatches/1" data-i18n="foot.disp.1">I — The daily guideline, exceeded.</a>
+      <a href="/dispatches/2" data-i18n="foot.disp.2">II — One government sensor.</a>
+      <a href="/dispatches/3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
+      <a href="/dispatches/4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
+        <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
     </div>
     <div class="foot-col">
       <h4 data-i18n="foot.h.contact">Contact</h4>

@@ -91,15 +91,24 @@ export async function onRequest(context) {
   // Nafas public station list (outdoor.nafas.co.id /api/v1/location/all) — no Bali
   // UUID overlap. The relabel was incorrect and has been removed. Airly stations
   // now always report source='Airly'.
-  // Edition III: 100 km from Ubud centre already covers the full island
-  // (Lovina ~50 km north, Negara ~75 km west, Amlapura ~40 km east). Bumped
-  // maxResults to 50. Edge-cached for 30 min to stay under Airly's free-tier
-  // daily quota (the universal-snapshot worker also calls /api/live).
+  // Edition III: Airly free tier = 100 requests / day / API key, resets at
+  // midnight UTC. With 2 Bali installations (1 nearest call + 2 measurement
+  // calls = 3 calls per /api/live execution, when cache misses) we must
+  // cache aggressively. Strategy:
+  //   - cf.cacheTtl = 7200 (2h) on installations/nearest — installations
+  //     don't change daily; cache for 2 hours.
+  //   - cf.cacheTtl = 3600 (1h) on per-installation measurements — readings
+  //     update every 10-15 min upstream, but a 1-hour cache is plenty.
+  //   - Worst case hourly: 1 fresh nearest call + 2 fresh measurements = 3
+  //     calls. 24 hours × 3 = 72 calls / day. Under the 100 ceiling.
+  //   - HTTP 429 → bail out cleanly so we don't burn through more quota.
+  // Per Airly TOS we also display the Airly logo where their data is shown.
   try {
     const resp = await fetch('https://airapi.airly.eu/v2/installations/nearest?lat=-8.55&lng=115.26&maxDistanceKM=100&maxResults=50', {
       headers: { Accept: 'application/json', apikey: AIRLY_KEY },
-      cf: { cacheTtl: 1800, cacheEverything: true }
+      cf: { cacheTtl: 7200, cacheEverything: true }
     });
+    if (resp.status === 429) throw new Error('Airly rate limit (429)');
     const installations = await resp.json();
     if (Array.isArray(installations) && installations.length > 0) {
       results.sources++;
@@ -107,8 +116,9 @@ export async function onRequest(context) {
         try {
           const mr = await fetch(`https://airapi.airly.eu/v2/measurements/installation?installationId=${inst.id}`, {
             headers: { Accept: 'application/json', apikey: AIRLY_KEY },
-            cf: { cacheTtl: 1800, cacheEverything: true }
+            cf: { cacheTtl: 3600, cacheEverything: true }
           });
+          if (mr.status === 429) continue;  // skip this installation; quota guard
           const md = await mr.json();
           const cur = md?.current;
           if (!cur) continue;
