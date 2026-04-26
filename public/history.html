@@ -35,7 +35,7 @@ body::before{
 .masthead-top{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:10px;border-bottom:1px solid var(--hairline)}
 .masthead-top .r{text-align:right}
 .nameplate{text-align:center;padding:22px 0 14px 0}
-.nameplate h1{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(34px,5vw,62px);line-height:.94;letter-spacing:-.015em}
+.nameplate h1{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(52px,8.6vw,132px);line-height:.92;letter-spacing:-.015em}
 .nameplate .sub{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(14px,1.6vw,18px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em}
 .folio{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);padding-top:10px;border-top:1px solid var(--hairline)}
 .folio .c{text-align:center;letter-spacing:.22em}
@@ -156,7 +156,7 @@ body::before{
   <div class="folio">
     <div data-i18n="mast.editionXVII">Edition XVII</div>
     <div class="c" id="mt-date">—</div>
-    <div class="r" data-i18n="mast.circulated">Circulated anonymously</div>
+    <div class="r" id="nav-status">LIVE · — SENSORS · — OFFLINE</div>
   </div>
 </header>
 
@@ -716,5 +716,34 @@ loadCatalogs();
 </script>
 
 <script src="/js/i18n.js" defer></script>
+<script>
+// Live sensor count → folio right cell (matches homepage's nav-status string).
+(function(){
+  const API_BASE = (location.hostname === 'baliair.pages.dev' || location.hostname.endsWith('.pages.dev'))
+    ? '' : 'https://baliair.pages.dev';
+  const OFFLINE_FIXED = 5;  // mirrors the homepage's preserved silenced sensors
+  function localiseStatus(live, off) {
+    const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
+    const lab_live    = t('status.live',    'Live');
+    const lab_sensors = t('status.sensors', 'sensors');
+    const lab_offline = t('status.offline', 'offline');
+    return `${lab_live.toUpperCase()} · ${live} ${lab_sensors.toUpperCase()} · ${off} ${lab_offline.toUpperCase()}`;
+  }
+  async function pull(){
+    try {
+      const r = await fetch(API_BASE + '/api/live', { cache: 'force-cache' });
+      if (!r.ok) return;
+      const d = await r.json();
+      const n = (d.stations || []).length;
+      const el = document.getElementById('nav-status');
+      if (el) el.textContent = localiseStatus(n, OFFLINE_FIXED);
+    } catch (_) {}
+  }
+  pull();
+  setInterval(pull, 5*60*1000);
+  // Re-render on language change
+  document.addEventListener('i18n:changed', pull);
+})();
+</script>
 </body>
 </html>

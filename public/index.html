@@ -441,7 +441,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   <div class="masthead-top">
     <div data-i18n="home.editionAuto">Edition III · Auto-refresh 5 min</div>
     <div class="c" id="mt-date">—</div>
-    <div class="r"><span class="dot"></span><span id="mt-ts">Syncing…</span></div>
+    <div class="r"><span class="dot"></span><span id="mt-ts" data-i18n="loading.syncing">Syncing…</span></div>
   </div>
   <div class="nameplate">
     <div class="flourish">✦</div>
@@ -467,7 +467,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <!-- BULLETIN TICKER -->
 <div class="bulletin" id="bulletinBar" aria-hidden="true">
   <div class="bulletin-inner" id="bulletinInner">
-    <span>Stand by — connecting to network…</span>
+    <span data-i18n="loading.standby">Stand by — connecting to network…</span>
   </div>
 </div>
 
@@ -559,10 +559,10 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   <div class="kicker">§ I — The Daily Bulletin</div>
   <h2 class="section-h">Today, <em>in four numbers.</em></h2>
   <div class="bulletin-grid">
-    <div class="bx"><div class="lab">Live sensors</div><div class="val" id="b-live">—</div><div class="note">active across four platforms</div></div>
-    <div class="bx"><div class="lab">Median PM2.5</div><div class="val" id="b-med">—<em>µg</em></div><div class="note">network-wide median, per cubic metre</div></div>
-    <div class="bx"><div class="lab">Worst on the island</div><div class="val" id="b-worst">—</div><div class="note" id="b-worst-name">—</div></div>
-    <div class="bx"><div class="lab">Offline since Nov '25</div><div class="val" id="b-off">—</div><div class="note">sensors gone dark, not yet restored</div></div>
+    <div class="bx"><div class="lab" data-i18n="bx.lab.live">Live sensors</div><div class="val" id="b-live">—</div><div class="note" data-i18n="bx.note.live">active across four platforms</div></div>
+    <div class="bx"><div class="lab" data-i18n="bx.lab.median">Median PM2.5</div><div class="val" id="b-med">—<em>µg</em></div><div class="note" data-i18n="bx.note.median">network-wide median, per cubic metre</div></div>
+    <div class="bx"><div class="lab" data-i18n="bx.lab.worst">Worst on the island</div><div class="val" id="b-worst">—</div><div class="note" id="b-worst-name">—</div></div>
+    <div class="bx"><div class="lab" data-i18n="bx.lab.off">Offline since Nov '25</div><div class="val" id="b-off">—</div><div class="note" data-i18n="bx.note.off">sensors gone dark, not yet restored</div></div>
   </div>
 </section>
 
@@ -580,7 +580,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
         <th class="c">History</th>
         <th class="r">Last Seen</th>
       </tr></thead>
-      <tbody id="rollBody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);font-style:italic">Loading the register…</td></tr></tbody>
+      <tbody id="rollBody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);font-style:italic"><span data-i18n="loading.register">Loading the register…</span></td></tr></tbody>
     </table>
   </div>
 </section>
@@ -608,9 +608,9 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       <div class="brief-cta">Read the evidence brief <span class="arrow">→</span></div>
     </div>
     <div class="brief-callout-right">
-      <div class="brief-meta">Section I / IX</div>
+      <div class="brief-meta" data-i18n="brief-cb.meta">Section I / IX</div>
       <div class="brief-stat">92<em>%</em></div>
-      <div class="brief-stat-lab">of days at the Kopernik sensor (Oct '25 – Mar '26) exceeded the WHO 24-hour PM2.5 guideline before it went offline.</div>
+      <div class="brief-stat-lab" data-i18n="brief-cb.stat">of days at the Kopernik sensor (Oct '25 – Mar '26) exceeded the WHO 24-hour PM2.5 guideline before it went offline.</div>
     </div>
   </a>
 </section>
@@ -705,13 +705,15 @@ setTimeout(()=>{ try{ startWind(); }catch(e){} }, 800);
    AQI HELPERS
    ========================================================= */
 function catFor(pm){
+  // i18n-aware: label + health pulled from I18N when available, English fallback baked in.
+  const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
   if(pm==null)return {cls:'good',label:'—',health:''};
-  if(pm<=12) return {cls:'good',label:'Good',health:'Satisfactory for everyone.'};
-  if(pm<=35.4) return {cls:'mod',label:'Moderate',health:'Acceptable; unusually sensitive people may be affected.'};
-  if(pm<=55.4) return {cls:'usg',label:'Unhealthy for Sensitive',health:'Children, elderly, and those with respiratory or heart conditions should reduce outdoor exertion.'};
-  if(pm<=150.4) return {cls:'unh',label:'Unhealthy',health:'Everyone may experience effects; sensitive groups should avoid outdoor exertion.'};
-  if(pm<=250.4) return {cls:'vunh',label:'Very Unhealthy',health:'Health alert: serious effects for everyone.'};
-  return {cls:'haz',label:'Hazardous',health:'Emergency conditions; entire population affected.'};
+  if(pm<=12) return {cls:'good',label:t('aqi.cat.good','Good'),health:t('aqi.health.good','Satisfactory for everyone.')};
+  if(pm<=35.4) return {cls:'mod',label:t('aqi.cat.mod','Moderate'),health:t('aqi.health.mod','Acceptable; unusually sensitive people may be affected.')};
+  if(pm<=55.4) return {cls:'usg',label:t('aqi.cat.usg','Unhealthy for Sensitive'),health:t('aqi.health.usg','Children, elderly, and those with respiratory or heart conditions should reduce outdoor exertion.')};
+  if(pm<=150.4) return {cls:'unh',label:t('aqi.cat.unh','Unhealthy'),health:t('aqi.health.unh','Everyone may experience effects; sensitive groups should avoid outdoor exertion.')};
+  if(pm<=250.4) return {cls:'vunh',label:t('aqi.cat.vunh','Very Unhealthy'),health:t('aqi.health.vunh','Health alert: serious effects for everyone.')};
+  return {cls:'haz',label:t('aqi.cat.haz','Hazardous'),health:t('aqi.health.haz','Emergency conditions; entire population affected.')};
 }
 function fmtDate(s){try{return new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}catch(e){return s}}
 function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000)}
@@ -1034,7 +1036,7 @@ async function renderArchive(){
       ${daily.length
         ? `<canvas id="spark-${cardId}"></canvas>`
         : `<div style="height:90px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px dashed var(--hairline);background:var(--paper-2)">Archive starting · history populates over time</div>`}
-      <div class="arc-act" data-sid="${stn.id}">Open the record →</div>
+      <div class="arc-act" data-sid="${stn.id}">${(window.I18N && window.I18N.t) ? window.I18N.t('worst.openRecord','Open the record →') : 'Open the record →'}</div>
     `;
     grid.appendChild(el);
     if (daily.length) drawSparkline('spark-'+cardId, daily);
@@ -1101,6 +1103,7 @@ function closePanel(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
 
 function panelLive(s){
+  const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
   const c = catFor(s.pm25);
   const xAnnual = s.pm25!=null ? (s.pm25/5).toFixed(1) : '—';
   const xDaily  = s.pm25!=null ? (s.pm25/15).toFixed(1) : '—';
@@ -1127,32 +1130,33 @@ function panelLive(s){
       </div>
     </div>
     <div class="side-section">
-      <h4>WHO comparison</h4>
+      <h4>${t('panel.whoCompare','WHO comparison')}</h4>
       <div class="chips">
-        <span class="chip ${s.pm25>5?'warn':''} ${s.pm25>15?'bad':''}"><b>${xAnnual}×</b> annual guideline · 5</span>
-        <span class="chip ${s.pm25>15?'warn':''} ${s.pm25>30?'bad':''}"><b>${xDaily}×</b> 24-hour limit · 15</span>
+        <span class="chip ${s.pm25>5?'warn':''} ${s.pm25>15?'bad':''}"><b>${xAnnual}×</b> ${t('panel.annualGuide','annual guideline')} · 5</span>
+        <span class="chip ${s.pm25>15?'warn':''} ${s.pm25>30?'bad':''}"><b>${xDaily}×</b> ${t('panel.dailyLimit','24-hour limit')} · 15</span>
       </div>
     </div>
     <div class="side-section">
-      <h4>Sensor register</h4>
+      <h4>${t('panel.register','Sensor register')}</h4>
       <div class="rows">
-        <div class="r"><span class="k">Source</span><span class="v">${s.source}</span></div>
-        <div class="r"><span class="k">Type</span><span class="v">${s.type||'—'}</span></div>
-        <div class="r"><span class="k">AQI</span><span class="v">${s.aqi!=null?s.aqi:'—'}</span></div>
-        <div class="r"><span class="k">Last seen</span><span class="v">${tsLocal}</span></div>
-        <div class="r"><span class="k">Coordinates</span><span class="v">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}</span></div>
+        <div class="r"><span class="k">${t('panel.source','Source')}</span><span class="v">${s.source}</span></div>
+        <div class="r"><span class="k">${t('panel.type','Type')}</span><span class="v">${s.type||'—'}</span></div>
+        <div class="r"><span class="k">${t('panel.aqi','AQI')}</span><span class="v">${s.aqi!=null?s.aqi:'—'}</span></div>
+        <div class="r"><span class="k">${t('panel.lastSeen','Last seen')}</span><span class="v">${tsLocal}</span></div>
+        <div class="r"><span class="k">${t('panel.coords','Coordinates')}</span><span class="v">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}</span></div>
       </div>
     </div>
     <div class="side-section">
-      <h4>Reading the wind</h4>
+      <h4>${t('panel.readWind','Reading the wind')}</h4>
       <p style="font-family:'Source Serif 4',serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin:0">
-        Toggle the <b>Wind</b> layer on the map to see the direction smoke would carry from this station right now — upwind is where a burn would have to be.
+        ${t('panel.windHelp','Toggle the <b>Wind</b> layer on the map to see the direction smoke would carry from this station right now — upwind is where a burn would have to be.')}
       </p>
     </div>
-    <a class="side-link" href="${srcUrl}" target="_blank" rel="noopener noreferrer">View on ${s.source} ↗</a>`;
+    <a class="side-link" href="${srcUrl}" target="_blank" rel="noopener noreferrer">${t('panel.viewOn','View on')} ${s.source} ↗</a>`;
 }
 
 function panelOffline(s){
+  const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
   const hasDaily = Array.isArray(s.daily) && s.daily.length>0;
   const days = daysBetween(s.last, new Date());
   let mean='—', peak='—', pctOver='—';
@@ -1171,17 +1175,17 @@ function panelOffline(s){
     <div class="side-big">
       <div>
         <div class="side-big-val offline">—</div>
-        <div class="side-unit">No current reading</div>
+        <div class="side-unit">${t('panel.noReading','No current reading')}</div>
       </div>
       <div>
-        <div class="side-cat" style="color:var(--crimson)">Sensor is dark</div>
-        <div class="side-cat-sub">${s.reason || 'Device has stopped reporting; cause unknown. Historical data preserved below.'}</div>
+        <div class="side-cat" style="color:var(--crimson)">${t('panel.sensorDark','Sensor is dark')}</div>
+        <div class="side-cat-sub">${s.reason || '${t('panel.darkSub','Device has stopped reporting; cause unknown. Historical data preserved below.')}'}</div>
       </div>
     </div>
 
     ${hasDaily ? `
       <div class="side-section">
-        <h4>Timeline · data vs. silence</h4>
+        <h4>${t('panel.timeline','Timeline · data vs. silence')}</h4>
         <div class="timeline" id="tlWrap"></div>
       </div>
       <div class="side-section">
@@ -1195,7 +1199,7 @@ function panelOffline(s){
       </div>
     ` : `
       <div class="side-section">
-        <h4>No detailed archive held</h4>
+        <h4>${t('panel.noArchive','No detailed archive held')}</h4>
         <p style="font-family:'Source Serif 4',serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin:0">
           This sensor is listed on its host platform but historical daily means are not locally archived.
           We carry only the metadata and the date it was last seen.

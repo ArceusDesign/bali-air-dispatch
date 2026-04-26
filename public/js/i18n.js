@@ -113,12 +113,8 @@
       btn.addEventListener('click', () => setLanguage(s.code));
       wrap.appendChild(btn);
     });
-    // "Other" placeholder — informs visitors more is coming, not a live switch
-    const more = document.createElement('span');
-    more.className = 'lang-sw-more';
-    more.textContent = (tr('lang.more') || 'More languages soon') + ' ▾';
-    more.title = 'Additional languages will be added in future editions.';
-    wrap.appendChild(more);
+    // (Removed in iter 6: "More languages soon" placeholder — was distracting.
+    //  Real additional languages will appear in the same row when added.)
     tgt.appendChild(wrap);
   }
 
