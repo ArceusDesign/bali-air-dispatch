@@ -261,5 +261,9 @@
   "worst.openRecord": "Buka catatan →",
   "status.live": "Langsung",
   "status.sensors": "sensor",
-  "status.offline": "mati"
+  "status.offline": "mati",
+  "panel.recentHistory": "Riwayat terbaru",
+  "chart.mean": "rata-rata",
+  "chart.peak": "puncak",
+  "chart.overWho": "pembacaan di atas pedoman 24-jam WHO"
 }

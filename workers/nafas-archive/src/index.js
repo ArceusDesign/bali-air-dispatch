@@ -130,10 +130,49 @@ function buildDailyStmt(db) {
 async function fetchUnifiedLive(originBase) {
   // CF-to-CF fetch — calls our own /api/live aggregator from the worker.
   // originBase is set via env.LIVE_ORIGIN (defaults to baliair.pages.dev).
-  const url = (originBase || 'https://baliair.pages.dev').replace(/\/$/,'') + '/api/live';
-  const r = await fetch(url, { headers: { Accept:'application/json' }, cf:{ cacheTtl:60 } });
+  //
+  // CRITICAL: pass ?fresh=1 to BYPASS the D1 fast-path. Without this we
+  // create a circular dependency — /api/live reads its most-recent snapshot
+  // from D1, the worker writes that snapshot's stale values back into D1,
+  // and live readings freeze. ?fresh=1 forces /api/live to call upstream
+  // sources directly. Also disable the fetch's cf cache for the same reason.
+  const url = (originBase || 'https://baliair.pages.dev').replace(/\/$/,'') + '/api/live?fresh=1';
+  const r = await fetch(url, {
+    headers: { Accept:'application/json' },
+    cf: { cacheTtl: 0, cacheEverything: false }
+  });
   if (!r.ok) throw new Error('live HTTP '+r.status);
-  return await r.json();
+  const data = await r.json();
+  // SAFEGUARD #1: belt-and-braces check — if the response somehow returns
+  // the fast-path payload despite ?fresh=1, throw rather than write a loop
+  // back to D1. Better to skip a tick than freeze the archive.
+  if (data && data.fast_path === true) {
+    throw new Error('Worker received fast_path=true response (loop guard tripped)');
+  }
+  return data;
+}
+
+// SAFEGUARD #2: after writing new snapshots, count how many stations have
+// pm25 identical to their previous snapshot. > 80 % unchanged is a strong
+// signal that we're in a stale-loop. Returns null on error so the caller
+// can degrade gracefully.
+async function detectStaleLoop(db, currentTs) {
+  try {
+    const r = await db.prepare(`
+      SELECT COUNT(*) AS unchanged, COUNT(DISTINCT current.station_id) AS total
+      FROM station_snapshots AS current
+      JOIN (
+        SELECT station_id, pm25 AS prev_pm25, MAX(ts) AS prev_ts
+        FROM station_snapshots
+        WHERE ts < ?1
+        GROUP BY station_id
+      ) AS prev ON prev.station_id = current.station_id
+      WHERE current.ts = ?1
+        AND current.pm25 = prev.prev_pm25
+        AND current.pm25 IS NOT NULL
+    `).bind(currentTs).first();
+    return r;  // {unchanged, total}
+  } catch (_) { return null; }
 }
 
 async function snapshotUniversal(db, live, nowSec) {
@@ -187,14 +226,25 @@ async function archiveOnce(env) {
   let ok = 1, errMsg = null;
 
   // ── Universal pass: snapshot every station from /api/live ────────────
+  let universalWarning = null;
   try {
     const live = await fetchUnifiedLive(env.LIVE_ORIGIN);
     const u = await snapshotUniversal(db, live, nowSec);
     universalStations = u.stationsSeen;
     universalSnaps = u.snapshots;
+    // SAFEGUARD #2 — loop detection.
+    const loopCheck = await detectStaleLoop(db, nowSec);
+    if (loopCheck && loopCheck.total >= 5) {
+      const ratio = loopCheck.unchanged / loopCheck.total;
+      if (ratio > 0.8) {
+        universalWarning = `loop_suspect: ${loopCheck.unchanged}/${loopCheck.total} stations had unchanged pm25`;
+        console.warn(universalWarning);
+      }
+    }
   } catch (e) {
-    // Non-fatal — Nafas-specific path below still runs.
-    console.warn('universal snapshot failed', e.message);
+    // Non-fatal — Nafas-specific path below still runs. Record the failure.
+    universalWarning = 'universal_fetch_failed: ' + (e.message || String(e));
+    console.warn(universalWarning);
   }
 
   try {
@@ -260,6 +310,8 @@ async function archiveOnce(env) {
   try {
     // archive_runs schema only knows about Nafas counters; encode universal
     // counts into the higher columns via simple addition for visibility.
+    // Combine errors: Nafas-specific failure + universal-pass warning.
+    const combinedErr = [errMsg, universalWarning].filter(Boolean).join(' | ') || null;
     await db.prepare(`
       INSERT OR REPLACE INTO archive_runs
         (ts, stations_seen, snapshots_written, hourly_upserts, daily_upserts, duration_ms, ok, error)
@@ -268,7 +320,7 @@ async function archiveOnce(env) {
       nowSec,
       stationsSeen + universalStations,
       snapshots + universalSnaps,
-      hourly, daily, duration, ok, errMsg
+      hourly, daily, duration, ok, combinedErr
     ).run();
   } catch (_) { /* never fail on log write */ }
 

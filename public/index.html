@@ -1091,7 +1091,7 @@ function openPanel(id){
   const sel = markers[id]?.getElement()?.querySelector('.pin'); if(sel) sel.classList.add('selected');
 
   if(s.offline){ body.innerHTML = panelOffline(s); setTimeout(()=>drawPanelChart(s),10); }
-  else { body.innerHTML = panelLive(s); }
+  else { body.innerHTML = panelLive(s); setTimeout(()=>loadAndDrawLiveChart(s),30); }
   panel.classList.add('open'); panel.setAttribute('aria-hidden','false');
 }
 function closePanel(){
@@ -1135,6 +1135,14 @@ function panelLive(s){
         <span class="chip ${s.pm25>5?'warn':''} ${s.pm25>15?'bad':''}"><b>${xAnnual}×</b> ${t('panel.annualGuide','annual guideline')} · 5</span>
         <span class="chip ${s.pm25>15?'warn':''} ${s.pm25>30?'bad':''}"><b>${xDaily}×</b> ${t('panel.dailyLimit','24-hour limit')} · 15</span>
       </div>
+    </div>
+    <div class="side-section live-history">
+      <h4>${t('panel.recentHistory','Recent history')}</h4>
+      <div class="hist-wrap" style="position:relative;height:170px">
+        <canvas id="liveChart"></canvas>
+        <div id="liveChartFallback" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-style:italic;font-family:'Source Serif 4',serif;font-size:13px;text-align:center;padding:14px;pointer-events:none"></div>
+      </div>
+      <div class="chips" id="liveChartMeta" style="margin-top:10px;display:none"></div>
     </div>
     <div class="side-section">
       <h4>${t('panel.register','Sensor register')}</h4>
@@ -1218,6 +1226,144 @@ function panelOffline(s){
         <div class="r"><span class="k">Coordinates</span><span class="v">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}</span></div>
       </div>
     </div>`;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   loadAndDrawLiveChart — fetches /api/history for a live station
+   and renders a small Chart.js trace next to its map popup.
+   Nafas stations get the rich nafas_daily series via ?uuid=…&range=daily;
+   other sources fall back to ?id=…&range=7d (snapshot resolution).
+   ───────────────────────────────────────────────────────────────────── */
+async function loadAndDrawLiveChart(s){
+  const fb  = document.getElementById('liveChartFallback');
+  const cv  = document.getElementById('liveChart');
+  const meta= document.getElementById('liveChartMeta');
+  if (!cv) return;
+  const showFallback = (msg) => { if (fb) { fb.textContent = msg; fb.style.display='flex'; } };
+  showFallback('Loading recent readings…');
+
+  let url, kind;
+  if (s.id && s.id.startsWith('nafas-')) {
+    const uuid = s.id.slice(6);
+    url = API_BASE + '/api/history?uuid=' + encodeURIComponent(uuid) + '&range=daily';
+    kind = 'daily';
+  } else {
+    url = API_BASE + '/api/history?id=' + encodeURIComponent(s.id) + '&range=7d';
+    kind = 'snapshots';
+  }
+
+  let points = [];
+  try {
+    const r = await fetch(url, { cache:'no-cache' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const raw = d.points || [];
+    if (kind === 'daily') {
+      // [{date:'YYYY-MM-DD', pm25:…}, …]
+      points = raw.filter(p => p.pm25 != null).map(p => ({
+        x: new Date(p.date).getTime(),
+        y: +p.pm25
+      }));
+    } else {
+      // [{ts:unix-sec, pm25:…}, …]
+      points = raw.filter(p => p.pm25 != null).map(p => ({
+        x: (+p.ts) * 1000,
+        y: +p.pm25
+      }));
+    }
+  } catch (e) {
+    showFallback('History unavailable right now. Check back shortly.');
+    return;
+  }
+
+  if (points.length < 2) {
+    showFallback(points.length === 1
+      ? 'Tracking from today — need a few more readings before charting.'
+      : 'No archived readings yet. Tracking from today.');
+    return;
+  }
+
+  if (fb) fb.style.display = 'none';
+
+  // Compute simple stats for the chip row
+  const ys = points.map(p=>p.y);
+  const mean = ys.reduce((a,b)=>a+b,0)/ys.length;
+  const peak = Math.max(...ys);
+  const overWho = Math.round(100 * ys.filter(v=>v>15).length / ys.length);
+  if (meta) {
+    meta.style.display = 'flex';
+    meta.innerHTML =
+      `<span class="chip"><b>${mean.toFixed(1)}</b> µg/m³ ${(window.I18N&&window.I18N.t)?window.I18N.t('chart.mean','mean'):'mean'}</span>` +
+      `<span class="chip"><b>${peak.toFixed(0)}</b> ${(window.I18N&&window.I18N.t)?window.I18N.t('chart.peak','peak'):'peak'}</span>` +
+      `<span class="chip ${overWho>50?'bad':'warn'}"><b>${overWho}%</b> ${(window.I18N&&window.I18N.t)?window.I18N.t('chart.overWho','of readings over WHO 24h'):'of readings over WHO 24h'}</span>`;
+  }
+
+  // EPA band + WHO 15 line plugin (mirrors the offline-panel chart)
+  const zones = {
+    id: 'live-zones',
+    beforeDatasetsDraw(chart){
+      const {ctx, chartArea:{left,right}, scales:{y}} = chart;
+      const bands = [
+        [0,12,'rgba(79,122,63,0.08)'],
+        [12.1,35.4,'rgba(184,137,42,0.10)'],
+        [35.5,55.4,'rgba(194,93,34,0.12)'],
+        [55.5,150.4,'rgba(163,32,32,0.14)'],
+        [150.5,250.4,'rgba(110,20,20,0.18)']
+      ];
+      ctx.save();
+      bands.forEach(([lo,hi,col])=>{
+        const y1 = y.getPixelForValue(lo), y2 = y.getPixelForValue(Math.min(hi, y.max));
+        if(isFinite(y1)&&isFinite(y2)){ ctx.fillStyle=col; ctx.fillRect(left, Math.min(y1,y2), right-left, Math.abs(y1-y2)); }
+      });
+      const yw = y.getPixelForValue(15);
+      if(isFinite(yw)){
+        ctx.strokeStyle='#4f7a3f'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+        ctx.beginPath(); ctx.moveTo(left,yw); ctx.lineTo(right,yw); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
+    }
+  };
+
+  // Destroy any prior chart attached to this canvas
+  if (cv._liveChart) { try { cv._liveChart.destroy(); } catch(_) {} }
+
+  cv._liveChart = new Chart(cv, {
+    type: 'line',
+    data: { datasets: [{
+      label: 'PM2.5',
+      data: points,
+      borderColor: '#8b1a1a',
+      backgroundColor: 'rgba(139,26,26,0.10)',
+      borderWidth: 1.6,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.18,
+      fill: true,
+      spanGaps: true,
+    }]},
+    plugins: [zones],
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'nearest', intersect:false, axis:'x' },
+      scales: {
+        x: { type:'time', time:{ tooltipFormat:'d MMM HH:mm' },
+             ticks:{ color:'#6a635a', font:{ family:'"IBM Plex Mono", monospace', size:9 }, maxTicksLimit:5 },
+             grid:{ color:'rgba(20,17,13,0.05)' } },
+        y: { beginAtZero:true,
+             ticks:{ color:'#6a635a', font:{ family:'"IBM Plex Mono", monospace', size:9 } },
+             grid:{ color:'rgba(20,17,13,0.06)' } }
+      },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          backgroundColor:'#14110d', titleColor:'#f3ece0', bodyColor:'#f3ece0',
+          callbacks: { label: (it) => it.parsed.y.toFixed(1) + ' µg/m³' }
+        }
+      }
+    }
+  });
 }
 
 function drawPanelChart(s){

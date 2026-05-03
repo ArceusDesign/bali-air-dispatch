@@ -257,5 +257,9 @@
   "worst.openRecord": "Open the record →",
   "status.live": "Live",
   "status.sensors": "sensors",
-  "status.offline": "offline"
+  "status.offline": "offline",
+  "panel.recentHistory": "Recent history",
+  "chart.mean": "mean",
+  "chart.peak": "peak",
+  "chart.overWho": "of readings over WHO 24h"
 }
