@@ -265,5 +265,7 @@
   "panel.recentHistory": "Riwayat terbaru",
   "chart.mean": "rata-rata",
   "chart.peak": "puncak",
-  "chart.overWho": "pembacaan di atas pedoman 24-jam WHO"
+  "chart.overWho": "pembacaan di atas pedoman 24-jam WHO",
+  "roll.stale": "Tertinggal",
+  "panel.staleSub": "Sensor masih tercatat di API sumber tetapi waktunya tidak diperbarui selama lebih dari 24 jam. Angka yang ditampilkan adalah pembacaan terakhir yang dilaporkan."
 }

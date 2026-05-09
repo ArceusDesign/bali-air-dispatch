@@ -152,26 +152,28 @@ async function fetchUnifiedLive(originBase) {
   return data;
 }
 
-// SAFEGUARD #2: after writing new snapshots, count how many stations have
-// pm25 identical to their previous snapshot. > 80 % unchanged is a strong
-// signal that we're in a stale-loop. Returns null on error so the caller
-// can degrade gracefully.
+// SAFEGUARD #2 — stale-loop detector. v2: previous version compared pm25
+// values which produced too many false positives (Airly/IQAir/AQICN report
+// hourly so 3 of every 4 fifteen-minute snapshots will legitimately have
+// the same pm25 — that's a plateau, not a freeze).
+//
+// Real loop signature: the upstream `station_till` timestamp is identical
+// across MANY consecutive runs. During the Apr-27→May-2 freeze, every
+// snapshot had till="2026-04-26..." regardless of when we wrote it.
+//
+// Detection: compute the most-common station_till across the just-written
+// snapshots, and count how many distinct station_till values exist. If the
+// run wrote >= 10 snapshots but only 1-2 distinct till values appeared,
+// upstream isn't refreshing — likely a loop.
 async function detectStaleLoop(db, currentTs) {
   try {
     const r = await db.prepare(`
-      SELECT COUNT(*) AS unchanged, COUNT(DISTINCT current.station_id) AS total
-      FROM station_snapshots AS current
-      JOIN (
-        SELECT station_id, pm25 AS prev_pm25, MAX(ts) AS prev_ts
-        FROM station_snapshots
-        WHERE ts < ?1
-        GROUP BY station_id
-      ) AS prev ON prev.station_id = current.station_id
-      WHERE current.ts = ?1
-        AND current.pm25 = prev.prev_pm25
-        AND current.pm25 IS NOT NULL
+      SELECT COUNT(*) AS total,
+             COUNT(DISTINCT station_till) AS distinct_tills
+      FROM station_snapshots
+      WHERE ts = ?1 AND station_till IS NOT NULL
     `).bind(currentTs).first();
-    return r;  // {unchanged, total}
+    return r;  // {total, distinct_tills}
   } catch (_) { return null; }
 }
 
@@ -232,14 +234,11 @@ async function archiveOnce(env) {
     const u = await snapshotUniversal(db, live, nowSec);
     universalStations = u.stationsSeen;
     universalSnaps = u.snapshots;
-    // SAFEGUARD #2 — loop detection.
+    // SAFEGUARD #2 — loop detection (till-distinctness based).
     const loopCheck = await detectStaleLoop(db, nowSec);
-    if (loopCheck && loopCheck.total >= 5) {
-      const ratio = loopCheck.unchanged / loopCheck.total;
-      if (ratio > 0.8) {
-        universalWarning = `loop_suspect: ${loopCheck.unchanged}/${loopCheck.total} stations had unchanged pm25`;
-        console.warn(universalWarning);
-      }
+    if (loopCheck && loopCheck.total >= 10 && loopCheck.distinct_tills <= 2) {
+      universalWarning = `loop_suspect: ${loopCheck.total} stations share only ${loopCheck.distinct_tills} distinct station_till value(s) — upstream may be frozen`;
+      console.warn(universalWarning);
     }
   } catch (e) {
     // Non-fatal — Nafas-specific path below still runs. Record the failure.

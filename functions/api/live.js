@@ -37,6 +37,33 @@ function isRecent(isoStr) {
   if (!isoStr) return false;
   return (Date.now() - new Date(isoStr).getTime()) < 6 * 60 * 60 * 1000;
 }
+// Tries to parse upstream `lastSeen` / `till` as a unix-ms timestamp.
+// Handles ISO-with-Z, ISO-with-offset, and Nafas's "YYYY-MM-DD HH:MM:SS"
+// (which is Asia/Makassar / WITA / UTC+8 — append +08:00 if no zone).
+function parseLastSeenMs(s) {
+  if (!s) return null;
+  let t = String(s).trim();
+  if (t.includes(' ') && !t.includes('T')) t = t.replace(' ', 'T');
+  // No timezone info → assume WITA (Nafas convention)
+  if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(t)) t = t + '+08:00';
+  const ms = Date.parse(t);
+  return Number.isFinite(ms) ? ms : null;
+}
+// Stations whose upstream timestamp is older than this threshold are flagged
+// stale: true. The frontend renders them muted / dashed so visitors don't
+// mistake a frozen sensor for a current reading. 24h = generous; sources
+// like IQAir update hourly, AQICN updates hourly, daily-aggregate sources
+// could legitimately be 12-18h old without being "broken".
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+function flagStale(station) {
+  const ms = parseLastSeenMs(station.lastSeen);
+  if (ms == null) return station;
+  if (Date.now() - ms > STALE_THRESHOLD_MS) {
+    station.stale = true;
+    station.staleAgeHours = Math.round((Date.now() - ms) / 3600000);
+  }
+  return station;
+}
 function jsonResponse(body, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     headers: {
@@ -75,7 +102,7 @@ async function fastPathFromD1(db) {
   const stations = results.map(r => {
     const pm25 = r.pm25 != null ? +(+r.pm25).toFixed(1) : null;
     const { cat, cls } = pm25Category(pm25);
-    return {
+    return flagStale({
       id: r.station_id,
       name: r.name,
       source: r.source,
@@ -91,7 +118,7 @@ async function fastPathFromD1(db) {
       category: cat,
       cls,
       lastSeen: r.station_till || null,
-    };
+    });
   });
 
   const sources = new Set(stations.map(s => s.source)).size;
@@ -445,7 +472,8 @@ export async function onRequest(context) {
       const stns = r.value || [];
       if (stns.length > 0) {
         results.sources++;
-        results.stations.push(...stns);
+        // Apply stale flag to every station the slow path returns
+        results.stations.push(...stns.map(flagStale));
       }
     } else {
       results.errors.push({ source: name, error: String(r.reason).slice(0, 200) });

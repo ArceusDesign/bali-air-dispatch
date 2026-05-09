@@ -261,5 +261,7 @@
   "panel.recentHistory": "Recent history",
   "chart.mean": "mean",
   "chart.peak": "peak",
-  "chart.overWho": "of readings over WHO 24h"
+  "chart.overWho": "of readings over WHO 24h",
+  "roll.stale": "Stale",
+  "panel.staleSub": "Sensor is listed in the upstream API but its timestamp has not advanced in over 24 hours. The reading shown is the last value the upstream actually reported."
 }

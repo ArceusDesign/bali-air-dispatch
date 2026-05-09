@@ -833,11 +833,19 @@ function renderAll(ts){
       const c = catFor(s.pm25);
       size = 42 + Math.min(16, Math.round((s.pm25||0)/6));
       const pulse = s.id===worst.id && (s.pm25||0)>12 ? ' worst' : '';
-      html = `<div class="pin ${c.cls}${pulse}" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
+      // Stale stations get a dashed-ring marker styled like an offline pin
+      // (the upstream timestamp is > 24h old → don't render the cached pm25
+      // as if it were a current reading).
+      if (s.stale) {
+        size = 38;
+        html = `<div class="pin offline" data-sid="${s.id}"><span class="pm" style="font-size:9px;font-weight:600;letter-spacing:.06em">STALE</span></div>`;
+      } else {
+        html = `<div class="pin ${c.cls}${pulse}" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
+      }
 
       // Draw a "haze cloud" around affected live stations. Radius grows with PM2.5,
-      // rendered in meters so it scales naturally with zoom.
-      if (s.pm25!=null && s.pm25 > 12 && HAZE[c.cls]) {
+      // rendered in meters so it scales naturally with zoom. Skip for stale stations.
+      if (!s.stale && s.pm25!=null && s.pm25 > 12 && HAZE[c.cls]) {
         const color = HAZE[c.cls];
         // inner denser cloud
         const rInner = 600 + s.pm25 * 55;   // e.g. 20 µg/m³ → 1.7 km
@@ -945,6 +953,19 @@ function renderRollTable(){
       </tr>`;
     }
     const c = catFor(s.pm25);
+    // Stale rows: render visually like an offline row — gray PM2.5,
+    // "Stale Nd" badge — so visitors don't read a months-old value as live.
+    if (s.stale) {
+      const ageDays = Math.round((s.staleAgeHours || 0) / 24);
+      return `<tr class="offline" data-sid="${s.id}">
+        <td><b>${(s.name||'').split(' (')[0]}</b></td>
+        <td>${s.source}</td>
+        <td class="r"><span class="pm-cell" style="color:var(--ink-whisper);font-style:italic">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
+        <td><span class="badge off">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.stale','Stale') : 'Stale'} · ${ageDays}${(window.I18N && window.I18N.t) ? window.I18N.t('roll.daysShort','d') : 'd'}</span></td>
+        <td class="c">${historyCell(s)}</td>
+        <td class="r">${s.lastSeen?new Date(s.lastSeen).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</td>
+      </tr>`;
+    }
     return `<tr data-sid="${s.id}">
       <td><b>${(s.name||'').split(' (')[0]}</b>${s.pm25_estimated?' <em style="color:var(--ink-faint);font-size:11px">· est.</em>':''}</td>
       <td>${s.source}</td>
@@ -1104,6 +1125,19 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
 
 function panelLive(s){
   const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
+  // If the station is stale (upstream timestamp > 24h old), reroute to the
+  // offline-style panel so visitors see the timeline + history instead of
+  // a misleading "live" hero. We synthesise the minimum fields panelOffline
+  // expects (last, first, source, type, name, lat, lon, daily=[]).
+  if (s.stale) {
+    return panelOffline({
+      ...s,
+      last: s.lastSeen,
+      first: s.lastSeen,
+      reason: t('panel.staleSub','Sensor is listed in the upstream API but its timestamp has not advanced in over 24 hours. The reading shown is the last value the upstream actually reported.'),
+      daily: []
+    });
+  }
   const c = catFor(s.pm25);
   const xAnnual = s.pm25!=null ? (s.pm25/5).toFixed(1) : '—';
   const xDaily  = s.pm25!=null ? (s.pm25/15).toFixed(1) : '—';
