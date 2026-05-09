@@ -1007,9 +1007,11 @@ async function renderArchive(){
     return;
   }
 
-  // Top 3 by current PM2.5 (descending). Skip null/zero readings.
+  // Top 3 by current PM2.5 (descending). Skip null/zero readings AND stale
+  // stations (their pm25 is the last cached value from when they went dark,
+  // not a current measurement — would unfairly dominate the Worst-3 list).
   const ranked = [...liveStations]
-    .filter(s => Number.isFinite(+s.pm25) && +s.pm25 > 0)
+    .filter(s => Number.isFinite(+s.pm25) && +s.pm25 > 0 && !s.stale)
     .sort((a,b) => (+b.pm25) - (+a.pm25))
     .slice(0, 3);
 
