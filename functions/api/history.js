@@ -115,12 +115,30 @@ export async function onRequest(context) {
         `).bind(id, cutoff).all();
         return json({ station: stn, range, points: rows.results || [] });
       }
-      // Daily aggregates
+      // Daily aggregates — try station_daily first
       const dRows = await db.prepare(`
         SELECT date, pm25_mean AS pm25, pm25_min, pm25_max, sample_n
         FROM station_daily WHERE station_id = ?1 ORDER BY date ASC
       `).bind(id).all();
-      return json({ station: stn, range: range || 'daily', points: dRows.results || [] });
+      let points = dRows.results || [];
+
+      // Fallback: for nafas-* ids whose station_daily is empty, surface the
+      // richer Nafas-specific daily aggregates from nafas_daily (which the
+      // worker mirrors from Nafas's own daily endpoint).
+      if (points.length === 0 && id.startsWith('nafas-')) {
+        const u = id.slice(6);
+        if (isUuid(u)) {
+          const r = await db.prepare(`
+            SELECT date, pm25, pm10, pm1, aqi, temperature, humidity, pressure
+            FROM nafas_daily WHERE uuid = ?1 ORDER BY date ASC
+          `).bind(u).all();
+          points = (r.results || []).map(p => ({
+            date: p.date, pm25: p.pm25,
+            pm25_min: p.pm25, pm25_max: p.pm25, sample_n: 1,
+          }));
+        }
+      }
+      return json({ station: stn, range: range || 'daily', points });
     }
 
     // ── Legacy Nafas-specific mode (?uuid=…) ───────────────────────────

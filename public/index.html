@@ -676,7 +676,9 @@ const OFFLINE_HISTORY = {"ubud_rozendal":{"name":"Ubud (Rozendal)","lat":-8.5303
 // Offline sensors WITHOUT detailed daily history (from the registry)
 const OFFLINE_OTHER = [
   { id:'aq-umalas', name:'Umalas (Fusion) — Kerobokan', source:'AQICN', type:'GAIA / community', lat:-8.67220, lon:115.15640, last:'2026-03-15', reason:'offline · last reported March 2026' },
-  { id:'aq-denp-lumintang', name:'Denpasar Lumintang', source:'AQICN', type:'Government · KLHK', lat:-8.65300, lon:115.21350, last:'2025-08-09', reason:'removed from ISPU portal · no data since Aug 2025' }
+  // Note: Denpasar Lumintang previously hardcoded here is now ingested via
+  // /api/live as aq-A416893 (AQICN A-prefix direct probe). It still appears
+  // on the map, with stale flag + the full 548-day historical chart.
 ];
 
 /* =========================================================
@@ -1102,7 +1104,7 @@ function drawSparkline(id, daily){
 /* =========================================================
    PANEL
    ========================================================= */
-function openPanel(id){
+async function openPanel(id){
   const s = allStations.find(x=>x.id===id);
   if(!s) return;
   const panel = document.getElementById('panel');
@@ -1113,9 +1115,44 @@ function openPanel(id){
   });
   const sel = markers[id]?.getElement()?.querySelector('.pin'); if(sel) sel.classList.add('selected');
 
-  if(s.offline){ body.innerHTML = panelOffline(s); setTimeout(()=>drawPanelChart(s),10); }
-  else { body.innerHTML = panelLive(s); setTimeout(()=>loadAndDrawLiveChart(s),30); }
   panel.classList.add('open'); panel.setAttribute('aria-hidden','false');
+
+  // For offline OR stale stations, ensure we have a populated `daily` array
+  // before we render the panel. Three cases:
+  //  (a) Hardcoded OFFLINE_HISTORY (Rozendal, Balangan, Kopernik) — already
+  //      have s.daily, skip the fetch.
+  //  (b) Lumintang + any AQICN A-prefix backfilled into station_daily —
+  //      fetch /api/history?id=…&range=daily.
+  //  (c) Nafas zombies (Ketewel, Dauh Puri Kauh, Padangsambian Kaja) — same
+  //      query; the history endpoint falls back to nafas_daily for nafas-*.
+  let stn = s;
+  const needsAsyncFetch = (s.offline || s.stale) && (!Array.isArray(s.daily) || s.daily.length === 0);
+  if (needsAsyncFetch) {
+    body.innerHTML = `<div style="padding:60px 28px;color:var(--ink-faint);font-style:italic;font-family:'Source Serif 4',serif">Loading historical record…</div>`;
+    try {
+      const r = await fetch(API_BASE + '/api/history?id=' + encodeURIComponent(s.id) + '&range=daily', { cache:'no-cache' });
+      if (r.ok) {
+        const d = await r.json();
+        const pts = (d.points || []).filter(p => p.pm25 != null);
+        if (pts.length > 0) {
+          stn = {
+            ...s,
+            daily: pts.map(p => [p.date, +p.pm25]),
+            first: pts[0].date,
+            last: s.lastSeen ? (s.lastSeen.match(/^\d{4}-\d{2}-\d{2}/) || [pts[pts.length-1].date])[0] : pts[pts.length-1].date,
+          };
+        }
+      }
+    } catch(_) { /* fall through with empty daily */ }
+  }
+
+  if (stn.offline || stn.stale) {
+    body.innerHTML = panelOffline(stn);
+    setTimeout(() => drawPanelChart(stn), 10);
+  } else {
+    body.innerHTML = panelLive(stn);
+    setTimeout(() => loadAndDrawLiveChart(stn), 30);
+  }
 }
 function closePanel(){
   document.getElementById('panel').classList.remove('open');
@@ -1127,19 +1164,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
 
 function panelLive(s){
   const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
-  // If the station is stale (upstream timestamp > 24h old), reroute to the
-  // offline-style panel so visitors see the timeline + history instead of
-  // a misleading "live" hero. We synthesise the minimum fields panelOffline
-  // expects (last, first, source, type, name, lat, lon, daily=[]).
-  if (s.stale) {
-    return panelOffline({
-      ...s,
-      last: s.lastSeen,
-      first: s.lastSeen,
-      reason: t('panel.staleSub','Sensor is listed in the upstream API but its timestamp has not advanced in over 24 hours. The reading shown is the last value the upstream actually reported.'),
-      daily: []
-    });
-  }
+  // (Stale-routing happens in openPanel now — it pre-fetches /api/history
+  //  before deciding which renderer to call. panelLive only fires for truly
+  //  fresh live stations.)
   const c = catFor(s.pm25);
   const xAnnual = s.pm25!=null ? (s.pm25/5).toFixed(1) : '—';
   const xDaily  = s.pm25!=null ? (s.pm25/15).toFixed(1) : '—';
