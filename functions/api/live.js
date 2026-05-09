@@ -164,38 +164,93 @@ async function fetchPurpleAir(env) {
 }
 
 async function fetchAQICN(env) {
-  // bounds first, then per-station detail in PARALLEL (was sequential)
-  const r = await fetch(
-    `https://api.waqi.info/v2/map/bounds?latlng=-8.92,114.4,-8.0,115.78&networks=all&token=${env.AQICN_TOKEN}`
-  );
-  const data = await r.json();
-  if (data.status !== 'ok' || !data.data) return [];
-  const details = await Promise.all(data.data.map(async (s) => {
+  // 1. /v2/map/bounds returns @-prefix GAIA-network stations within bbox.
+  //    Per-station detail is fetched in PARALLEL (was sequential).
+  // 2. THEN we additionally probe a curated list of A-prefix stations (the
+  //    AQICN bounds endpoint does NOT include them — these are typically
+  //    government-grade reference instruments that publish through AQICN's
+  //    data platform but aren't enumerated on the GAIA map). For Bali we
+  //    currently track:
+  //      - A416893  Denpasar Lumintang (KLHK government PM2.5 reference)
+  //    Any new A-prefix Bali stations: just add to AQICN_DIRECT below.
+  const AQICN_DIRECT = [
+    { id: 'A416893', name: 'Denpasar Lumintang', type: 'Government (KLHK)' },
+  ];
+
+  const out = [];
+
+  // ── (1) bbox-discovered GAIA stations ──
+  try {
+    const r = await fetch(
+      `https://api.waqi.info/v2/map/bounds?latlng=-8.92,114.4,-8.0,115.78&networks=all&token=${env.AQICN_TOKEN}`
+    );
+    const data = await r.json();
+    if (data.status === 'ok' && Array.isArray(data.data)) {
+      const details = await Promise.all(data.data.map(async (s) => {
+        try {
+          const dr = await fetch(`https://api.waqi.info/feed/@${s.uid}/?token=${env.AQICN_TOKEN}`);
+          const dd = await dr.json();
+          return { s, dd };
+        } catch { return { s, dd: null }; }
+      }));
+      for (const { s, dd } of details) {
+        const pm25 = dd?.data?.iaqi?.pm25?.v;
+        const { cat, cls } = pm25Category(pm25);
+        const attribution = dd?.data?.attributions?.[0]?.name || '';
+        const isGov = attribution.includes('KLHK') || attribution.includes('Kementerian');
+        out.push({
+          id: `aq-${s.uid}`,
+          name: s.station?.name || 'Unknown',
+          source: 'AQICN',
+          type: isGov ? 'Government (KLHK)' : 'GAIA Network',
+          lat: s.lat, lon: s.lon,
+          pm25: pm25 != null ? +pm25 : null,
+          aqi: +s.aqi || null,
+          category: cat, cls,
+          lastSeen: dd?.data?.time?.iso || null,
+        });
+      }
+    }
+  } catch (_) { /* swallow; direct path below still runs */ }
+
+  // ── (2) curated A-prefix direct probes (government reference stations) ──
+  await Promise.all(AQICN_DIRECT.map(async (entry) => {
     try {
-      const dr = await fetch(`https://api.waqi.info/feed/@${s.uid}/?token=${env.AQICN_TOKEN}`);
-      const dd = await dr.json();
-      return { s, dd };
-    } catch { return { s, dd: null }; }
+      const r = await fetch(`https://api.waqi.info/feed/${entry.id}/?token=${env.AQICN_TOKEN}`);
+      const dd = await r.json();
+      if (dd?.status !== 'ok' || !dd.data) return;
+      const pm25 = dd.data.iaqi?.pm25?.v;
+      // Sanity check: AQICN's free-tier sometimes maps unknown ids to wrong
+      // stations (we saw idx=-419824 / Bend, Oregon with the demo token).
+      // Only accept when the geo lands in Bali bbox.
+      const geo = dd.data.city?.geo;
+      if (!Array.isArray(geo) || geo.length < 2) return;
+      const [lat, lon] = geo;
+      if (lat < -9.2 || lat > -8.0 || lon < 114.4 || lon > 115.8) return;
+      const { cat, cls } = pm25Category(pm25);
+      out.push({
+        id: `aq-${entry.id}`,
+        name: dd.data.city?.name || entry.name,
+        source: 'AQICN',
+        type: entry.type,
+        lat, lon,
+        pm25: pm25 != null ? +pm25 : null,
+        aqi: dd.data.aqi != null ? +dd.data.aqi : null,
+        category: cat, cls,
+        lastSeen: dd.data.time?.iso || null,
+      });
+    } catch (_) { /* skip this direct probe */ }
   }));
-  return details.map(({ s, dd }) => {
-    const pm25 = dd?.data?.iaqi?.pm25?.v;
-    const { cat, cls } = pm25Category(pm25);
-    const attribution = dd?.data?.attributions?.[0]?.name || '';
-    const isGov = attribution.includes('KLHK') || attribution.includes('Kementerian');
-    return {
-      id: `aq-${s.uid}`,
-      name: s.station?.name || 'Unknown',
-      source: 'AQICN',
-      type: isGov ? 'Government (KLHK)' : 'GAIA Network',
-      lat: s.lat,
-      lon: s.lon,
-      pm25: pm25 != null ? +pm25 : null,
-      aqi: +s.aqi || null,
-      category: cat,
-      cls,
-      lastSeen: dd?.data?.time?.iso || null,
-    };
-  });
+
+  // De-dupe: a station could in theory appear in both bbox + direct paths
+  const seen = new Set();
+  const dedup = [];
+  for (const s of out) {
+    if (seen.has(s.id)) continue;
+    seen.add(s.id);
+    dedup.push(s);
+  }
+  return dedup;
 }
 
 async function fetchAirly(env) {
