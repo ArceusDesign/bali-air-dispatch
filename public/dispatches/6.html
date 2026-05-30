@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dispatch VI — The fix, in order of impact. A practical guide. · Bali Air Dispatch</title>
+<meta name="description" content="Dispatch VI of the Bali Air Dispatch — what would actually help. A practical guide to the technologies and the sequencing.">
+<meta name="referrer" content="no-referrer">
+<link rel="preload" as="style" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --paper:#f3ece0;
+  --paper-dark:#eae1d1;
+  --ink:#14110d;
+  --ink-soft:#34302a;
+  --ink-faint:#6a635a;
+  --rule:#2b2620;
+  --hairline:#c0b9a8;
+  --crimson:#8b1a1a;
+  --ochre:#a7742e;
+  --forest:#355e3b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{
+  font-family:"Source Serif 4",Georgia,serif;
+  font-optical-sizing:auto;
+  font-size:16px;line-height:1.55;
+  padding:0 0 80px 0;
+}
+.wrap{max-width:1320px;margin:0 auto;padding:0 32px}
+@media(max-width:720px){.wrap{padding:0 18px}}
+
+/* subtle grain — identical to brief.html */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.35;
+}
+
+/* ===== MASTHEAD ===== */
+.masthead{border-bottom:3px double var(--rule);padding:22px 0 18px 0;position:relative}
+.masthead-top{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+  padding-bottom:10px;border-bottom:1px solid var(--hairline);
+}
+.masthead-top .r{text-align:right}
+.nameplate{text-align:center;padding:28px 0 18px 0}
+.nameplate h1{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;
+  font-size:clamp(52px,8.6vw,132px);line-height:.92;letter-spacing:-.015em;color:var(--ink);
+}
+.nameplate .sub{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(16px,2vw,22px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em;
+}
+.folio{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+  padding-top:10px;border-top:1px solid var(--hairline);
+}
+.folio .c{text-align:center;letter-spacing:.22em}
+.folio .r{text-align:right}
+
+/* ===== NAV BAR ===== */
+.navbar{
+  border-bottom:1px solid var(--rule);padding:12px 0;margin-top:0;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  display:flex;justify-content:center;gap:32px;flex-wrap:wrap;
+}
+.navbar a{color:var(--ink);text-decoration:none}
+.navbar a:hover{color:var(--crimson)}
+.navbar a.on{color:var(--crimson);border-bottom:1px solid var(--crimson);padding-bottom:4px;margin-bottom:-5px}
+
+/* ===== BULLETIN ===== */
+.bulletin{
+  margin:26px 0 10px 0;padding:10px 14px;
+  background:var(--forest);color:var(--paper);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  display:flex;justify-content:space-between;gap:16px;
+}
+.bulletin .tag{font-weight:700}
+.bulletin .when{opacity:.85}
+
+/* ===== CHAPTER / DISPATCH ===== */
+.chapter{padding:60px 0 28px;border-top:3px double var(--rule);margin-top:18px;scroll-margin-top:12px}
+.chapter-head{
+  display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:baseline;
+  border-bottom:1px solid var(--rule);padding-bottom:14px;margin-bottom:30px;
+}
+.chapter-no{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--forest);
+  border:1px solid var(--forest);padding:6px 12px;
+}
+.chapter-title{
+  font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144,"SOFT" 10;
+  font-size:clamp(34px,4.4vw,62px);line-height:.98;letter-spacing:-.02em;
+}
+.chapter-title em{font-style:italic;font-weight:500;color:var(--forest)}
+.chapter-meta{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+  text-align:right;
+}
+@media(max-width:720px){
+  .chapter-head{grid-template-columns:1fr;gap:10px}
+  .chapter-meta{text-align:left}
+}
+.chapter-lede{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(19px,2.1vw,24px);line-height:1.42;color:var(--ink-soft);
+  max-width:880px;margin-bottom:26px;
+}
+.chapter-body{display:grid;grid-template-columns:repeat(2,1fr);gap:38px}
+@media(max-width:900px){.chapter-body{grid-template-columns:1fr}}
+.chapter-body p{margin-bottom:16px}
+.chapter-body p strong{font-weight:700;color:var(--ink)}
+.chapter-body p.first::first-letter{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:78px;line-height:.82;float:left;padding:8px 12px 0 0;color:var(--forest);
+}
+
+/* ===== FIGURE BOX ===== */
+.figure-box{
+  border:1px solid var(--rule);background:var(--paper-dark);
+  padding:28px 30px;margin:24px 0;position:relative;
+}
+.figure-box::after{
+  content:"";position:absolute;top:-1px;left:-1px;right:-1px;height:3px;background:var(--forest);
+}
+.figure-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+@media(max-width:720px){.figure-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+.figure-cell{border-right:1px solid var(--hairline);padding-right:22px}
+.figure-cell:last-child{border-right:none;padding-right:0}
+@media(max-width:720px){.figure-cell{border-right:none;border-bottom:1px solid var(--hairline);padding-bottom:14px}.figure-cell:nth-last-child(-n+2){border-bottom:none}}
+.figure-cell .n{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:54px;line-height:1;color:var(--forest);letter-spacing:-.02em;
+}
+.figure-cell .n small{font-size:22px;color:var(--ink-soft);font-weight:500}
+.figure-cell .l{margin-top:10px;font-size:13px;line-height:1.45;color:var(--ink-soft)}
+
+/* Sub-headings within a dispatch chapter */
+.sub-h{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 120;font-size:22px;line-height:1.1;letter-spacing:-.005em;color:var(--ink);margin:8px 0 12px}
+.chapter-body h3.sub-h{margin-top:6px}
+.sub-h .sub-kicker{display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--forest);font-weight:500;margin-bottom:6px}
+
+/* Numbered step list — for the sequencing section */
+.steps{list-style:none;padding-left:0;margin:14px 0;counter-reset:step}
+.steps li{
+  counter-increment:step;
+  position:relative;
+  padding:18px 0 18px 64px;
+  border-bottom:1px dotted var(--hairline);
+}
+.steps li:last-child{border-bottom:none}
+.steps li::before{
+  content:counter(step,decimal-leading-zero);
+  position:absolute;left:0;top:18px;
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:38px;line-height:.9;color:var(--forest);letter-spacing:-.02em;
+}
+.steps li .lab{
+  font-family:"Fraunces",serif;font-weight:700;font-size:18px;line-height:1.2;
+  color:var(--ink);display:block;margin-bottom:6px;
+}
+.steps li .lab em{font-style:italic;font-weight:500;color:var(--forest)}
+.steps li .body{
+  font-family:"Source Serif 4",Georgia,serif;font-size:14.5px;line-height:1.6;color:var(--ink-soft);
+}
+
+/* Inline solution-card list (tools list within section II) */
+.tools{list-style:none;padding-left:0;margin:10px 0 0 0}
+.tools li{padding:12px 0;border-bottom:1px dotted var(--hairline)}
+.tools li:last-child{border-bottom:none}
+.tools li .name{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--forest);font-weight:600;display:block;margin-bottom:4px;
+}
+.tools li .desc{font-size:14.5px;line-height:1.55;color:var(--ink-soft)}
+.tools li .desc b{color:var(--ink);font-weight:700}
+
+/* Dispatch sources block */
+.dispatch-sources{margin-top:34px;padding:22px 24px;border:1px solid var(--hairline);background:var(--paper-2,rgba(20,17,13,0.03))}
+.dispatch-sources h4{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;font-weight:600}
+.dispatch-sources ol{margin-left:18px;font-family:"Source Serif 4",serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft)}
+.dispatch-sources li{margin-bottom:6px}
+.dispatch-sources a{color:var(--forest);text-decoration:none;border-bottom:1px dotted var(--forest)}
+.dispatch-sources a:hover{background:var(--forest);color:var(--paper)}
+
+/* ===== PULL QUOTE ===== */
+.pull{
+  grid-column:span 2;
+  border-top:3px double var(--rule);border-bottom:3px double var(--rule);
+  padding:42px 0;margin:28px 0;text-align:center;
+}
+@media(max-width:900px){.pull{grid-column:span 1}}
+.pull blockquote{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:500;
+  font-size:clamp(26px,3.4vw,42px);line-height:1.2;color:var(--ink);
+  max-width:900px;margin:0 auto;
+}
+.pull cite{
+  display:block;margin-top:18px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-style:normal;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+}
+
+/* Closing note box — green-tinted */
+.closing-note{margin-top:34px;padding:24px 28px;background:var(--paper-dark,#eae1d1);border-left:4px solid var(--forest)}
+.closing-note p{font-family:"Source Serif 4",serif;font-size:15px;line-height:1.6;color:var(--ink-soft);margin-bottom:10px}
+.closing-note p:last-child{margin-bottom:0}
+.closing-note p b{color:var(--ink);font-weight:700}
+
+/* ===== FOOTER ===== */
+.foot{padding:34px 0 60px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.65;color:var(--ink-soft);text-transform:none;letter-spacing:.02em;border-top:3px double var(--rule);margin-top:50px}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1.6fr 1fr;gap:36px;margin-bottom:30px}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:22px}}
+.foot-col h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
+.foot-col a{display:block;color:var(--ink);text-decoration:none;padding:3px 0;border-bottom:none;letter-spacing:.02em}
+.foot-col a:hover{color:var(--crimson)}
+.foot-strip{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;text-align:center}
+.foot-rights,.foot-sources{margin-top:14px;font-size:11px;line-height:1.55;color:var(--ink-faint);max-width:920px;margin-left:auto;margin-right:auto;text-align:center;letter-spacing:.02em}
+.foot-rights strong,.foot-sources strong{color:var(--ink-soft);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px;margin-right:6px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- MASTHEAD -->
+  <header class="masthead">
+    <div class="masthead-top">
+      <div data-i18n="mast.published">Published since April · 2026</div>
+      <div>Bali Air Dispatch</div>
+      <div class="r">Anonymous, non-commercial</div>
+    </div>
+    <div class="nameplate">
+      <h1>Bali&nbsp;Air&nbsp;Dispatch</h1>
+      <div class="sub">Dispatch VI — The fix, in order of impact. A practical guide.</div>
+    </div>
+    <div class="folio">
+      <div data-i18n="mast.editionXXII">Edition XXII</div>
+      <div class="c" id="mt-date">—</div>
+      <div class="r" id="nav-status">LIVE · — SENSORS · — OFFLINE</div>
+    </div>
+  </header>
+
+  <!-- NAV (universal · keep in sync across all pages) -->
+  <nav class="navbar">
+    <a href="/" data-i18n="nav.live">Live Monitor</a>
+    <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+    <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+    <a href="/articles" class="on current" data-i18n="nav.dispatches">Dispatches</a>
+    <a href="/history" data-i18n="nav.history">History</a>
+    <div id="lang-switcher"></div>
+  </nav>
+
+  <!-- BULLETIN -->
+  <div class="bulletin">
+    <div class="tag">Bulletin · Dispatch VI</div>
+    <div>What would actually help — a practical guide</div>
+    <div class="when" id="bul-when">—</div>
+  </div>
+
+  <!-- DISPATCH CONTENT -->
+  <section class="chapter" id="dispatch-6">
+    <div class="chapter-head">
+      <div class="chapter-no">Dispatch · VI</div>
+      <div class="chapter-title" data-i18n-html="disp.6.title">The <em>fix</em>, in order of impact. A practical guide.</div>
+      <div class="chapter-meta">Filed · 30 May 2026<br>Approx. 7-minute read</div>
+    </div>
+    <p class="chapter-lede" data-i18n-html="disp.6.lede">The technology to address Bali's waste-and-air problem is largely off the shelf. Some of it is already running on the island. The shortfall, on the present evidence, is one of sequencing and finance more than invention — and Gianyar, on the same island, has already shown what the order should be.</p>
+
+    <div class="chapter-body">
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.6.sub.1"><span class="sub-kicker">§ I</span>This is a sequencing problem, not a tech gap.</h3>
+        <p class="first" data-i18n-html="disp.6.body.p1">The honest framing of Bali's April–May 2026 burning pattern is that the technology to fix the underlying waste flow already exists, and a meaningful portion of it has been deployed somewhere on the island already. Each extension of the Suwung landfill's organics-closure timeline, reported in the local press through the first half of the year, has named the same constraint: Bali's processing alternatives are not yet sized to absorb the more than one thousand tonnes a day the province generates, and households have resorted to open burning in the gap.</p>
+        <p data-i18n-html="disp.6.body.p2">The point matters because it changes what "doing something on the ground" should look like. It is not a question of inventing a new method. It is a question of sequencing, financing, and building in the right order. The rest of this dispatch is organised around that point — the technologies that work, listed in roughly the order of how much of the burn problem each would actually absorb, then a four-step sequence drawn from local experience.</p>
+      </div>
+
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.6.sub.2"><span class="sub-kicker">§ II · The big lever</span>Organic processing first.</h3>
+        <p data-i18n-html="disp.6.body.p3">Roughly two-thirds of Bali's household waste is organic. Denpasar's own figures put food scraps and garden debris at about <strong>68 per cent</strong> of the city's stream. If that fraction is diverted from the household pile, the volume left for the burn-it-yourself default shrinks dramatically. Three proven technologies operate on Bali at small or pilot scale right now:</p>
+        <ul class="tools">
+          <li>
+            <span class="name">Black Soldier Fly bioconversion</span>
+            <span class="desc"><b>BSF larvae</b> eat food waste fast in a tropical climate, yielding animal feed and an organic soil amendment. Bali's provincial environmental agency has explicitly named BSF technology in its solution set.</span>
+          </li>
+          <li>
+            <span class="name">Anaerobic biogas digesters</span>
+            <span class="desc">Capture the methane from organic decomposition and produce a clean <b>cooking fuel</b> as output. Suitable at household, banjar, or facility scale.</span>
+          </li>
+          <li>
+            <span class="name">Decentralised composting</span>
+            <span class="desc">The lowest-tech of the three, the most labour-intensive, and the easiest to set up at <b>banjar-level</b> scale with limited capital. The output goes back into Bali's gardens and rice paddies.</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- FIGURE -->
+      <div class="figure-box" style="grid-column:span 2">
+        <div class="figure-grid">
+          <div class="figure-cell">
+            <div class="n">~68<small>%</small></div>
+            <div class="l" data-i18n-html="disp.6.fig.l1">Organic share of Denpasar's household waste stream. The single biggest lever — divert the organic fraction and the burn pile shrinks dramatically.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">1,000<small> t/day</small></div>
+            <div class="l" data-i18n-html="disp.6.fig.l2">Pre-ban Suwung throughput. The volume the alternatives need to absorb. Bali generates roughly this much waste every day of the year.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">~$200<small> /unit</small></div>
+            <div class="l" data-i18n-html="disp.6.fig.l3">Approximate cost of a community-grade laser-scatter PM2.5 sensor. Deployable in weeks, reporting to a public dashboard — sufficient density to map burn hotspots in real time.</div>
+          </div>
+          <div class="figure-cell">
+            <div class="n">1</div>
+            <div class="l" data-i18n-html="disp.6.fig.l4">Working model already in operation on Bali. Gianyar built its waste system <em>before</em> the landfill ban; that order is the lesson.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.6.sub.3"><span class="sub-kicker">§ III · The backbone</span>Neighbourhood-scale infrastructure.</h3>
+        <p data-i18n-html="disp.6.body.p4">The layered model already on Bali's planning paper distinguishes <strong>TPS3R</strong> — small recycling and recovery centres at the neighbourhood level — from <strong>TPST</strong>, larger integrated facilities that handle sorting and consolidation at urban scale. The two are designed to work together: TPS3R captures and pre-sorts at source, TPST consolidates the streams. This is the backbone of a functioning municipal waste system. It works when built ahead of any disposal ban, not after one.</p>
+        <p data-i18n-html="disp.6.body.p5">The Indonesian Institute for Essential Services Reform has placed all three of the organic technologies — BSF, biogas, decentralised composting — within the recognised provincial planning framework, alongside TPS3R/TPST. None of this is speculative. The plan exists. The question is sequencing.</p>
+      </div>
+
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.6.sub.4"><span class="sub-kicker">§ IV · Recovering the rest</span>Material recovery, formalised.</h3>
+        <p data-i18n-html="disp.6.body.p6">For the inorganic fraction — plastic, glass, metal, paper — material-recovery facilities paired with buy-back schemes can turn refuse into a small but reliable income stream. The opportunity here is to <strong>formalise</strong> the substantial work already done by informal waste pickers, who, by hand, recover an enormous share of Indonesia's recyclables. A buy-back scheme gives that workforce a price floor and an accountable counterparty. <em>Sungai Watch's</em> separate three-tonnes-a-day plastic-processing operation at its Bali headquarters demonstrates that the throughput can scale.</p>
+      </div>
+
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.6.sub.5"><span class="sub-kicker">§ V · With a caveat</span>Waste-to-energy.</h3>
+        <p data-i18n-html="disp.6.body.p7">The Suwung <em>PSEL</em> waste-to-energy facility is expected to begin operating in 2028. As a politically attractive, big-ticket option, it has obvious appeal. The cautionary footnote — common to incineration projects globally — is that a PSEL plant needs a steady stream of waste to remain financially viable, and that need can quietly discourage the upstream reduction, composting, and recycling that actually pull the problem down.</p>
+        <p data-i18n-html="disp.6.body.p8">Used for true <em>residuals</em> — the small fraction that none of the earlier steps can handle — incineration has a defensible role. Used as the first move, it tends to ossify the very volumes it was meant to retire. Sequencing, again, is the operative word.</p>
+      </div>
+
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.6.sub.6"><span class="sub-kicker">§ VI · To see what you are fixing</span>Low-cost sensors.</h3>
+        <p data-i18n-html="disp.6.body.p9">None of the above can be measured against a baseline without a record. Cheap laser-scatter sensors at around <strong>US$200–300 per unit</strong>, deployed by community organisations and reporting to a public dashboard, would let Bali map burn hotspots in real time, target collection routes and enforcement at the streets where it would actually matter, and give residents and visitors an honest health figure during the smoke-heavy hours of the day.</p>
+        <p data-i18n-html="disp.6.body.p10">These sensors are not reference-grade — Dispatch I covered their limits in detail — but their density and openness more than compensate for the slack. They can be deployed in weeks. The model is the PurpleAir-style network already in use across the United States and parts of Europe, in which thousands of $200 instruments, taken together, produce a public-health-grade picture of urban air better than the small number of regulatory monitors ever did alone.</p>
+      </div>
+    </div>
+
+    <div class="pull">
+      <blockquote>"In Gianyar, the infrastructure came first. Then the ban. That is the difference."</blockquote>
+      <cite>Synthesis · The Diplomat, May 2026</cite>
+    </div>
+
+    <div class="chapter-body" style="margin-top:14px">
+      <div style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.6.sub.7"><span class="sub-kicker">§ VII · The sequence</span>A four-step order of operations.</h3>
+        <p data-i18n-html="disp.6.body.p11">Drawing the steps together — and drawing on the local expertise quoted in <em>The Diplomat</em>, <em>Asia News Network</em>, and the published submissions of researchers at IESR and CCAC — the practical order of operations looks like this. None of it requires inventing a new technology. All of it requires choosing what to build in what order.</p>
+      </div>
+
+      <div style="grid-column:span 2">
+        <ol class="steps">
+          <li>
+            <span class="lab" data-i18n-html="disp.6.step.1.lab"><em>Stop the bleeding.</em> Restore reliable collection first.</span>
+            <span class="body" data-i18n-html="disp.6.step.1.body">The burning is, in significant part, a direct response to trucks that have stopped showing up since 1 April. Re-establish a temporary or alternative collection arrangement — even an interim one — before anything else. People burn when there is nowhere else for the rubbish to go.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.6.step.2.lab"><em>Flood the zone</em> with BSF and composters at banjar scale.</span>
+            <span class="body" data-i18n-html="disp.6.step.2.body">Bali has an asset other Indonesian provinces do not — the <em>desa adat</em> customary village system. Empowering desa adat is a unique lever for both implementation and enforcement. Door-to-door collection plus on-site composting and BSF processing is already running in parts of Gianyar at scale.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.6.step.3.lab"><em>Copy Gianyar's sequence</em>, not Suwung's.</span>
+            <span class="body" data-i18n-html="disp.6.step.3.body">The single most important lesson is timing. In Gianyar, the new waste infrastructure was built and proven <em>before</em> the corresponding ban took effect. That order — infrastructure first, then enforcement — is the difference between the working model and the present crisis. It is also imitable, and the model already exists on the same island.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.6.step.4.lab"><em>Fund it and enforce it.</em></span>
+            <span class="body" data-i18n-html="disp.6.step.4.body">One local expert quoted in <em>Asia News Network</em> framed it bluntly: this is solvable, provided policy is matched with funding and enforcement. A small tourism levy, in an economy whose primary export is the climate itself, would underwrite the capital cost without distorting visitor flows. Bali's economic dependence on tourism is also its strongest argument for action — the smoke is also a tourism risk.</span>
+          </li>
+        </ol>
+      </div>
+
+      <div style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.6.sub.8"><span class="sub-kicker">§ VIII · A funding proposal</span>A foreign-visitor levy that would settle the bill in a year.</h3>
+        <p data-i18n-html="disp.6.body.p12">The province already operates a tourism levy of IDR&nbsp;150,000 per foreign arrival, introduced in February 2024 — a useful precedent, but a rate small enough that collection lapses have been forgiven on both sides. Raising the levy to <strong>IDR&nbsp;1,000,000 per foreign arrival</strong> — and collecting it consistently at the airport, port, and immigration counter — would generate revenue more than sufficient to finance the entire waste-and-air transition within a single year.</p>
+        <p data-i18n-html="disp.6.body.p13">The math is not large in tourism terms. IDR 1 million is roughly <strong>USD $60</strong> — about three per cent of what a typical visitor already spends across a one-week trip to Bali. The province received approximately <strong>6.3 million</strong> foreign arrivals in 2024, per BPS Bali; at one million rupiah a head, that is on the order of <strong>IDR 6.3 trillion (~USD $380 million)</strong> a year. By comparison, a neighbourhood TPS3R facility costs around IDR 1–3 billion to build, and an island-wide low-cost sensor network well under IDR 1 billion. Banjar-scale BSF deployment, decentralised composting, and a buy-back recycling programme together would still leave most of the levy untouched.</p>
+
+        <div class="figure-box">
+          <div class="figure-grid">
+            <div class="figure-cell">
+              <div class="n">IDR&nbsp;1<small>&nbsp;m</small></div>
+              <div class="l" data-i18n-html="disp.6.fig2.l1">Proposed per-arrival levy on foreign visitors — roughly <strong>USD&nbsp;$60</strong> at current exchange. A meaningful figure, but small relative to the trip it would attach to.</div>
+            </div>
+            <div class="figure-cell">
+              <div class="n">~6.3<small>&nbsp;m</small></div>
+              <div class="l" data-i18n-html="disp.6.fig2.l2">Foreign arrivals to Bali in 2024, per BPS Bali. The 2025 and 2026 projected figures are higher; the calculations here use the conservative 2024 baseline.</div>
+            </div>
+            <div class="figure-cell">
+              <div class="n">~$380<small>&nbsp;m</small></div>
+              <div class="l" data-i18n-html="disp.6.fig2.l3">Annual revenue at IDR&nbsp;1&nbsp;m × 6.3&nbsp;m arrivals ≈ <strong>IDR&nbsp;6.3 trillion</strong>. Comfortably above the combined capital cost of BSF, TPS3R, sensors, and material recovery.</div>
+            </div>
+            <div class="figure-cell">
+              <div class="n">~3<small>%</small></div>
+              <div class="l" data-i18n-html="disp.6.fig2.l4">Share of an average week-long visitor's total spend in Bali represented by the levy. Not a number that changes whether a trip is bookable.</div>
+            </div>
+          </div>
+        </div>
+
+        <p data-i18n-html="disp.6.body.p14">The argument is straightforward. Visitors come to Bali for an environment that the present waste flow is visibly degrading. Asking them to contribute a small share of their trip's cost to preserve what they came for is not punitive — it is the cleanest way to align the people who benefit from the climate with the people who pay to keep it functioning. Those who would rather not pay have an alternative: they need not come. The tourism economy can absorb the choice in either direction. The waste-and-air transition cannot wait either way.</p>
+      </div>
+
+      <div style="grid-column:span 2">
+        <div class="closing-note">
+          <p data-i18n-html="disp.6.close.p1"><b>The closing point.</b> The model already exists on Bali. Gianyar — a short drive from Denpasar — has shown the order. The technologies that would pull the burn pile down are the ones the provincial environment agency has already named in its own plans. The crisis is what happens when the destination is mandated before the road is built. Reverse the order, and the rest is execution.</p>
+          <p data-i18n-html="disp.6.close.p2"><b>What an individual can do, now.</b> If you live in Bali and want to contribute directly: separate your household organics and arrange a banjar-level composting drop or BSF feed; support a TPS3R if one operates near you; back any community air-monitor that publishes its data openly; and, on the heavy-smoke days, follow the practical mask guidance in Dispatch V. None of these alone solves the problem. Together, they shorten the bridge between the ban and the infrastructure that should have preceded it.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOURCES -->
+    <div class="dispatch-sources">
+      <h4>Sources · Dispatch VI</h4>
+      <ol>
+        <li><em>The Diplomat</em> — coverage of Bali's waste-rule rollout, Gianyar's working model, the role of <em>desa adat</em>, and the sequencing failure at Suwung. <a href="https://thediplomat.com/" rel="noopener">thediplomat.com</a>.</li>
+        <li><em>Asia News Network</em> — local expert framing: solvable problem, contingent on funding and enforcement. <a href="https://asianews.network/" rel="noopener">asianews.network</a>.</li>
+        <li>Indonesian Institute for Essential Services Reform (IESR) — programme materials placing BSF, biogas, and TPS3R/TPST within the provincial recognised solution set. <a href="https://iesr.or.id/en" rel="noopener">iesr.or.id</a>.</li>
+        <li><em>What's New Indonesia</em> — provincial environment-agency statements naming BSF larvae, biogas, and community-scale TPS3R/TPST facilities. <a href="https://whatsnewindonesia.com/" rel="noopener">whatsnewindonesia.com</a>.</li>
+        <li><em>VOI</em> — coverage of Bali's PSEL waste-to-energy facility, expected 2028. <a href="https://voi.id/en" rel="noopener">voi.id</a>.</li>
+        <li>Climate &amp; Clean Air Coalition (CCAC), CLOCC programme (Indonesia) — open burning as a dominant PM2.5 source in Indonesian communities with incomplete collection coverage. <a href="https://www.ccacoalition.org/resources/reducing-open-burning-waste-through-clean-oceans-through-clean-communities-clocc-programme-indonesia" rel="noopener">ccacoalition.org</a>.</li>
+        <li>Sungai Watch cleanups programme — ~3 t/day plastic processed at the Bali HQ, distinct from the city's river-clearance figure. <a href="https://sungai.watch/pages/cleanups" rel="noopener">sungai.watch/pages/cleanups</a>.</li>
+        <li>PurpleAir — community sensor network model, the deployment pattern referenced in §&nbsp;VI. <a href="https://www2.purpleair.com/" rel="noopener">purpleair.com</a>.</li>
+        <li>Centre for Research on Energy and Clean Air (CREA), <em>Indonesia Air Quality 2024</em> — provincial coverage gaps and the case for a denser monitoring network. <a href="https://energyandcleanair.org/publication/indonesia-air-quality-2024/" rel="noopener">energyandcleanair.org/publication/indonesia-air-quality-2024</a>.</li>
+        <li><em>Hey Bali News</em> and <em>Bali.live</em> — April 2026 ground reporting referenced for the burn pattern this dispatch is responding to. See Dispatch III for the source links.</li>
+        <li>BPS Statistics Indonesia — Bali foreign tourist arrivals, 2024 ≈ 6.33 million. <a href="https://bali.bps.go.id/en" rel="noopener">bali.bps.go.id</a>. Used as the conservative baseline for the levy revenue estimate in §&nbsp;VIII.</li>
+        <li>Bali Provincial Government — foreign-tourist levy of IDR 150,000 per visitor introduced February 2024 (Perda 6/2023). Used as the precedent referenced in §&nbsp;VIII.</li>
+      </ol>
+    </div>
+  </section>
+
+
+
+<style>
+.disp-pager{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:38px 0 26px;border-top:3px double var(--rule);border-bottom:3px double var(--rule);padding:24px 0}
+@media(max-width:700px){.disp-pager{grid-template-columns:1fr}}
+.disp-pager-link{display:flex;flex-direction:column;gap:4px;padding:18px 22px;border:1px solid var(--rule);background:var(--paper);text-decoration:none;color:var(--ink);transition:background .15s,color .15s,transform .15s}
+.disp-pager-link:hover{background:var(--ink);color:var(--paper);transform:translateY(-2px)}
+.disp-pager-link.next{text-align:right}
+.disp-pager-link .lab{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--forest)}
+.disp-pager-link:hover .lab{color:var(--paper)}
+.disp-pager-link .ttl{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 96;font-size:18px;line-height:1.2;letter-spacing:-.005em}
+.disp-back{margin:18px 0 8px;text-align:center;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+.disp-back a{color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted var(--hairline);padding-bottom:1px}
+.disp-back a:hover{color:var(--forest);border-color:var(--forest)}
+</style>
+
+  <nav class="disp-pager wrap" aria-label="Dispatch navigation">
+    <a class="disp-pager-link prev" href="/dispatches/5"><span class="lab">← Previous</span><span class="ttl">Dispatch V</span></a>
+    <a class="disp-pager-link next" href="/articles"><span class="lab">All dispatches →</span><span class="ttl">Back to the index</span></a>
+  </nav>
+  <div class="disp-back wrap"><a href="/articles">Index of dispatches</a></div>
+
+
+  <!-- UNIVERSAL FOOTER · keep in sync across all pages -->
+  <footer class="foot">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.pages">Pages</h4>
+        <a href="/" data-i18n="nav.live">Live Monitor</a>
+        <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+        <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+        <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
+        <a href="/history" data-i18n="nav.history">History</a>
+        <a href="/appendix" data-i18n="foot.appendix">Appendix &amp; Methodology</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.dispatches">Dispatches</h4>
+        <a href="/dispatches/1" data-i18n="foot.disp.1">I — The daily guideline, exceeded.</a>
+        <a href="/dispatches/2" data-i18n="foot.disp.2">II — One government sensor.</a>
+        <a href="/dispatches/3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
+        <a href="/dispatches/4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
+        <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
+        <a href="/dispatches/6" data-i18n="foot.disp.6">VI — The fix, in order of impact.</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.contact">Contact</h4>
+        <span class="email" tabindex="0" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;color:var(--ink);user-select:all;-webkit-user-select:all;cursor:text;border-bottom:1px dotted var(--hairline);padding:1px 4px;display:inline-block">baliair@protonmail.com</span>
+      </div>
+    </div>
+    <div class="foot-strip" data-i18n="foot.strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+    <div class="foot-rights"><strong data-i18n="foot.rights.label">Rights.</strong><span data-i18n="foot.rights.body"> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</span></div>
+    <div class="foot-sources"><strong data-i18n="foot.sources.label">Sources.</strong><span data-i18n="foot.sources.body"> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</span></div>
+  </footer>
+
+</div>
+<script>
+// Dynamic WITA date for masthead folio + bulletin "when"
+(function(){
+  function update(){
+    const d = new Date();
+    const fmt = d.toLocaleDateString('en-GB',{
+      weekday:'long', day:'numeric', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    }).toUpperCase();
+    const el = document.getElementById('mt-date');
+    if (el) el.textContent = fmt;
+    const when = d.toLocaleDateString('en-GB',{
+      day:'2-digit', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    });
+    const bw = document.getElementById('bul-when');
+    if (bw) bw.textContent = 'Last updated ' + when + ' WITA';
+  }
+  update();
+  setInterval(update, 60*1000);
+})();
+</script>
+<script src="/js/i18n.js" defer></script>
+</body>
+</html>

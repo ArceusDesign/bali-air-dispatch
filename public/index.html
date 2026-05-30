@@ -615,6 +615,23 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   </a>
 </section>
 
+<!-- DISPATCH VI · SOLUTIONS CALLOUT -->
+<section class="front-page wrap">
+  <a href="/dispatches/6" class="solutions-callout">
+    <div class="solutions-callout-left">
+      <div class="kicker">§ V — The Practical Guide</div>
+      <h2 class="solutions-h">What would actually help — <em>the solutions guide.</em></h2>
+      <p class="solutions-p">The technology to fix Bali's waste-and-air problem already exists, and Gianyar — on the same island — has already shown what order to build it in. A practical guide to the tools that work, the four-step sequence, and a single funding proposal that could settle the bill in a year.</p>
+      <div class="solutions-cta">Read the solutions guide <span class="arrow">→</span></div>
+    </div>
+    <div class="solutions-callout-right">
+      <div class="solutions-meta">Dispatch VI</div>
+      <div class="solutions-stat">~68<em>%</em></div>
+      <div class="solutions-stat-lab">organic share of Bali's household waste — the single biggest lever. Divert it, and the burn pile shrinks dramatically.</div>
+    </div>
+  </a>
+</section>
+
 <style>
 .brief-callout{display:grid;grid-template-columns:1.4fr 1fr;gap:36px;border:1px solid var(--rule);background:var(--paper);padding:32px 36px;text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
 .brief-callout:hover{transform:translateY(-2px);box-shadow:0 4px 0 var(--paper-3),0 6px 0 var(--rule)}
@@ -635,6 +652,27 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 .brief-stat{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(72px,9vw,112px);line-height:.88;letter-spacing:-.04em;color:var(--crimson)}
 .brief-stat em{font-style:italic;font-weight:500;font-size:.5em}
 .brief-stat-lab{font-family:"Source Serif 4",serif;font-style:italic;font-size:13px;line-height:1.5;color:var(--ink-soft);margin-top:10px}
+
+/* Dispatch VI / solutions callout — mirrors brief-callout, forest accent */
+.solutions-callout{display:grid;grid-template-columns:1.4fr 1fr;gap:36px;border:1px solid var(--rule);background:var(--paper);padding:32px 36px;text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;margin-top:22px}
+.solutions-callout:hover{transform:translateY(-2px);box-shadow:0 4px 0 var(--paper-3),0 6px 0 var(--rule)}
+.solutions-callout::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--forest)}
+@media(max-width:760px){.solutions-callout{grid-template-columns:1fr;gap:24px;padding:26px 22px}}
+.solutions-callout-left .kicker{color:var(--forest);margin-bottom:8px}
+.solutions-h{font-family:"Fraunces",serif;font-weight:800;font-variation-settings:"opsz" 120;font-size:clamp(24px,2.8vw,34px);letter-spacing:-.015em;line-height:1.1;margin-bottom:12px;color:var(--ink)}
+.solutions-h em{font-style:italic;color:var(--forest);font-weight:500}
+.solutions-p{font-family:"Source Serif 4",serif;font-size:15px;line-height:1.6;color:var(--ink-soft);margin-bottom:16px;max-width:560px}
+.solutions-p em{font-style:italic;color:var(--ink)}
+.solutions-cta{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--forest);display:inline-flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--forest);transition:background .15s,color .15s}
+.solutions-callout:hover .solutions-cta{background:var(--forest);color:var(--paper)}
+.solutions-cta .arrow{transition:transform .2s}
+.solutions-callout:hover .solutions-cta .arrow{transform:translateX(4px)}
+.solutions-callout-right{border-left:1px dashed var(--hairline);padding-left:28px;display:flex;flex-direction:column;justify-content:center}
+@media(max-width:760px){.solutions-callout-right{border-left:none;border-top:1px dashed var(--hairline);padding-left:0;padding-top:20px}}
+.solutions-meta{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
+.solutions-stat{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(72px,9vw,112px);line-height:.88;letter-spacing:-.04em;color:var(--forest)}
+.solutions-stat em{font-style:italic;font-weight:500;font-size:.5em}
+.solutions-stat-lab{font-family:"Source Serif 4",serif;font-style:italic;font-size:13px;line-height:1.5;color:var(--ink-soft);margin-top:10px}
 </style>
 
 <!-- UNIVERSAL FOOTER · keep in sync across all pages -->
@@ -655,7 +693,8 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       <a href="/dispatches/2" data-i18n="foot.disp.2">II — One government sensor.</a>
       <a href="/dispatches/3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
       <a href="/dispatches/4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
-        <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
+      <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
+      <a href="/dispatches/6" data-i18n="foot.disp.6">VI — The fix, in order of impact.</a>
     </div>
     <div class="foot-col">
       <h4 data-i18n="foot.h.contact">Contact</h4>
@@ -823,7 +862,9 @@ function renderAll(ts){
   hazeLayer.clearLayers(); liveLayer.clearLayers(); offLayer.clearLayers();
   for(const k in markers) delete markers[k];
 
-  const worst = liveStations.reduce((a,b)=>((b.pm25??-1)>(a.pm25??-1)?b:a),{pm25:-1});
+  // Exclude stale stations from "worst now" — their pm25 is a frozen cached value,
+  // not a current reading. A station flagged stale has not reported in >24h.
+  const worst = liveStations.filter(s=>!s.stale).reduce((a,b)=>((b.pm25??-1)>(a.pm25??-1)?b:a),{pm25:-1});
 
   allStations.forEach(s=>{
     if(s.lat==null||s.lon==null) return;
@@ -1017,20 +1058,29 @@ async function renderArchive(){
     .sort((a,b) => (+b.pm25) - (+a.pm25))
     .slice(0, 3);
 
-  // For each, fetch 30d history (Nafas only at the moment; others get placeholder)
+  // For each, fetch 30d history from D1 — works for all archived sources.
+  // Nafas: use legacy ?uuid= path (richer nafas_daily series).
+  // All others (AQICN, Airly, IQAir, OpenAQ, PurpleAir): universal ?id= path
+  // which reads station_daily populated by the archive worker every 15 min.
   const cards = await Promise.all(ranked.map(async (s) => {
     let daily = [];
-    if (s.id && s.id.startsWith('nafas-')){
-      const uuid = s.id.slice(6);
-      try{
-        const r = await fetch(API_BASE + '/api/history?uuid=' + encodeURIComponent(uuid) + '&range=daily', { cache:'no-cache' });
+    if (s.id) {
+      try {
+        let url;
+        if (s.id.startsWith('nafas-')) {
+          const uuid = s.id.slice(6);
+          url = API_BASE + '/api/history?uuid=' + encodeURIComponent(uuid) + '&range=daily';
+        } else {
+          url = API_BASE + '/api/history?id=' + encodeURIComponent(s.id) + '&range=daily';
+        }
+        const r = await fetch(url, { cache:'no-cache' });
         if (r.ok){
           const d = await r.json();
           daily = (d.points || [])
             .filter(p => p.pm25 != null)
             .map(p => [p.date, p.pm25]);
         }
-      }catch(_){}
+      } catch(_) {}
     }
     // Trim to last 30 days
     if (daily.length){

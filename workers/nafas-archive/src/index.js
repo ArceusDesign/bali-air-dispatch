@@ -217,6 +217,46 @@ async function snapshotUniversal(db, live, nowSec) {
   return { stationsSeen: live.stations.length, snapshots: snapBatch.length };
 }
 
+// Roll up the last 3 days of station_snapshots into station_daily.
+// Re-runs every tick are safe (INSERT OR REPLACE keyed on (station_id,date)),
+// and 3-day window keeps today/yesterday accurate as late snapshots arrive
+// and snapshots cross midnight WITA. Dates are computed in Asia/Makassar
+// (UTC+8) to match nafas_daily and the site's display timezone.
+//
+// Stale-station guard: snapshots where the upstream `station_till` is more
+// than 24h older than fetch `ts` (or >1h in the future) are EXCLUDED. This
+// keeps frozen-upstream sensors (e.g. AQICN Lumintang's 2025-08-09 readings)
+// from polluting today's row with fake means.
+async function rollupDaily(db, nowSec) {
+  const cutoffSec = nowSec - 3 * 86400;
+  try {
+    const r = await db.prepare(`
+      INSERT OR REPLACE INTO station_daily
+        (station_id, date, pm25_mean, pm25_min, pm25_max, aqi_max, sample_n)
+      SELECT
+        station_id,
+        strftime('%Y-%m-%d', datetime(ts, 'unixepoch', '+8 hours')) AS date,
+        ROUND(AVG(pm25), 2) AS pm25_mean,
+        ROUND(MIN(pm25), 2) AS pm25_min,
+        ROUND(MAX(pm25), 2) AS pm25_max,
+        MAX(aqi)            AS aqi_max,
+        COUNT(*)            AS sample_n
+      FROM station_snapshots
+      WHERE ts >= ?1
+        AND pm25 IS NOT NULL
+        AND (
+          station_till IS NULL
+          OR (ts - unixepoch(station_till)) BETWEEN -3600 AND 86400
+        )
+      GROUP BY station_id, date
+    `).bind(cutoffSec).run();
+    return r?.meta?.changes ?? 0;
+  } catch (e) {
+    console.warn('rollupDaily failed: ' + (e.message || String(e)));
+    return 0;
+  }
+}
+
 async function archiveOnce(env) {
   const t0 = Date.now();
   const nowSec = Math.floor(t0 / 1000);
@@ -224,7 +264,7 @@ async function archiveOnce(env) {
   if (!db) throw new Error('ARCHIVE_DB binding missing');
 
   let stationsSeen = 0, snapshots = 0, hourly = 0, daily = 0;
-  let universalStations = 0, universalSnaps = 0;
+  let universalStations = 0, universalSnaps = 0, universalDailyRows = 0;
   let ok = 1, errMsg = null;
 
   // ── Universal pass: snapshot every station from /api/live ────────────
@@ -234,6 +274,9 @@ async function archiveOnce(env) {
     const u = await snapshotUniversal(db, live, nowSec);
     universalStations = u.stationsSeen;
     universalSnaps = u.snapshots;
+    // Roll up the last 3 days of universal snapshots into station_daily,
+    // so the /history page can chart non-Nafas stations. Idempotent.
+    universalDailyRows = await rollupDaily(db, nowSec);
     // SAFEGUARD #2 — loop detection (till-distinctness based).
     const loopCheck = await detectStaleLoop(db, nowSec);
     if (loopCheck && loopCheck.total >= 10 && loopCheck.distinct_tills <= 2) {
@@ -319,7 +362,10 @@ async function archiveOnce(env) {
       nowSec,
       stationsSeen + universalStations,
       snapshots + universalSnaps,
-      hourly, daily, duration, ok, combinedErr
+      hourly,
+      // daily = Nafas-specific upserts + universal-rollup rows touched this tick
+      daily + universalDailyRows,
+      duration, ok, combinedErr
     ).run();
   } catch (_) { /* never fail on log write */ }
 
@@ -327,6 +373,7 @@ async function archiveOnce(env) {
     ok: !!ok, ts: nowSec,
     nafasStations: stationsSeen, nafasSnapshots: snapshots,
     universalStations, universalSnapshots: universalSnaps,
+    universalDailyRows,
     hourly, daily, duration, error: errMsg
   };
 }

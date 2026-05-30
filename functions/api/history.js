@@ -177,14 +177,21 @@ export async function onRequest(context) {
 
     // ── Catalog mode (no params) ───────────────────────────────────────
     // Combine universal stations + Nafas stations into a single list.
+    // `daily_n` tells the /history UI whether a chart can be drawn yet
+    // (0 = snapshots being captured but no daily rollup yet → "archive starting").
     const universal = await db.prepare(`
-      SELECT station_id, source, name, lat, lon, type, first_seen, last_seen
-      FROM stations ORDER BY name
+      SELECT
+        s.station_id, s.source, s.name, s.lat, s.lon, s.type,
+        s.first_seen, s.last_seen,
+        (SELECT COUNT(*) FROM station_daily WHERE station_id = s.station_id) AS daily_n
+      FROM stations s
+      ORDER BY s.name
     `).all();
     const nafas = await db.prepare(`
       SELECT uuid, name, lat, lon, first_seen, last_seen,
              (SELECT pm25 FROM nafas_snapshots WHERE uuid = s.uuid ORDER BY ts DESC LIMIT 1) AS latest_pm25,
-             (SELECT ts   FROM nafas_snapshots WHERE uuid = s.uuid ORDER BY ts DESC LIMIT 1) AS latest_ts
+             (SELECT ts   FROM nafas_snapshots WHERE uuid = s.uuid ORDER BY ts DESC LIMIT 1) AS latest_ts,
+             (SELECT COUNT(*) FROM nafas_daily   WHERE uuid = s.uuid)                       AS daily_n
       FROM nafas_stations s ORDER BY name
     `).all();
     return json({
