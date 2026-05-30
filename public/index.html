@@ -556,8 +556,8 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 
 <!-- BULLETIN -->
 <section id="bulletin" class="front-page wrap">
-  <div class="kicker">§ I — The Daily Bulletin</div>
-  <h2 class="section-h">Today, <em>in four numbers.</em></h2>
+  <div class="kicker" data-i18n="home.kicker.bulletin">§ I — The Daily Bulletin</div>
+  <h2 class="section-h" data-i18n-html="home.h.bulletin">Today, <em>in four numbers.</em></h2>
   <div class="bulletin-grid">
     <div class="bx"><div class="lab" data-i18n="bx.lab.live">Live sensors</div><div class="val" id="b-live">—</div><div class="note" data-i18n="bx.note.live">active across four platforms</div></div>
     <div class="bx"><div class="lab" data-i18n="bx.lab.median">Median PM2.5</div><div class="val" id="b-med">—<em>µg</em></div><div class="note" data-i18n="bx.note.median">network-wide median, per cubic metre</div></div>
@@ -568,17 +568,17 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 
 <!-- STATION ROLL -->
 <section id="roll" class="front-page wrap">
-  <div class="kicker">§ II — The Station Roll</div>
-  <h2 class="section-h">Every monitor <em>we can still reach</em> — and the ones we can't.</h2>
+  <div class="kicker" data-i18n="home.kicker.roll">§ II — The Station Roll</div>
+  <h2 class="section-h" data-i18n-html="home.h.roll">Every monitor <em>we can still reach</em> — and the ones we can't.</h2>
   <div class="tbl-wrap">
     <table class="roll" id="rollTable">
       <thead><tr>
-        <th>Station</th>
-        <th>Source</th>
-        <th class="r">PM2.5</th>
-        <th>Status</th>
-        <th class="c">History</th>
-        <th class="r">Last Seen</th>
+        <th data-i18n="home.th.station">Station</th>
+        <th data-i18n="home.th.source">Source</th>
+        <th class="r" data-i18n="home.th.pm25">PM2.5</th>
+        <th data-i18n="home.th.status">Status</th>
+        <th class="c" data-i18n="home.th.history">History</th>
+        <th class="r" data-i18n="home.th.lastSeen">Last Seen</th>
       </tr></thead>
       <tbody id="rollBody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);font-style:italic"><span data-i18n="loading.register">Loading the register…</span></td></tr></tbody>
     </table>
@@ -587,9 +587,9 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 
 <!-- WORST-3 -->
 <section id="archive" class="front-page wrap">
-  <div class="kicker">§ III — The Three Worst, Last 30 Days</div>
-  <h2 class="section-h">Where the air is <em>most consistently bad</em>.</h2>
-  <p style="max-width:740px;font-size:15px;line-height:1.65;margin-bottom:24px;color:var(--ink-soft)">
+  <div class="kicker" data-i18n="home.kicker.worst">§ III — The Three Worst, Last 30 Days</div>
+  <h2 class="section-h" data-i18n-html="home.h.worst">Where the air is <em>most consistently bad</em>.</h2>
+  <p data-i18n-html="home.worst.lede" style="max-width:740px;font-size:15px;line-height:1.65;margin-bottom:24px;color:var(--ink-soft)">
     Three sensors with the highest mean PM2.5 over the last thirty days. The number on the left
     is the rolling mean against the WHO 5&nbsp;µg/m³ annual guideline; the sparkline is the daily
     trace. Click any card to open the full historical record. The earlier silenced sensors live
@@ -602,10 +602,10 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <section class="front-page wrap">
   <a href="/brief" class="brief-callout">
     <div class="brief-callout-left">
-      <div class="kicker">§ IV — The Long Read</div>
-      <h2 class="brief-h">Why this matters — <em>the full evidence brief.</em></h2>
-      <p class="brief-p">Live readings answer <em>what's in the air right now</em>. The evidence brief answers the harder question: <em>why has Bali been left with so little visibility over its own air, and what will it take to fix it?</em> A dossier of monitors, gaps, and the regulatory turning point of April 2026.</p>
-      <div class="brief-cta">Read the evidence brief <span class="arrow">→</span></div>
+      <div class="kicker" data-i18n="home.kicker.brief">§ IV — The Long Read</div>
+      <h2 class="brief-h" data-i18n-html="home.h.brief">Why this matters — <em>the full evidence brief.</em></h2>
+      <p class="brief-p" data-i18n-html="home.brief.body">Live readings answer <em>what's in the air right now</em>. The evidence brief answers the harder question: <em>why has Bali been left with so little visibility over its own air, and what will it take to fix it?</em> A dossier of monitors, gaps, and the regulatory turning point of April 2026.</p>
+      <div class="brief-cta" data-i18n-html="home.brief.cta">Read the evidence brief <span class="arrow">→</span></div>
     </div>
     <div class="brief-callout-right">
       <div class="brief-meta" data-i18n="brief-cb.meta">Section I / IX</div>
@@ -619,15 +619,15 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <section class="front-page wrap">
   <a href="/dispatches/6" class="solutions-callout">
     <div class="solutions-callout-left">
-      <div class="kicker">§ V — The Practical Guide</div>
-      <h2 class="solutions-h">What would actually help — <em>the solutions guide.</em></h2>
-      <p class="solutions-p">The technology to fix Bali's waste-and-air problem already exists, and Gianyar — on the same island — has already shown what order to build it in. A practical guide to the tools that work, the four-step sequence, and a single funding proposal that could settle the bill in a year.</p>
-      <div class="solutions-cta">Read the solutions guide <span class="arrow">→</span></div>
+      <div class="kicker" data-i18n="home.kicker.solutions">§ V — The Practical Guide</div>
+      <h2 class="solutions-h" data-i18n-html="home.h.solutions">What would actually help — <em>the solutions guide.</em></h2>
+      <p class="solutions-p" data-i18n-html="home.solutions.body">The technology to fix Bali's waste-and-air problem already exists, and Gianyar — on the same island — has already shown what order to build it in. A practical guide to the tools that work, the four-step sequence, and a single funding proposal that could settle the bill in a year.</p>
+      <div class="solutions-cta" data-i18n-html="home.solutions.cta">Read the solutions guide <span class="arrow">→</span></div>
     </div>
     <div class="solutions-callout-right">
-      <div class="solutions-meta">Dispatch VI</div>
+      <div class="solutions-meta" data-i18n="home.solutions.meta">Dispatch VI</div>
       <div class="solutions-stat">~68<em>%</em></div>
-      <div class="solutions-stat-lab">organic share of Bali's household waste — the single biggest lever. Divert it, and the burn pile shrinks dramatically.</div>
+      <div class="solutions-stat-lab" data-i18n="home.solutions.stat">organic share of Bali's household waste — the single biggest lever. Divert it, and the burn pile shrinks dramatically.</div>
     </div>
   </a>
 </section>
@@ -1090,6 +1090,7 @@ async function renderArchive(){
     return { stn:s, daily };
   }));
 
+  const T = (k,f) => (window.I18N && window.I18N.t) ? window.I18N.t(k,f) : f;
   cards.forEach(({stn, daily}, idx) => {
     const mean = daily.length ? daily.reduce((a,b)=>a+b[1],0)/daily.length : null;
     const peak = daily.length ? Math.max(...daily.map(d=>d[1])) : null;
@@ -1100,18 +1101,18 @@ async function renderArchive(){
     el.className = 'arc-card';
     el.style.cursor = 'pointer';
     el.innerHTML = `
-      <div class="arc-lab" style="color:var(--crimson)">§ ${idx+1} · Worst right now</div>
+      <div class="arc-lab" style="color:var(--crimson)">§ ${idx+1} · ${T('worst.label','Worst right now')}</div>
       <div class="arc-name">${(stn.name||'').split(' (')[0]}</div>
       <div class="arc-sub">${stn.source} · ${stn.type || ''}</div>
       <div class="arc-stats">
-        <div class="s"><div class="k">Now</div><div class="v" style="color:var(--${cat.cls==='good'?'aqi-good':cat.cls==='mod'?'aqi-mod':cat.cls==='usg'?'aqi-usg':cat.cls==='unh'?'aqi-unh':cat.cls==='vunh'?'aqi-vunh':'aqi-haz'})">${cur.toFixed(1)}</div></div>
-        <div class="s"><div class="k">30d mean</div><div class="v">${mean!=null?mean.toFixed(1):'—'}</div></div>
-        <div class="s"><div class="k">30d peak</div><div class="v">${peak!=null?peak.toFixed(0):'—'}</div></div>
+        <div class="s"><div class="k">${T('worst.now','Now')}</div><div class="v" style="color:var(--${cat.cls==='good'?'aqi-good':cat.cls==='mod'?'aqi-mod':cat.cls==='usg'?'aqi-usg':cat.cls==='unh'?'aqi-unh':cat.cls==='vunh'?'aqi-vunh':'aqi-haz'})">${cur.toFixed(1)}</div></div>
+        <div class="s"><div class="k">${T('worst.mean30','30d mean')}</div><div class="v">${mean!=null?mean.toFixed(1):'—'}</div></div>
+        <div class="s"><div class="k">${T('worst.peak30','30d peak')}</div><div class="v">${peak!=null?peak.toFixed(0):'—'}</div></div>
       </div>
       ${daily.length
         ? `<canvas id="spark-${cardId}"></canvas>`
-        : `<div style="height:90px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px dashed var(--hairline);background:var(--paper-2)">Archive starting · history populates over time</div>`}
-      <div class="arc-act" data-sid="${stn.id}">${(window.I18N && window.I18N.t) ? window.I18N.t('worst.openRecord','Open the record →') : 'Open the record →'}</div>
+        : `<div style="height:90px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px dashed var(--hairline);background:var(--paper-2)">${T('worst.archiveStarting','Archive starting · history populates over time')}</div>`}
+      <div class="arc-act" data-sid="${stn.id}">${T('worst.openRecord','Open the record →')}</div>
     `;
     grid.appendChild(el);
     if (daily.length) drawSparkline('spark-'+cardId, daily);
