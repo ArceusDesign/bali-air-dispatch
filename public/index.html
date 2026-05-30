@@ -432,6 +432,15 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 .legend-row{display:flex;align-items:center}
 
 </style>
+<style>
+/* WhatsApp community button — green box (matches Dispatch VI / --forest accent) */
+.navbar a.wa-btn,.foot-col a.wa-btn{display:inline-flex;align-items:center;gap:7px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--forest);border:1px solid var(--forest);background:rgba(53,94,59,0.08);padding:6px 13px;border-radius:3px;text-decoration:none;line-height:1.2;transition:background .15s,color .15s,border-color .15s}
+.navbar a.wa-btn::before,.foot-col a.wa-btn::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--forest);flex:none}
+.navbar a.wa-btn:hover,.foot-col a.wa-btn:hover{background:var(--forest);color:var(--paper);border-color:var(--forest)}
+.navbar a.wa-btn:hover::before,.foot-col a.wa-btn:hover::before{background:var(--paper)}
+.foot-col a.wa-btn{margin-top:12px}
+.navbar-second{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:9px;flex-wrap:wrap}
+</style>
 </head>
 <body>
 
@@ -458,11 +467,13 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
     <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
     <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
     <a href="/history" data-i18n="nav.history">History</a>
-    <a href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="nav.community">Community ↗</a>
     <span class="spacer"></span>
     <span id="nav-status">—</span>
   </div>
-  <div id="lang-switcher"></div>
+  <div class="navbar-second">
+    <div id="lang-switcher"></div>
+    <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="nav.community">Join the WhatsApp community</a>
+  </div>
   </nav>
 
 <!-- BULLETIN TICKER -->
@@ -700,7 +711,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
     <div class="foot-col">
       <h4 data-i18n="foot.h.contact">Contact</h4>
       <span class="email" tabindex="0" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;color:var(--ink);user-select:all;-webkit-user-select:all;cursor:text;border-bottom:1px dotted var(--hairline);padding:1px 4px;display:inline-block">baliair@protonmail.com</span>
-      <a href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="foot.community">Join the WhatsApp network →</a>
+      <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="foot.community">Join the WhatsApp community</a>
     </div>
   </div>
   <div class="foot-strip" data-i18n="foot.strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
