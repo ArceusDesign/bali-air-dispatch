@@ -475,50 +475,50 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <section id="map" class="hero">
   <div class="map-frame">
     <div class="map-topbar">
-      <div class="tb-left"><span class="dot"></span><span>Live · <span id="mt-ts2">Syncing…</span></span></div>
-      <div class="tb-center">A bird&rsquo;s-eye of <em>Bali&rsquo;s air</em>.</div>
+      <div class="tb-left"><span class="dot"></span><span><span data-i18n="home.tb.live">Live ·</span> <span id="mt-ts2">Syncing…</span></span></div>
+      <div class="tb-center" data-i18n-html="home.hero">A bird&rsquo;s-eye of <em>Bali&rsquo;s air</em>.</div>
       <div class="tb-right" id="heroWx">Wind <b>—</b> m/s · <b>—</b></div>
     </div>
     <div id="map-leaflet"></div>
 
     <!-- HUD -->
     <div class="map-card hud" style="display:none" id="hudCard">
-      <h5 class="card-h" onclick="toggleCard(this)">Bali · Live Network <span class="cap">▾</span></h5>
+      <h5 class="card-h" onclick="toggleCard(this)" data-i18n-html="home.x.hudTitle">Bali · Live Network <span class="cap">▾</span></h5>
       <div class="hud-stats card-body">
-        <div><div class="v" id="hud-live">—</div><div class="k">Live</div></div>
-        <div><div class="v" id="hud-off">—</div><div class="k">Offline</div></div>
-        <div><div class="v" id="hud-worst">—</div><div class="k">Worst</div></div>
+        <div><div class="v" id="hud-live">—</div><div class="k" data-i18n="home.hud.live">Live</div></div>
+        <div><div class="v" id="hud-off">—</div><div class="k" data-i18n="home.hud.offline">Offline</div></div>
+        <div><div class="v" id="hud-worst">—</div><div class="k" data-i18n="home.hud.worst">Worst</div></div>
       </div>
     </div>
 
     <!-- Layers -->
     <div class="map-card layers">
-      <h5 class="card-h" onclick="toggleCard(this)">Layers <span class="cap">▾</span></h5>
+      <h5 class="card-h" onclick="toggleCard(this)" data-i18n-html="home.x.layersTitle">Layers <span class="cap">▾</span></h5>
       <div class="card-body">
       <div class="layer-row on" id="lr-live" onclick="toggleLayer('live')">
         <svg class="icn" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
-        <span class="lbl">Live</span><span class="swch"></span>
+        <span class="lbl" data-i18n="home.layer.live">Live</span><span class="swch"></span>
       </div>
       <div class="layer-row on" id="lr-off" onclick="toggleLayer('off')">
         <svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"><circle cx="12" cy="12" r="6"/></svg>
-        <span class="lbl">Offline</span><span class="swch"></span>
+        <span class="lbl" data-i18n="home.layer.offline">Offline</span><span class="swch"></span>
       </div>
       <div class="layer-row on" id="lr-wind" onclick="toggleLayer('wind')">
         <svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h14a3 3 0 1 1-3 3"/><path d="M3 16h8"/></svg>
-        <span class="lbl">Wind</span><span class="swch"></span>
+        <span class="lbl" data-i18n="home.layer.wind">Wind</span><span class="swch"></span>
       </div>
       </div><!-- /card-body -->
     </div>
 
     <!-- Custom Zoom (placed below the HUD card; replaces default Leaflet zoom) -->
     <div class="map-card zoom-card" id="zoomCard">
-      <button type="button" class="zoom-btn" id="zoomIn"  aria-label="Zoom in">+</button>
-      <button type="button" class="zoom-btn" id="zoomOut" aria-label="Zoom out">−</button>
+      <button type="button" class="zoom-btn" id="zoomIn"  aria-label="Zoom in" data-i18n-attr="aria-label:home.x.zoomIn">+</button>
+      <button type="button" class="zoom-btn" id="zoomOut" aria-label="Zoom out" data-i18n-attr="aria-label:home.x.zoomOut">−</button>
     </div>
 
     <!-- Legend -->
     <div class="map-card legend" id="legend">
-      <h5>PM2.5 · µg/m³</h5>
+      <h5 data-i18n="home.legend.title">PM2.5 · µg/m³</h5>
       <div class="legend-body">
         <div class="legend-grad">
           <div style="background:var(--aqi-good)"></div>
@@ -529,15 +529,15 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
           <div style="background:var(--aqi-haz)"></div>
         </div>
         <div class="legend-ticks"><span>0</span><span>12</span><span>35</span><span>55</span><span>150</span><span>250+</span></div>
-        <div class="legend-more" onclick="document.getElementById('legend').classList.toggle('expanded')">Read the full scale ▾</div>
+        <div class="legend-more" onclick="document.getElementById('legend').classList.toggle('expanded')" data-i18n="home.x.legendMore">Read the full scale ▾</div>
         <div class="legend-detail">
-          <div class="legend-row"><span class="sw" style="background:var(--aqi-good)"></span>Good · 0–12</div>
-          <div class="legend-row"><span class="sw" style="background:var(--aqi-mod)"></span>Moderate · 12.1–35.4</div>
-          <div class="legend-row"><span class="sw" style="background:var(--aqi-usg)"></span>Unhealthy (Sensitive) · 35.5–55.4</div>
-          <div class="legend-row"><span class="sw" style="background:var(--aqi-unh)"></span>Unhealthy · 55.5–150.4</div>
-          <div class="legend-row"><span class="sw" style="background:var(--aqi-vunh)"></span>Very Unhealthy · 150.5–250.4</div>
-          <div class="legend-row"><span class="sw" style="background:var(--aqi-haz)"></span>Hazardous · 250.5+</div>
-          <div class="legend-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--hairline)"><span class="dash"></span>Dashed ring = offline sensor</div>
+          <div class="legend-row" data-i18n-html="home.x.legGood"><span class="sw" style="background:var(--aqi-good)"></span>Good · 0–12</div>
+          <div class="legend-row" data-i18n-html="home.x.legMod"><span class="sw" style="background:var(--aqi-mod)"></span>Moderate · 12.1–35.4</div>
+          <div class="legend-row" data-i18n-html="home.x.legUsg"><span class="sw" style="background:var(--aqi-usg)"></span>Unhealthy (Sensitive) · 35.5–55.4</div>
+          <div class="legend-row" data-i18n-html="home.x.legUnh"><span class="sw" style="background:var(--aqi-unh)"></span>Unhealthy · 55.5–150.4</div>
+          <div class="legend-row" data-i18n-html="home.x.legVunh"><span class="sw" style="background:var(--aqi-vunh)"></span>Very Unhealthy · 150.5–250.4</div>
+          <div class="legend-row" data-i18n-html="home.x.legHaz"><span class="sw" style="background:var(--aqi-haz)"></span>Hazardous · 250.5+</div>
+          <div class="legend-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--hairline)" data-i18n-html="home.x.legDashed"><span class="dash"></span>Dashed ring = offline sensor</div>
         </div>
       </div>
     </div>
@@ -550,7 +550,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 
 <!-- STATION PANEL -->
 <aside class="side side-grain" id="panel" aria-hidden="true">
-  <button class="side-close" onclick="closePanel()" aria-label="Close">×</button>
+  <button class="side-close" onclick="closePanel()" aria-label="Close" data-i18n-attr="aria-label:home.x.close">×</button>
   <div id="panelBody"></div>
 </aside>
 
@@ -1191,7 +1191,7 @@ async function openPanel(id){
   let stn = s;
   const needsAsyncFetch = (s.offline || s.stale) && (!Array.isArray(s.daily) || s.daily.length === 0);
   if (needsAsyncFetch) {
-    body.innerHTML = `<div style="padding:60px 28px;color:var(--ink-faint);font-style:italic;font-family:'Source Serif 4',serif">Loading historical record…</div>`;
+    body.innerHTML = `<div style="padding:60px 28px;color:var(--ink-faint);font-style:italic;font-family:'Source Serif 4',serif">${(window.I18N&&window.I18N.t)?window.I18N.t('panel.loadingHistory','Loading historical record…'):'Loading historical record…'}</div>`;
     try {
       const r = await fetch(API_BASE + '/api/history?id=' + encodeURIComponent(s.id) + '&range=daily', { cache:'no-cache' });
       if (r.ok) {
@@ -1241,9 +1241,9 @@ function panelLive(s){
               : '#';
   return `
     <div class="side-hero">
-      <div class="side-kicker"><span class="tag">Live</span> ${s.source}${s.type?' · '+s.type:''}</div>
-      <div class="side-name">${s.name||'Unnamed station'}</div>
-      <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — reporting ${s.lastSeen?'at '+new Date(s.lastSeen).toLocaleTimeString('en-GB'):'now'}</div>
+      <div class="side-kicker"><span class="tag">${t('panel.tagLive','Live')}</span> ${s.source}${s.type?' · '+s.type:''}</div>
+      <div class="side-name">${s.name||t('panel.unnamed','Unnamed station')}</div>
+      <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.reporting','reporting')} ${s.lastSeen?t('panel.at','at')+' '+new Date(s.lastSeen).toLocaleTimeString('en-GB'):t('panel.now','now')}</div>
     </div>
     <div class="side-big">
       <div>
@@ -1302,9 +1302,9 @@ function panelOffline(s){
   }
   return `
     <div class="side-hero">
-      <div class="side-kicker"><span class="tag gone">Offline</span> ${s.source}${s.type?' · '+s.type:''}</div>
+      <div class="side-kicker"><span class="tag gone">${t('panel.tagOffline','Offline')}</span> ${s.source}${s.type?' · '+s.type:''}</div>
       <div class="side-name">${s.name}</div>
-      <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — last reported ${fmtDate(s.last)} · silent for <b style="color:var(--crimson)">${days} days</b></div>
+      <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.lastReported','last reported')} ${fmtDate(s.last)} · ${t('panel.silentFor','silent for')} <b style="color:var(--crimson)">${days} ${t('panel.days','days')}</b></div>
     </div>
     <div class="side-big">
       <div>
@@ -1323,20 +1323,19 @@ function panelOffline(s){
         <div class="timeline" id="tlWrap"></div>
       </div>
       <div class="side-section">
-        <h4>Archived history · ${s.daily.length} daily means</h4>
+        <h4>${t('panel.archivedHistory','Archived history')} · ${s.daily.length} ${t('panel.dailyMeans','daily means')}</h4>
         <div class="hist-wrap"><canvas id="panelChart"></canvas></div>
         <div class="chips" style="margin-top:14px">
-          <span class="chip"><b>${mean}</b> µg/m³ mean</span>
-          <span class="chip"><b>${peak}</b> peak day</span>
-          <span class="chip ${pctOver>50?'bad':'warn'}"><b>${pctOver}%</b> of days over WHO 24h</span>
+          <span class="chip"><b>${mean}</b> µg/m³ ${t('chart.mean','mean')}</span>
+          <span class="chip"><b>${peak}</b> ${t('panel.peakDay','peak day')}</span>
+          <span class="chip ${pctOver>50?'bad':'warn'}"><b>${pctOver}%</b> ${t('panel.daysOverWho','of days over WHO 24h')}</span>
         </div>
       </div>
     ` : `
       <div class="side-section">
         <h4>${t('panel.noArchive','No detailed archive held')}</h4>
         <p style="font-family:'Source Serif 4',serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin:0">
-          This sensor is listed on its host platform but historical daily means are not locally archived.
-          We carry only the metadata and the date it was last seen.
+          ${t('panel.noArchiveBody','This sensor is listed on its host platform but historical daily means are not locally archived. We carry only the metadata and the date it was last seen.')}
         </p>
       </div>
     `}
@@ -1666,7 +1665,7 @@ async function startWind(){
     if (cap) cap.classList.add('on');
     // update hero wx
     const mid = centerSample(windField);
-    document.getElementById('heroWx').innerHTML = `Wind — <b>${mid.spd.toFixed(1)} m/s</b> · <b>${mid.dirLabel}</b>`;
+    document.getElementById('heroWx').innerHTML = `${(window.I18N&&window.I18N.t)?window.I18N.t('home.x.windLabel','Wind'):'Wind'} — <b>${mid.spd.toFixed(1)} m/s</b> · <b>${mid.dirLabel}</b>`;
     if (capTxt) capTxt.textContent = `Wind at 10m · ${mid.spd.toFixed(1)} m/s · ${mid.dirLabel} · Open-Meteo`;
   }catch(e){
     console.warn('wind failed',e);
@@ -1729,8 +1728,9 @@ function centerSample(f){
   // the wind "is going TO" (u east, v north). compass "from" is opposite.
   const going = (Math.atan2(u, v) * 180/Math.PI + 360) % 360;
   const from  = (going + 180) % 360;
-  const labels = ['N','NE','E','SE','S','SW','W','NW'];
-  const dirLabel = 'from '+labels[Math.round(from/45) % 8];
+  const _idLang = (window.I18N&&window.I18N.lang&&window.I18N.lang()==='id');
+  const labels = _idLang ? ['U','TL','T','TG','S','BD','B','BL'] : ['N','NE','E','SE','S','SW','W','NW'];
+  const dirLabel = (_idLang?'dari ':'from ')+labels[Math.round(from/45) % 8];
   return { spd, dirLabel };
 }
 

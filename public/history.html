@@ -181,44 +181,44 @@ body::before{
 
 <!-- HERO -->
 <section class="hero wrap">
-  <div class="kicker">Historical record · Multi-station</div>
-  <h1>Bali's Air <em>Through Time</em>.</h1>
-  <div class="deck">Pick any combination of sensors. The chart overlays them on the same axes, with the WHO twenty-four-hour guideline drawn in for reference. Tracking begins the day a sensor enters the archive. Sensors that have gone silent are preserved at the bottom of the page.</div>
+  <div class="kicker" data-i18n="history.kicker">Historical record · Multi-station</div>
+  <h1 data-i18n-html="history.h">Bali's Air <em>Through Time</em>.</h1>
+  <div class="deck" data-i18n="history.deck">Pick any combination of sensors. The chart overlays them on the same axes, with the WHO twenty-four-hour guideline drawn in for reference. Tracking begins the day a sensor enters the archive. Sensors that have gone silent are preserved at the bottom of the page.</div>
 </section>
 
 <!-- CONTROLS + CHART -->
 <section class="wrap">
   <div class="controls">
     <div class="range-pills" id="rangePills">
-      <button class="range-pill" data-range="24h">24h</button>
-      <button class="range-pill" data-range="7d">7d</button>
-      <button class="range-pill on" data-range="30d">30d</button>
-      <button class="range-pill" data-range="90d">90d</button>
-      <button class="range-pill" data-range="all">All</button>
+      <button class="range-pill" data-range="24h" data-i18n="history.range.24h">24h</button>
+      <button class="range-pill" data-range="7d" data-i18n="history.range.7d">7d</button>
+      <button class="range-pill on" data-range="30d" data-i18n="history.range.30d">30d</button>
+      <button class="range-pill" data-range="90d" data-i18n="history.range.90d">90d</button>
+      <button class="range-pill" data-range="all" data-i18n="history.range.all">All</button>
     </div>
-    <div class="controls-meta" id="metaInfo">Loading the catalog…</div>
+    <div class="controls-meta" id="metaInfo" data-i18n="history.x.metaLoading">Loading the catalog…</div>
   </div>
 
   <div class="h-grid">
     <aside class="h-side">
-      <h3>Stations</h3>
+      <h3 data-i18n="history.side.title">Stations</h3>
       <div class="h-stations" id="stationList">
-        <div style="padding:14px;color:var(--ink-faint);font-style:italic;font-family:'Source Serif 4',serif">Loading…</div>
+        <div style="padding:14px;color:var(--ink-faint);font-style:italic;font-family:'Source Serif 4',serif" data-i18n="loading.syncing">Loading…</div>
       </div>
-      <div class="h-info">
+      <div class="h-info" data-i18n-html="history.info">
         <b>How this works.</b> Live sensors are snapshotted every fifteen minutes into our archive. Historical depth varies by source: <b>Nafas</b> stations have the deepest record; <b>PurpleAir, AQICN, IQAir, Airly</b> begin tracking the day they joined the archive. Silenced sensors at the bottom carry their full pre-silence record.
       </div>
     </aside>
 
     <div>
       <div class="h-chart-wrap">
-        <div class="h-chart-title" id="chartTitle">PM2.5 — selected stations</div>
-        <div class="h-chart-sub" id="chartSub">Pick stations from the list to chart. Default selection is the three highest current readings with archive data.</div>
+        <div class="h-chart-title" id="chartTitle" data-i18n="history.chart.title">PM2.5 — selected stations</div>
+        <div class="h-chart-sub" id="chartSub" data-i18n="history.chart.sub">Pick stations from the list to chart. Default selection is the three highest current readings with archive data.</div>
         <div class="h-canvas-wrap">
           <canvas id="historyChart"></canvas>
           <div class="h-empty" id="emptyState" style="display:none">
-            <div class="big">No data yet for this selection.</div>
-            <div>Pick at least one station from the list, or change the time range.</div>
+            <div class="big" data-i18n="history.empty.big">No data yet for this selection.</div>
+            <div data-i18n="history.empty.body">Pick at least one station from the list, or change the time range.</div>
           </div>
         </div>
       </div>
@@ -228,29 +228,29 @@ body::before{
 
 <!-- ARCHIVE OF SILENCE -->
 <section class="section wrap" id="silence">
-  <div class="kicker">§ A — The Archive of Silence</div>
-  <h2>The sensors that <em>used to be listening</em>.</h2>
-  <p class="lede">Each card below shows a Bali sensor that reported daily readings until the day it went dark. The historical record is preserved here in full so the silence is not also a deletion.</p>
+  <div class="kicker" data-i18n="history.silence.kicker">§ A — The Archive of Silence</div>
+  <h2 data-i18n-html="history.silence.h">The sensors that <em>used to be listening</em>.</h2>
+  <p class="lede" data-i18n="history.silence.lede">Each card below shows a Bali sensor that reported daily readings until the day it went dark. The historical record is preserved here in full so the silence is not also a deletion.</p>
   <div class="archive" id="archiveGrid"></div>
 </section>
 
 <!-- POINTERS -->
 <section class="section wrap" id="pointers">
-  <div class="kicker">§ B — Related historical reading</div>
-  <h2>More <em>historical material</em>.</h2>
-  <p class="lede">Two other pages on this site also carry long-form historical readings.</p>
+  <div class="kicker" data-i18n="history.pointers.kicker">§ B — Related historical reading</div>
+  <h2 data-i18n-html="history.pointers.h">More <em>historical material</em>.</h2>
+  <p class="lede" data-i18n="history.pointers.lede">Two other pages on this site also carry long-form historical readings.</p>
   <div class="pointers">
-    <a class="pointer" href="/brief#history">
+    <a class="pointer" href="/brief#history" data-i18n-html="history.x.ptr.brief">
       <span class="lab">Evidence Brief · § VII</span>
       <b>Kerobokan — 469 days, daily median.</b>
       The fullest single-sensor record we have, drawn against the WHO guideline and the EPA bands. Now offline since 15 March 2026.
     </a>
-    <a class="pointer" href="/brief#sensors">
+    <a class="pointer" href="/brief#sensors" data-i18n-html="history.x.ptr.purpleair">
       <span class="lab">Evidence Brief · § VI</span>
       <b>The two PurpleAir continuities.</b>
       Klungkung and Jimbaran — together about two years of running data on the south and east coasts.
     </a>
-    <a class="pointer" href="/dispatches/1">
+    <a class="pointer" href="/dispatches/1" data-i18n-html="history.x.ptr.disp1">
       <span class="lab">Dispatch · I</span>
       <b>Two in three days, the daily guideline is exceeded.</b>
       The narrative reading of the Kerobokan record, with the regulatory context.
@@ -306,7 +306,7 @@ const OFFLINE_HISTORY = {"ubud_rozendal":{"name":"Ubud (Rozendal)","lat":-8.5303
 // it's still probed (returns stale data) and now shows up in the "Stale"
 // group with its 548-day backfill fully chartable from D1.
 const OFFLINE_OTHER = [
-  { id:'aq-umalas', name:'Umalas (Fusion) — Kerobokan', source:'AQICN', last:'2026-03-15', reason:'offline · last reported March 2026' }
+  { id:'aq-umalas', name:'Umalas (Fusion) — Kerobokan', source:'AQICN', last:'2026-03-15', reason:'offline · last reported March 2026', reasonKey:'history.x.reason.umalas' }
 ];
 
 // Dispatch palette for chart series — distinguishable across many overlays
@@ -314,6 +314,9 @@ const PALETTE = [
   '#8b1a1a', '#2d5e6f', '#5a2d6e', '#a7742e', '#355e3b',
   '#b85a1f', '#3a4cb4', '#7d3ea8', '#9a4f1e', '#1e6b53'
 ];
+
+// i18n helper for JS-rendered strings (mirrors window.I18N.t with English fallback).
+function T(key, fb){ return (window.I18N && window.I18N.t) ? window.I18N.t(key, fb) : fb; }
 
 let liveCatalog = [];        // from /api/live (current live readings; includes stale flag)
 let archiveCatalog = [];     // from /api/history `stations` field (legacy: nafas_stations)
@@ -395,9 +398,25 @@ async function loadCatalogs(){
   renderChart();
   renderArchiveCards();
   // Meta line: live count · chartable count · silenced count
-  const chartableLive = liveCatalog.filter(s => isArchived(s)).length;
-  document.getElementById('metaInfo').textContent =
-    `${liveCatalog.length} live · ${chartableLive} archived · ${Object.keys(OFFLINE_HISTORY).length + OFFLINE_OTHER.length} silenced`;
+  renderMetaInfo();
+}
+
+// Meta line ("N live · M archived · K silenced"). Stored counts so it can be
+// re-rendered on language change without re-fetching.
+let metaCounts = null;
+function renderMetaInfo(){
+  const el = document.getElementById('metaInfo');
+  if (!el) return;
+  if (!metaCounts){
+    const chartableLive = liveCatalog.filter(s => isArchived(s)).length;
+    metaCounts = {
+      live: liveCatalog.length,
+      archived: chartableLive,
+      silenced: Object.keys(OFFLINE_HISTORY).length + OFFLINE_OTHER.length
+    };
+  }
+  el.textContent =
+    `${metaCounts.live} ${T('history.x.metaLive','live')} · ${metaCounts.archived} ${T('history.x.metaArchived','archived')} · ${metaCounts.silenced} ${T('history.x.metaSilenced','silenced')}`;
 }
 
 // A live station is "archived" (chartable) if its id is in the archivedIds
@@ -454,8 +473,8 @@ function buildStationList(){
                  : (chartable ? '—' : 'no data');
     const cls = chartable ? '' : 'no-data';
     let subtitle = s.source || '';
-    if (s.offline) subtitle += ' · silenced';
-    else if (opts.staleHours) subtitle += ` · stale ${Math.round(opts.staleHours)}h`;
+    if (s.offline) subtitle += ' · ' + T('history.x.tag.silenced','silenced');
+    else if (opts.staleHours) subtitle += ` · ${T('history.x.tag.stale','stale')} ${Math.round(opts.staleHours)}h`;
     // Defense-in-depth: escape s.id when interpolating into HTML attributes.
     // IDs originate from external providers (IQAir, AQICN, PurpleAir, etc.)
     // and could in principle contain attribute-breaking characters. The
@@ -479,15 +498,15 @@ function buildStationList(){
   let idx = 0;
   let html = '';
   if (liveArchived.length){
-    html += groupHeader('Live · archived');
+    html += groupHeader(T('history.x.grp.archived','Live · archived'));
     liveArchived.forEach(s => { html += renderRow(s, idx); idx++; });
   }
   if (liveNoArch.length){
-    html += groupHeader('Live · archive starting');
+    html += groupHeader(T('history.x.grp.starting','Live · archive starting'));
     liveNoArch.forEach(s => { html += renderRow(s, idx); idx++; });
   }
   if (liveStale.length){
-    html += groupHeader('Stale · last reading > 24h');
+    html += groupHeader(T('history.x.grp.stale','Stale · last reading > 24h'));
     liveStale.forEach(s => {
       // Stale stations are chartable if they have D1 daily rollup
       html += renderRow(s, idx, { staleHours: +s.staleAgeHours || 0, forceArchived: isArchived(s) });
@@ -495,7 +514,7 @@ function buildStationList(){
     });
   }
   if (silenced.length){
-    html += groupHeader('Silenced');
+    html += groupHeader(T('history.x.grp.silenced','Silenced'));
     silenced.forEach(s => { html += renderRow(s, idx); idx++; });
   }
   tgt.innerHTML = html;
@@ -647,11 +666,14 @@ async function renderChart(){
     }
   });
 
+  const stationWord = datasets.length === 1
+    ? T('history.x.stationOne','station')
+    : T('history.x.stationMany','stations');
   document.getElementById('chartTitle').textContent =
-    `PM2.5 — ${datasets.length} station${datasets.length===1?'':'s'} · ${currentRange.toUpperCase()}`;
+    `PM2.5 — ${datasets.length} ${stationWord} · ${currentRange.toUpperCase()}`;
   document.getElementById('chartSub').textContent = currentRange === '24h'
-    ? `15-minute snapshots over the last 24 hours (WITA). WHO 24-hour guideline at 15 µg/m³.`
-    : `Hover any line for the daily mean. WHO twenty-four-hour guideline at 15 µg/m³.`;
+    ? T('history.x.chartSub24h','15-minute snapshots over the last 24 hours (WITA). WHO 24-hour guideline at 15 µg/m³.')
+    : T('history.x.chartSubDaily','Hover any line for the daily mean. WHO twenty-four-hour guideline at 15 µg/m³.');
 }
 
 function nameFor(id){
@@ -765,14 +787,14 @@ function renderArchiveCards(){
     el.innerHTML = `
       <div class="arc-lab">§ ${key.replace(/_/g,' ').toUpperCase()}</div>
       <div class="arc-name">${escapeHtml(s.name)}</div>
-      <div class="arc-sub">Reported from ${fmtDate(s.first)} → ${fmtDate(s.last)} · silent for ${days} days</div>
+      <div class="arc-sub">${T('history.x.card.reportedFrom','Reported from')} ${fmtDate(s.first)} → ${fmtDate(s.last)} · ${T('history.x.card.silentFor','silent for')} ${days} ${T('history.x.card.days','days')}</div>
       <div class="arc-stats">
-        <div class="s"><div class="k">Days of data</div><div class="v">${s.daily.length}</div></div>
-        <div class="s"><div class="k">Mean PM2.5</div><div class="v">${mean.toFixed(1)}</div></div>
-        <div class="s"><div class="k">Peak</div><div class="v">${peak.toFixed(0)}</div></div>
+        <div class="s"><div class="k">${T('history.x.card.daysOfData','Days of data')}</div><div class="v">${s.daily.length}</div></div>
+        <div class="s"><div class="k">${T('history.x.card.meanPm','Mean PM2.5')}</div><div class="v">${mean.toFixed(1)}</div></div>
+        <div class="s"><div class="k">${T('history.x.card.peak','Peak')}</div><div class="v">${peak.toFixed(0)}</div></div>
       </div>
       <canvas id="hsp-${key}"></canvas>
-      <a class="arc-act" data-key="${key}" href="#">Add to chart →</a>
+      <a class="arc-act" data-key="${key}" href="#">${T('history.silence.add','Add to chart')} →</a>
     `;
     grid.appendChild(el);
     drawSparkline('hsp-'+key, s.daily);
@@ -794,11 +816,11 @@ function renderArchiveCards(){
     el.innerHTML = `
       <div class="arc-lab">§ ${escapeHtml(s.name.toUpperCase())}</div>
       <div class="arc-name">${escapeHtml(s.name)}</div>
-      <div class="arc-sub">Last reading ${fmtDate(s.last)} · silent for ${days} days · ${escapeHtml(s.reason)}</div>
+      <div class="arc-sub">${T('history.x.card.lastReading','Last reading')} ${fmtDate(s.last)} · ${T('history.x.card.silentFor','silent for')} ${days} ${T('history.x.card.days','days')} · ${escapeHtml(s.reasonKey ? T(s.reasonKey, s.reason) : s.reason)}</div>
       <div class="arc-stats">
-        <div class="s"><div class="k">Source</div><div class="v" style="font-size:11px;font-family:'IBM Plex Mono',monospace">${escapeHtml(s.source)}</div></div>
-        <div class="s"><div class="k">Status</div><div class="v" style="color:var(--crimson)">Offline</div></div>
-        <div class="s"><div class="k">Archive</div><div class="v" style="font-size:11px;font-family:'IBM Plex Mono',monospace">No daily</div></div>
+        <div class="s"><div class="k">${T('history.x.card.source','Source')}</div><div class="v" style="font-size:11px;font-family:'IBM Plex Mono',monospace">${escapeHtml(s.source)}</div></div>
+        <div class="s"><div class="k">${T('history.x.card.status','Status')}</div><div class="v" style="color:var(--crimson)">${T('roll.offline','Offline')}</div></div>
+        <div class="s"><div class="k">${T('history.x.card.archive','Archive')}</div><div class="v" style="font-size:11px;font-family:'IBM Plex Mono',monospace">${T('history.x.card.noDaily','No daily')}</div></div>
       </div>
     `;
     grid.appendChild(el);
@@ -845,6 +867,18 @@ function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000)
 
 /* ---------- BOOT ---------- */
 loadCatalogs();
+
+// Re-render JS-generated strings when the language switches. The static
+// data-i18n nodes are handled by i18n.js itself; these are the dynamic ones
+// (group headers, meta line, chart title/sub, archive cards).
+document.addEventListener('i18n:changed', () => {
+  if (!liveCatalog.length && !archiveCatalog.length && !universalCatalog.length) return;
+  buildStationList();
+  syncCheckboxes();
+  renderChart();
+  renderArchiveCards();
+  renderMetaInfo();
+});
 </script>
 
 <script src="/js/i18n.js" defer></script>

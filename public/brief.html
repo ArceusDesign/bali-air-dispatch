@@ -432,7 +432,7 @@ body::before{
     <div class="masthead-top">
       <div data-i18n="mast.published">Published since April · 2026</div>
       <div>Bali Air Dispatch</div>
-      <div class="r">Anonymous, non-commercial</div>
+      <div class="r" data-i18n="mast.tagline">Anonymous, non-commercial</div>
     </div>
 
     <div class="nameplate">
@@ -459,8 +459,8 @@ body::before{
 
   <!-- BULLETIN BAR -->
   <div class="bulletin">
-    <div class="tag">Bulletin · Status</div>
-    <div>Kopernik sensor offline — 92% of its recorded days exceeded WHO guidelines</div>
+    <div class="tag" data-i18n="brief.x.bulTag">Bulletin · Status</div>
+    <div data-i18n="brief.x.bulMsg">Kopernik sensor offline — 92% of its recorded days exceeded WHO guidelines</div>
     <div class="when" id="bul-when">—</div>
   </div>
 
@@ -471,29 +471,29 @@ body::before{
       <h1 class="headline" data-i18n-html="brief.headline">After the landfill ban, <em>what happened to the air?</em></h1>
       <p class="deck" data-i18n-html="brief.deck">Bali's air is tracked today by a small network of independent sensors. This brief compiles what they show: PM2.5 readings across the island, how they compare to international guidelines, and where more monitoring would add value.</p>
       <div class="byline">
-        <span>Anonymous public-interest report</span>
-        <span>Data · OpenAQ, AQICN, PurpleAir, Airly, Nafas, IQAir</span>
-        <span>Correspondence · baliair@protonmail.com</span>
+        <span data-i18n="brief.x.byline1">Anonymous public-interest report</span>
+        <span data-i18n="brief.x.byline2">Data · OpenAQ, AQICN, PurpleAir, Airly, Nafas, IQAir</span>
+        <span data-i18n="brief.x.byline3">Correspondence · baliair@protonmail.com</span>
       </div>
     </div>
 
     <aside class="at-a-glance">
-      <div class="head">At a glance</div>
+      <div class="head" data-i18n="brief.x.glanceHead">At a glance</div>
       <div class="stat">
         <div class="n">92<small>%</small></div>
-        <div class="l">Days at the Kopernik / Ubud sensor that exceeded the WHO 24-hour PM2.5 guideline of 15 µg/m³ (n = 36, Oct 2025 – Mar 2026).</div>
+        <div class="l" data-i18n="brief.x.glance1">Days at the Kopernik / Ubud sensor that exceeded the WHO 24-hour PM2.5 guideline of 15 µg/m³ (n = 36, Oct 2025 – Mar 2026).</div>
       </div>
       <div class="stat">
         <div class="n">4.4<small>×</small></div>
-        <div class="l">The Kerobokan sensor's 469-day average (21.9 µg/m³) relative to the WHO 2021 annual guideline of 5 µg/m³.</div>
+        <div class="l" data-i18n="brief.x.glance2">The Kerobokan sensor's 469-day average (21.9 µg/m³) relative to the WHO 2021 annual guideline of 5 µg/m³.</div>
       </div>
       <div class="stat">
         <div class="n">1</div>
-        <div class="l">Official air quality station active in Bali, located in Sempidi, Badung Regency. The Denpasar / Lumintang station has been offline since August 2025.</div>
+        <div class="l" data-i18n="brief.x.glance3">Official air quality station active in Bali, located in Sempidi, Badung Regency. The Denpasar / Lumintang station has been offline since August 2025.</div>
       </div>
       <div class="stat">
         <div class="n">9</div>
-        <div class="l">Independent sensors now reporting Bali air quality across four platforms: IQAir, PurpleAir, Nafas, and AQICN.</div>
+        <div class="l" data-i18n="brief.x.glance4">Independent sensors now reporting Bali air quality across four platforms: IQAir, PurpleAir, Nafas, and AQICN.</div>
       </div>
     </aside>
   </section>
@@ -502,20 +502,20 @@ body::before{
   <section class="body" id="data">
 
     <div>
-      <div class="col-head">Context</div>
+      <div class="col-head" data-i18n="brief.x.colContext">Context</div>
       <p class="first" data-i18n-html="brief.body.p1">In April 2026, Bali's regulations on organic waste disposal were tightened. The Suwung landfill, long the island's primary waste endpoint, stopped accepting organic material. In the weeks that followed, residents across Ubud, Kerobokan, Canggu and Jimbaran reported a marked increase in the smell and visible presence of burning waste — particularly in the early morning and after dark.</p>
       <p data-i18n-html="brief.body.p2">This document sets out what the available air quality monitoring records can and cannot tell us about that change. It is written for journalists, researchers, and residents who want to verify the numbers themselves.</p>
     </div>
 
     <div>
-      <div class="col-head">What the record shows</div>
+      <div class="col-head" data-i18n="brief.x.colRecord">What the record shows</div>
       <h3 data-i18n-html="brief.body.h1">Two networks, seven sensors</h3>
       <p data-i18n-html="brief.body.p3">Public historical data exists for only a handful of Bali air quality monitors. The AQICN network preserves records for the Kerobokan community sensor (469 days, now offline) and the Denpasar government KLHK station (548 days, offline since August 2025). OpenAQ preserves CSVs for three additional private AirGradient sensors in Ubud, Balangan and Kopernik — all now offline as well.</p>
       <p data-i18n-html="brief.body.p4">Two PurpleAir units in Klungkung and Jimbaran are still reporting. Between them, they cover roughly two years of continuous data.</p>
     </div>
 
     <div>
-      <div class="col-head">Where coverage is thin</div>
+      <div class="col-head" data-i18n="brief.x.colCoverage">Where coverage is thin</div>
       <h3 data-i18n-html="brief.body.h2">The network has gaps</h3>
       <p data-i18n-html="brief.body.p5">Coverage across Bali is limited. There is no multi-year record for Sanur, North Bali, or East Bali. The current network is built from independently operated devices, voluntarily shared through platforms with open APIs.</p>
       <p data-i18n-html="brief.body.p6">This brief's purpose is to make that network legible — showing what it covers, what readings it has produced, and where additional sensors would close the largest gaps.</p>
@@ -524,26 +524,26 @@ body::before{
     <!-- PULL QUOTE -->
     <div class="pull">
       <blockquote data-i18n-html="brief.body.q1">"The sensors that exist tell a consistent story. Whether that story extends to the whole island is the question that more monitoring would answer."</blockquote>
-      <cite>— Section 04 · Historical Data</cite>
+      <cite data-i18n="brief.x.pullCite">— Section 04 · Historical Data</cite>
     </div>
   </section>
 
   <!-- TABLE STRIP -->
   <section class="strip" id="sensors">
     <div class="strip-head">
-      <div class="strip-title">The registry, as of today</div>
+      <div class="strip-title" data-i18n="brief.x.regTitle">The registry, as of today</div>
       <div class="strip-meta">17.iv.2026 · 12:27 WITA</div>
     </div>
     <table class="data-table">
-      <thead><tr><th>Sensor</th><th>Network</th><th>Area</th><th>Days of record</th><th>Mean PM2.5</th><th>% &gt; WHO 24h</th><th>Status</th></tr></thead>
+      <thead><tr><th data-i18n="brief.x.thSensor">Sensor</th><th data-i18n="brief.x.thNetwork">Network</th><th data-i18n="brief.x.thArea">Area</th><th data-i18n="brief.x.thDays">Days of record</th><th data-i18n="brief.x.thMean">Mean PM2.5</th><th data-i18n-html="brief.x.thPct">% &gt; WHO 24h</th><th data-i18n="brief.x.thStatus">Status</th></tr></thead>
       <tbody>
-        <tr><td>Kerobokan / Umalas</td><td>AQICN · GAIA</td><td>Canggu corridor</td><td class="n">469</td><td class="n c-red">21.9</td><td class="n c-red">68%</td><td><span class="tag-pill tag-red">Offline Mar 2026</span></td></tr>
-        <tr><td>Denpasar / KLHK</td><td>AQICN · Govt.</td><td>Central Denpasar</td><td class="n">548</td><td class="n c-ochre">15.1</td><td class="n">~40%</td><td><span class="tag-pill tag-red">Offline Aug 2025</span></td></tr>
-        <tr><td>Kopernik / Ubud</td><td>OpenAQ · AirGradient</td><td>Ubud</td><td class="n">36</td><td class="n c-red">31.2</td><td class="n c-red">92%</td><td><span class="tag-pill tag-red">Offline Mar 2026</span></td></tr>
-        <tr><td>Ubud / Rozendal</td><td>OpenAQ · AirGradient</td><td>Ubud</td><td class="n">167</td><td class="n c-ochre">17.8</td><td class="n c-ochre">57%</td><td><span class="tag-pill tag-red">Offline Dec 2025</span></td></tr>
-        <tr><td>Balangan</td><td>OpenAQ · AirGradient</td><td>Bukit peninsula</td><td class="n">26</td><td class="n c-ochre">15.4</td><td class="n">46%</td><td><span class="tag-pill tag-red">Offline Aug 2025</span></td></tr>
-        <tr><td>Klungkung</td><td>PurpleAir</td><td>East Bali</td><td class="n">687</td><td class="n">—</td><td class="n">—</td><td><span class="tag-pill tag-grey">Active</span></td></tr>
-        <tr><td>Jimbaran</td><td>PurpleAir</td><td>South coast</td><td class="n">728</td><td class="n">—</td><td class="n">—</td><td><span class="tag-pill tag-grey">Active</span></td></tr>
+        <tr><td>Kerobokan / Umalas</td><td>AQICN · GAIA</td><td data-i18n="brief.x.areaCanggu">Canggu corridor</td><td class="n">469</td><td class="n c-red">21.9</td><td class="n c-red">68%</td><td><span class="tag-pill tag-red" data-i18n="brief.x.offMar2026">Offline Mar 2026</span></td></tr>
+        <tr><td>Denpasar / KLHK</td><td>AQICN · Govt.</td><td data-i18n="brief.x.areaCentralDps">Central Denpasar</td><td class="n">548</td><td class="n c-ochre">15.1</td><td class="n">~40%</td><td><span class="tag-pill tag-red" data-i18n="brief.x.offAug2025">Offline Aug 2025</span></td></tr>
+        <tr><td>Kopernik / Ubud</td><td>OpenAQ · AirGradient</td><td>Ubud</td><td class="n">36</td><td class="n c-red">31.2</td><td class="n c-red">92%</td><td><span class="tag-pill tag-red" data-i18n="brief.x.offMar2026">Offline Mar 2026</span></td></tr>
+        <tr><td>Ubud / Rozendal</td><td>OpenAQ · AirGradient</td><td>Ubud</td><td class="n">167</td><td class="n c-ochre">17.8</td><td class="n c-ochre">57%</td><td><span class="tag-pill tag-red" data-i18n="brief.x.offDec2025">Offline Dec 2025</span></td></tr>
+        <tr><td>Balangan</td><td>OpenAQ · AirGradient</td><td data-i18n="brief.x.areaBukit">Bukit peninsula</td><td class="n">26</td><td class="n c-ochre">15.4</td><td class="n">46%</td><td><span class="tag-pill tag-red" data-i18n="brief.x.offAug2025">Offline Aug 2025</span></td></tr>
+        <tr><td>Klungkung</td><td>PurpleAir</td><td data-i18n="brief.x.areaEastBali">East Bali</td><td class="n">687</td><td class="n">—</td><td class="n">—</td><td><span class="tag-pill tag-grey" data-i18n="brief.x.statusActive">Active</span></td></tr>
+        <tr><td>Jimbaran</td><td>PurpleAir</td><td data-i18n="brief.x.areaSouthCoast">South coast</td><td class="n">728</td><td class="n">—</td><td class="n">—</td><td><span class="tag-pill tag-grey" data-i18n="brief.x.statusActive">Active</span></td></tr>
       </tbody>
     </table>
   </section>
@@ -553,43 +553,43 @@ body::before{
        ============================================================ -->
   <section class="chapter" id="collapse">
     <div class="chapter-head">
-      <div class="chapter-no">Ch. II</div>
-      <div class="chapter-title">The monitoring record</div>
-      <div class="chapter-meta">Filed · 17.iv.2026</div>
+      <div class="chapter-no" data-i18n="brief.x.ch2No">Ch. II</div>
+      <div class="chapter-title" data-i18n="brief.x.ch2Title">The monitoring record</div>
+      <div class="chapter-meta" data-i18n="brief.x.ch2Meta">Filed · 17.iv.2026</div>
     </div>
-    <p class="chapter-lede">Most of what we know about Bali's air comes from a small number of sensors, some of which are no longer active. This chapter summarises what they captured — and what is still reporting today.</p>
+    <p class="chapter-lede" data-i18n="brief.x.ch2Lede">Most of what we know about Bali's air comes from a small number of sensors, some of which are no longer active. This chapter summarises what they captured — and what is still reporting today.</p>
 
     <div class="figure-box">
       <div class="figure-grid">
         <div class="figure-cell">
           <div class="n">1</div>
-          <div class="l">Official air quality station active in Bali, located in Sempidi, Badung Regency.</div>
+          <div class="l" data-i18n="brief.x.ch2Fig1">Official air quality station active in Bali, located in Sempidi, Badung Regency.</div>
         </div>
         <div class="figure-cell">
           <div class="n">8<small>+ mo</small></div>
-          <div class="l">Since the Denpasar / Lumintang station went offline. Its 548-day archive is preserved at AQICN.</div>
+          <div class="l" data-i18n="brief.x.ch2Fig2">Since the Denpasar / Lumintang station went offline. Its 548-day archive is preserved at AQICN.</div>
         </div>
         <div class="figure-cell">
           <div class="n">4.4<small>M</small></div>
-          <div class="l">Residents of Bali, plus several million annual visitors, sharing the same air.</div>
+          <div class="l" data-i18n="brief.x.ch2Fig3">Residents of Bali, plus several million annual visitors, sharing the same air.</div>
         </div>
         <div class="figure-cell">
           <div class="n">9</div>
-          <div class="l">Independent sensors reporting today across four platforms: IQAir, PurpleAir, Nafas, and AQICN.</div>
+          <div class="l" data-i18n="brief.x.ch2Fig4">Independent sensors reporting today across four platforms: IQAir, PurpleAir, Nafas, and AQICN.</div>
         </div>
       </div>
     </div>
 
     <div class="chapter-body">
       <div>
-        <div class="runin">The Denpasar station, before silence</div>
-        <p>The Lumintang station in Denpasar recorded continuously for <strong>548 days</strong> from September 2023 to August 2025. Its final two days showed daily medians of <strong>45.7 and 75.0 µg/m³</strong> — firmly in the US EPA "Unhealthy" band — before the feed went quiet.</p>
-        <p>Its 548-day archive is preserved on AQICN and forms part of the historical record in this brief. The station is listed as under maintenance; its full daily dataset is downloadable from the archive link in Chapter IV.</p>
+        <div class="runin" data-i18n="brief.x.ch2RuninA">The Denpasar station, before silence</div>
+        <p data-i18n-html="brief.x.ch2pA1">The Lumintang station in Denpasar recorded continuously for <strong>548 days</strong> from September 2023 to August 2025. Its final two days showed daily medians of <strong>45.7 and 75.0 µg/m³</strong> — firmly in the US EPA "Unhealthy" band — before the feed went quiet.</p>
+        <p data-i18n-html="brief.x.ch2pA2">Its 548-day archive is preserved on AQICN and forms part of the historical record in this brief. The station is listed as under maintenance; its full daily dataset is downloadable from the archive link in Chapter IV.</p>
       </div>
       <div>
-        <div class="runin">The community sensor, before silence</div>
-        <p>The Kerobokan community sensor, part of the AQICN / GAIA network, recorded <strong>469 days</strong> from November 2024 to March 2026 and went offline on the 15th of March, two weeks before organic waste was banned from the Suwung landfill.</p>
-        <p>The sensor was privately owned. As a volunteer device, it may have simply failed, been moved, or been taken offline by its operator. The record it left behind — daily medians averaging <strong>21.9 µg/m³</strong>, with 68% of days exceeding the WHO 24-hour guideline — is the longest continuous, openly downloadable window we have into the air above south Bali.</p>
+        <div class="runin" data-i18n="brief.x.ch2RuninB">The community sensor, before silence</div>
+        <p data-i18n-html="brief.x.ch2pB1">The Kerobokan community sensor, part of the AQICN / GAIA network, recorded <strong>469 days</strong> from November 2024 to March 2026 and went offline on the 15th of March, two weeks before organic waste was banned from the Suwung landfill.</p>
+        <p data-i18n-html="brief.x.ch2pB2">The sensor was privately owned. As a volunteer device, it may have simply failed, been moved, or been taken offline by its operator. The record it left behind — daily medians averaging <strong>21.9 µg/m³</strong>, with 68% of days exceeding the WHO 24-hour guideline — is the longest continuous, openly downloadable window we have into the air above south Bali.</p>
       </div>
     </div>
   </section>
@@ -599,23 +599,23 @@ body::before{
        ============================================================ -->
   <section class="chapter" id="april">
     <div class="chapter-head">
-      <div class="chapter-no">Ch. III</div>
-      <div class="chapter-title">April, 2026</div>
-      <div class="chapter-meta">Regulation · Waste · Air</div>
+      <div class="chapter-no" data-i18n="brief.x.ch3No">Ch. III</div>
+      <div class="chapter-title" data-i18n="brief.x.ch3Title">April, 2026</div>
+      <div class="chapter-meta" data-i18n="brief.x.ch3Meta">Regulation · Waste · Air</div>
     </div>
-    <p class="chapter-lede">The regulation reflects a legitimate environmental goal. This chapter looks at how it intersected with the air quality monitoring record and what the available data shows in the months that followed.</p>
+    <p class="chapter-lede" data-i18n="brief.x.ch3Lede">The regulation reflects a legitimate environmental goal. This chapter looks at how it intersected with the air quality monitoring record and what the available data shows in the months that followed.</p>
 
     <div class="chapter-body">
       <div>
-        <p>On the first of April, Denpasar banned organic waste from the Suwung landfill — Bali's largest waste endpoint — as part of a plan to close the site by August 2026. The stated aim is a legitimate environmental objective: push households toward source-separation and reduce landfill dependency.</p>
-        <p>Implementation has outpaced infrastructure. Without adequate composting or collection alternatives in place, residents have turned in some cases to burning waste in backyards, roadsides, and ravines, and in others to dumping it in the rivers that feed the west-coast catchments.</p>
-        <p>Denpasar cleanup crews have reportedly removed <strong>approximately seven tons of waste from rivers daily</strong>, according to local reporting citing the city's Public Works office (PUPR). What burns at roadside does not appear in any such tally. It appears only in the air.</p>
+        <p data-i18n="brief.x.ch3pA1">On the first of April, Denpasar banned organic waste from the Suwung landfill — Bali's largest waste endpoint — as part of a plan to close the site by August 2026. The stated aim is a legitimate environmental objective: push households toward source-separation and reduce landfill dependency.</p>
+        <p data-i18n="brief.x.ch3pA2">Implementation has outpaced infrastructure. Without adequate composting or collection alternatives in place, residents have turned in some cases to burning waste in backyards, roadsides, and ravines, and in others to dumping it in the rivers that feed the west-coast catchments.</p>
+        <p data-i18n-html="brief.x.ch3pA3">Denpasar cleanup crews have reportedly removed <strong>approximately seven tons of waste from rivers daily</strong>, according to local reporting citing the city's Public Works office (PUPR). What burns at roadside does not appear in any such tally. It appears only in the air.</p>
       </div>
       <div>
-        <p>Mixed-waste burning releases fine particulate matter, dioxins, furans, polycyclic aromatic hydrocarbons, and heavy metals. PM2.5 — particles smaller than 2.5 micrometers — penetrates deep into the lungs and crosses into the bloodstream. Long-term exposure is associated with respiratory and cardiovascular disease and with measurable reductions in life expectancy.</p>
-        <p>The point is straightforward: understanding the air-quality effect of a major waste-management transition — in real time, as it unfolds — requires sensors on the ground. <strong>Adding more monitors now would mean having a record to look back on.</strong></p>
-        <p class="runin">Cited reporting</p>
-        <p style="font-size:14px;color:var(--ink-soft)">
+        <p data-i18n="brief.x.ch3pB1">Mixed-waste burning releases fine particulate matter, dioxins, furans, polycyclic aromatic hydrocarbons, and heavy metals. PM2.5 — particles smaller than 2.5 micrometers — penetrates deep into the lungs and crosses into the bloodstream. Long-term exposure is associated with respiratory and cardiovascular disease and with measurable reductions in life expectancy.</p>
+        <p data-i18n-html="brief.x.ch3pB2">The point is straightforward: understanding the air-quality effect of a major waste-management transition — in real time, as it unfolds — requires sensors on the ground. <strong>Adding more monitors now would mean having a record to look back on.</strong></p>
+        <p class="runin" data-i18n="brief.x.ch3RuninCited">Cited reporting</p>
+        <p style="font-size:14px;color:var(--ink-soft)" data-i18n-html="brief.x.ch3Cited">
           <a style="color:var(--crimson);text-decoration:none;border-bottom:1px dotted var(--crimson)" href="https://heybali.info/news/balis-organic-waste-ban-backfires-trash-burning-rises-rivers-fill-with-7-tons-of-daily-waste/" target="_blank">Hey Bali News</a> · <em>Bali's Organic Waste Ban Backfires · April 2026</em><br>
           <a style="color:var(--crimson);text-decoration:none;border-bottom:1px dotted var(--crimson)" href="https://bali.live/p/no-sorting-no-collection-how-balis-waste-collection-rules-changed-from-1-april" target="_blank">Bali.live</a> · <em>No Sorting, No Collection · April 2026</em>
         </p>
@@ -628,11 +628,11 @@ body::before{
        ============================================================ -->
   <section class="chapter" id="history">
     <div class="chapter-head">
-      <div class="chapter-no">Ch. IV</div>
-      <div class="chapter-title">The long record</div>
-      <div class="chapter-meta">Five sensors · Two networks</div>
+      <div class="chapter-no" data-i18n="brief.x.ch4No">Ch. IV</div>
+      <div class="chapter-title" data-i18n="brief.x.ch4Title">The long record</div>
+      <div class="chapter-meta" data-i18n="brief.x.ch4Meta">Five sensors · Two networks</div>
     </div>
-    <p class="chapter-lede">What can be shown, with a downloadable receipt attached to every number.</p>
+    <p class="chapter-lede" data-i18n="brief.x.ch4Lede">What can be shown, with a downloadable receipt attached to every number.</p>
 
     <!-- ============================================================
          FIGURE · Kerobokan 469-day daily median chart (Nov '24 – Mar '26)
@@ -641,8 +641,8 @@ body::before{
     <figure class="long-chart" aria-label="Kerobokan daily median PM2.5, November 2024 through March 2026">
       <figcaption class="lc-head">
         <span class="lc-no">Fig. IV-a</span>
-        <span class="lc-title">Kerobokan · Daily median PM2.5 · Nov 2024 – Mar 2026</span>
-        <span class="lc-meta">469 days · mean 21.9 µg/m³ · 4.4× WHO · sensor offline 15 Mar 2026</span>
+        <span class="lc-title" data-i18n="brief.x.ch4FigTitle">Kerobokan · Daily median PM2.5 · Nov 2024 – Mar 2026</span>
+        <span class="lc-meta" data-i18n="brief.x.ch4FigMeta">469 days · mean 21.9 µg/m³ · 4.4× WHO · sensor offline 15 Mar 2026</span>
       </figcaption>
       <svg viewBox="0 0 720 260" preserveAspectRatio="none" aria-hidden="true" class="lc-svg">
         <defs>
@@ -664,7 +664,7 @@ body::before{
 
         <!-- WHO 15 µg/m³ guideline line -->
         <line x1="0" y1="156" x2="720" y2="156" stroke="#14110d" stroke-dasharray="3 3" stroke-width="1" opacity=".6"/>
-        <text x="8" y="152" font-family="IBM Plex Mono, monospace" font-size="10" fill="#14110d">WHO 15 µg/m³ · annual</text>
+        <text x="8" y="152" font-family="IBM Plex Mono, monospace" font-size="10" fill="#14110d" data-i18n="brief.x.ch4SvgWho">WHO 15 µg/m³ · annual</text>
 
         <!-- Month x-axis ticks every ~41.6px = 17 months Nov 24 → Mar 26 -->
         <g font-family="IBM Plex Mono, monospace" font-size="9" fill="#6a635a">
@@ -703,9 +703,9 @@ body::before{
         <!-- Offline silence block — rightmost slice from 15 Mar 2026 -->
         <rect x="700" y="0" width="20" height="260" fill="url(#lcHatch)"/>
         <line x1="700" y1="0" x2="700" y2="260" stroke="#8b1a1a" stroke-width="1.4"/>
-        <text x="716" y="14" font-family="IBM Plex Mono, monospace" font-size="9" fill="#8b1a1a" text-anchor="end" font-weight="700">SILENT · 15.iii</text>
+        <text x="716" y="14" font-family="IBM Plex Mono, monospace" font-size="9" fill="#8b1a1a" text-anchor="end" font-weight="700" data-i18n="brief.x.ch4SvgSilent">SILENT · 15.iii</text>
       </svg>
-      <figcaption class="lc-foot">
+      <figcaption class="lc-foot" data-i18n-html="brief.x.ch4FigFoot">
         Daily-median PM2.5 at the Kerobokan (Umalas Fusion) community sensor, Nov 2024 – 15 Mar 2026.
         Horizontal rule marks the <abbr title="World Health Organization">WHO</abbr> 15 µg/m³ annual guideline.
         Dashed right band is the silence after the sensor went offline. Source: <a href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank" rel="noopener">AQICN / GAIA</a>.
@@ -716,15 +716,15 @@ body::before{
       <article class="dossier">
         <div class="d-head">
           <div class="d-name">Denpasar · KLHK</div>
-          <div class="d-flag">Offline Aug 2025</div>
+          <div class="d-flag" data-i18n="brief.x.offAug2025">Offline Aug 2025</div>
         </div>
         <div class="d-body">
-          <p><span class="k">548 days</span> of daily medians, Sep 2023 — Aug 2025. Government-operated, central Denpasar.</p>
-          <p>Mean daily PM2.5 <strong>15.1 µg/m³</strong> · <strong>3.0×</strong> WHO annual guideline · roughly 40% of days exceeded the 24-hour guideline.</p>
+          <p data-i18n-html="brief.x.dosDpsP1"><span class="k">548 days</span> of daily medians, Sep 2023 — Aug 2025. Government-operated, central Denpasar.</p>
+          <p data-i18n-html="brief.x.dosDpsP2">Mean daily PM2.5 <strong>15.1 µg/m³</strong> · <strong>3.0×</strong> WHO annual guideline · roughly 40% of days exceeded the 24-hour guideline.</p>
           <dl>
-            <dt>Final two days</dt><dd>45.7 / 75.0 µg/m³</dd>
-            <dt>Status</dt><dd>Under maintenance</dd>
-            <dt>Archive</dt><dd><a style="color:var(--crimson)" href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" target="_blank">aqicn.org →</a></dd>
+            <dt data-i18n="brief.x.dtFinalTwo">Final two days</dt><dd>45.7 / 75.0 µg/m³</dd>
+            <dt data-i18n="brief.x.dtStatus">Status</dt><dd data-i18n="brief.x.ddUnderMaint">Under maintenance</dd>
+            <dt data-i18n="brief.x.dtArchive">Archive</dt><dd><a style="color:var(--crimson)" href="https://aqicn.org/station/indonesia-dauh-puri-kaja-denpasar-lumintang/" target="_blank">aqicn.org →</a></dd>
           </dl>
         </div>
       </article>
@@ -732,15 +732,15 @@ body::before{
       <article class="dossier">
         <div class="d-head">
           <div class="d-name">Kerobokan · GAIA</div>
-          <div class="d-flag">Offline Mar 2026</div>
+          <div class="d-flag" data-i18n="brief.x.offMar2026">Offline Mar 2026</div>
         </div>
         <div class="d-body">
-          <p><span class="k">469 days</span> of daily medians, Nov 2024 — Mar 2026. Community-operated, Canggu corridor.</p>
-          <p>Mean daily PM2.5 <strong>21.9 µg/m³</strong> · <strong>4.4×</strong> WHO annual · <strong>68%</strong> of days exceeded the 24-hour guideline.</p>
+          <p data-i18n-html="brief.x.dosKeroP1"><span class="k">469 days</span> of daily medians, Nov 2024 — Mar 2026. Community-operated, Canggu corridor.</p>
+          <p data-i18n-html="brief.x.dosKeroP2">Mean daily PM2.5 <strong>21.9 µg/m³</strong> · <strong>4.4×</strong> WHO annual · <strong>68%</strong> of days exceeded the 24-hour guideline.</p>
           <dl>
-            <dt>Overlap</dt><dd>1.1–1.7× Denpasar</dd>
-            <dt>Stopped</dt><dd>15 March 2026</dd>
-            <dt>Archive</dt><dd><a style="color:var(--crimson)" href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank">aqicn.org →</a></dd>
+            <dt data-i18n="brief.x.dtOverlap">Overlap</dt><dd>1.1–1.7× Denpasar</dd>
+            <dt data-i18n="brief.x.dtStopped">Stopped</dt><dd>15 March 2026</dd>
+            <dt data-i18n="brief.x.dtArchive">Archive</dt><dd><a style="color:var(--crimson)" href="https://aqicn.org/station/indonesia-kerobokan-umalas-fusion-bali/" target="_blank">aqicn.org →</a></dd>
           </dl>
         </div>
       </article>
@@ -748,15 +748,15 @@ body::before{
       <article class="dossier">
         <div class="d-head">
           <div class="d-name">Kopernik · Ubud</div>
-          <div class="d-flag">Offline Mar 2026</div>
+          <div class="d-flag" data-i18n="brief.x.offMar2026">Offline Mar 2026</div>
         </div>
         <div class="d-body">
-          <p><span class="k">36 days</span> merged from two co-located AirGradient units, Oct 2025 — Mar 2026. Surfaced via OpenAQ.</p>
-          <p>Mean daily PM2.5 <strong>31.2 µg/m³</strong> · <strong>6.2×</strong> WHO annual · <strong>92%</strong> of days exceeded the 24-hour guideline.</p>
+          <p data-i18n-html="brief.x.dosKopP1"><span class="k">36 days</span> merged from two co-located AirGradient units, Oct 2025 — Mar 2026. Surfaced via OpenAQ.</p>
+          <p data-i18n-html="brief.x.dosKopP2">Mean daily PM2.5 <strong>31.2 µg/m³</strong> · <strong>6.2×</strong> WHO annual · <strong>92%</strong> of days exceeded the 24-hour guideline.</p>
           <dl>
-            <dt>Peak</dt><dd>111 µg/m³ · 26 Feb 2026</dd>
-            <dt>Network</dt><dd>OpenAQ / AirGradient</dd>
-            <dt>Archive</dt><dd><a style="color:var(--crimson)" href="https://explore.openaq.org/locations?bbox=114.4,-8.85,115.7,-8.1" target="_blank">openaq.org →</a></dd>
+            <dt data-i18n="brief.x.dtPeak">Peak</dt><dd>111 µg/m³ · 26 Feb 2026</dd>
+            <dt data-i18n="brief.x.dtNetwork">Network</dt><dd>OpenAQ / AirGradient</dd>
+            <dt data-i18n="brief.x.dtArchive">Archive</dt><dd><a style="color:var(--crimson)" href="https://explore.openaq.org/locations?bbox=114.4,-8.85,115.7,-8.1" target="_blank">openaq.org →</a></dd>
           </dl>
         </div>
       </article>
@@ -764,14 +764,14 @@ body::before{
       <article class="dossier">
         <div class="d-head">
           <div class="d-name">Ubud · Rozendal</div>
-          <div class="d-flag">Offline Dec 2025</div>
+          <div class="d-flag" data-i18n="brief.x.offDec2025">Offline Dec 2025</div>
         </div>
         <div class="d-body">
-          <p><span class="k">167 days</span>, Jun — Dec 2025. AirGradient unit near central Ubud; OpenAQ.</p>
-          <p>Mean daily PM2.5 <strong>17.8 µg/m³</strong> · <strong>3.6×</strong> WHO annual · <strong>57%</strong> of days exceeded the 24-hour guideline.</p>
+          <p data-i18n-html="brief.x.dosRozP1"><span class="k">167 days</span>, Jun — Dec 2025. AirGradient unit near central Ubud; OpenAQ.</p>
+          <p data-i18n-html="brief.x.dosRozP2">Mean daily PM2.5 <strong>17.8 µg/m³</strong> · <strong>3.6×</strong> WHO annual · <strong>57%</strong> of days exceeded the 24-hour guideline.</p>
           <dl>
-            <dt>Peak</dt><dd>69.5 µg/m³ · 22 Jun 2025</dd>
-            <dt>Network</dt><dd>OpenAQ / AirGradient</dd>
+            <dt data-i18n="brief.x.dtPeak">Peak</dt><dd>69.5 µg/m³ · 22 Jun 2025</dd>
+            <dt data-i18n="brief.x.dtNetwork">Network</dt><dd>OpenAQ / AirGradient</dd>
           </dl>
         </div>
       </article>
@@ -779,14 +779,14 @@ body::before{
       <article class="dossier">
         <div class="d-head">
           <div class="d-name">Balangan</div>
-          <div class="d-flag">Offline Aug 2025</div>
+          <div class="d-flag" data-i18n="brief.x.offAug2025">Offline Aug 2025</div>
         </div>
         <div class="d-body">
-          <p><span class="k">26 days</span>, Jul — Aug 2025. Bukit peninsula. Sensor went offline after three weeks.</p>
-          <p>Mean daily PM2.5 <strong>15.4 µg/m³</strong> · <strong>46%</strong> of days exceeded the 24-hour guideline.</p>
+          <p data-i18n-html="brief.x.dosBalP1"><span class="k">26 days</span>, Jul — Aug 2025. Bukit peninsula. Sensor went offline after three weeks.</p>
+          <p data-i18n-html="brief.x.dosBalP2">Mean daily PM2.5 <strong>15.4 µg/m³</strong> · <strong>46%</strong> of days exceeded the 24-hour guideline.</p>
           <dl>
-            <dt>Network</dt><dd>OpenAQ / AirGradient</dd>
-            <dt>Note</dt><dd>Shortest record; limited inference</dd>
+            <dt data-i18n="brief.x.dtNetwork">Network</dt><dd>OpenAQ / AirGradient</dd>
+            <dt data-i18n="brief.x.dtNote">Note</dt><dd data-i18n="brief.x.ddShortest">Shortest record; limited inference</dd>
           </dl>
         </div>
       </article>
@@ -794,19 +794,19 @@ body::before{
       <article class="dossier">
         <div class="d-head">
           <div class="d-name">Jimbaran / Klungkung</div>
-          <div class="d-flag" style="color:var(--ink-faint)">Still reporting</div>
+          <div class="d-flag" style="color:var(--ink-faint)" data-i18n="brief.x.stillReporting">Still reporting</div>
         </div>
         <div class="d-body">
-          <p><span class="k">687 / 728 days</span> and counting. Two PurpleAir community units on the southern coast and in East Bali respectively.</p>
-          <p>Klungkung shows a pattern similar to Kerobokan — moderate baseline with daily peaks reaching "Unhealthy for Sensitive Groups." Jimbaran's coastal readings stay close to background.</p>
+          <p data-i18n-html="brief.x.dosJimP1"><span class="k">687 / 728 days</span> and counting. Two PurpleAir community units on the southern coast and in East Bali respectively.</p>
+          <p data-i18n="brief.x.dosJimP2">Klungkung shows a pattern similar to Kerobokan — moderate baseline with daily peaks reaching "Unhealthy for Sensitive Groups." Jimbaran's coastal readings stay close to background.</p>
           <dl>
-            <dt>Live</dt><dd><a style="color:var(--crimson)" href="/">baliair · monitor →</a></dd>
+            <dt data-i18n="brief.x.dtLive">Live</dt><dd data-i18n-html="brief.x.ddLiveLink"><a style="color:var(--crimson)" href="/">baliair · monitor →</a></dd>
           </dl>
         </div>
       </article>
     </div>
 
-    <p style="margin-top:22px;font-size:14.5px;color:var(--ink-soft);max-width:880px">
+    <p style="margin-top:22px;font-size:14.5px;color:var(--ink-soft);max-width:880px" data-i18n="brief.x.ch4Close">
       Even taken together, these five historical records and live sensors cover a limited slice of Bali. There is no multi-year record for Sanur, Amed, North Bali, or the eastern regencies. The longest continuous dataset — Kerobokan, fifteen months — shows a consistent pattern above WHO guidelines. Whether that pattern holds across the whole island is the question that a broader network would answer.
     </p>
   </section>
@@ -816,25 +816,25 @@ body::before{
        ============================================================ -->
   <section class="chapter" id="context">
     <div class="chapter-head">
-      <div class="chapter-no">Ch. V</div>
-      <div class="chapter-title">The gap, in context</div>
-      <div class="chapter-meta">Stations · per million residents</div>
+      <div class="chapter-no" data-i18n="brief.x.ch5No">Ch. V</div>
+      <div class="chapter-title" data-i18n="brief.x.ch5Title">The gap, in context</div>
+      <div class="chapter-meta" data-i18n="brief.x.ch5Meta">Stations · per million residents</div>
     </div>
-    <p class="chapter-lede">Bali's public air-quality infrastructure, measured against the places it is most frequently compared to.</p>
+    <p class="chapter-lede" data-i18n="brief.x.ch5Lede">Bali's public air-quality infrastructure, measured against the places it is most frequently compared to.</p>
 
     <table class="cmp-table">
       <thead>
-        <tr><th>Jurisdiction</th><th>Government AQ stations</th><th>Population</th><th>Stations per million</th></tr>
+        <tr><th data-i18n="brief.x.cmpJurisdiction">Jurisdiction</th><th data-i18n="brief.x.cmpGovStations">Government AQ stations</th><th data-i18n="brief.x.cmpPopulation">Population</th><th data-i18n="brief.x.cmpPerMillion">Stations per million</th></tr>
       </thead>
       <tbody>
-        <tr class="highlight"><td><strong>Bali (today)</strong></td><td class="big">1</td><td>4.4 million</td><td class="big">0.2</td></tr>
-        <tr><td>Hong Kong</td><td class="big">18</td><td>7.5 million</td><td class="big">2.4</td></tr>
-        <tr><td>Bangkok, Thailand</td><td class="big">~70</td><td>10.7 million</td><td class="big">6.5</td></tr>
-        <tr><td>London, UK</td><td class="big">100+</td><td>9.0 million</td><td class="big">11+</td></tr>
+        <tr class="highlight"><td data-i18n-html="brief.x.cmpBaliToday"><strong>Bali (today)</strong></td><td class="big">1</td><td data-i18n="brief.x.cmpPop44">4.4 million</td><td class="big">0.2</td></tr>
+        <tr><td>Hong Kong</td><td class="big">18</td><td data-i18n="brief.x.cmpPop75">7.5 million</td><td class="big">2.4</td></tr>
+        <tr><td data-i18n="brief.x.cmpBangkok">Bangkok, Thailand</td><td class="big">~70</td><td data-i18n="brief.x.cmpPop107">10.7 million</td><td class="big">6.5</td></tr>
+        <tr><td data-i18n="brief.x.cmpLondon">London, UK</td><td class="big">100+</td><td data-i18n="brief.x.cmpPop90">9.0 million</td><td class="big">11+</td></tr>
       </tbody>
     </table>
 
-    <p style="max-width:880px;margin-top:18px;font-size:14.5px;color:var(--ink-soft)">
+    <p style="max-width:880px;margin-top:18px;font-size:14.5px;color:var(--ink-soft)" data-i18n="brief.x.ch5Close">
       The gap in coverage is not marginal. To reach even Hong Kong's density, Bali would need approximately eleven additional public government-class stations. To reach Bangkok's, roughly twenty-eight. At London's ratio, fifty.
     </p>
   </section>
@@ -844,28 +844,28 @@ body::before{
        ============================================================ -->
   <section class="chapter" id="help">
     <div class="chapter-head">
-      <div class="chapter-no">Ch. VI</div>
-      <div class="chapter-title">What would help</div>
-      <div class="chapter-meta">Four actions</div>
+      <div class="chapter-no" data-i18n="brief.x.ch6No">Ch. VI</div>
+      <div class="chapter-title" data-i18n="brief.x.ch6Title">What would help</div>
+      <div class="chapter-meta" data-i18n="brief.x.ch6Meta">Four actions</div>
     </div>
-    <p class="chapter-lede">Four practical, low-cost steps that any actor — foundation, business, community group, or individual — could take or fund today.</p>
+    <p class="chapter-lede" data-i18n="brief.x.ch6Lede">Four practical, low-cost steps that any actor — foundation, business, community group, or individual — could take or fund today.</p>
 
     <ol class="demands">
       <li>
-        <strong>Restore the Denpasar monitoring station.</strong>
-        <p>The Lumintang station produced nearly two years of continuous data before going offline in August 2025. Restoring or replacing it would add a valuable anchor point to the network — central Denpasar is the island's most densely populated area.</p>
+        <strong data-i18n="brief.x.help1Title">Restore the Denpasar monitoring station.</strong>
+        <p data-i18n="brief.x.help1Body">The Lumintang station produced nearly two years of continuous data before going offline in August 2025. Restoring or replacing it would add a valuable anchor point to the network — central Denpasar is the island's most densely populated area.</p>
       </li>
       <li>
-        <strong>Deploy community sensors in the gaps.</strong>
-        <p>Low-cost open-hardware monitors such as AirGradient (US$195) and PurpleAir (US$229) can fill coverage gaps immediately. Five to ten units across populated Bali would transform visibility at a total cost well under US$3,000.</p>
+        <strong data-i18n="brief.x.help2Title">Deploy community sensors in the gaps.</strong>
+        <p data-i18n="brief.x.help2Body">Low-cost open-hardware monitors such as AirGradient (US$195) and PurpleAir (US$229) can fill coverage gaps immediately. Five to ten units across populated Bali would transform visibility at a total cost well under US$3,000.</p>
       </li>
       <li>
-        <strong>Share whatever monitoring exists, openly.</strong>
-        <p>Any operational sensor — hospitality, industrial, community, or official — that feeds an open platform such as OpenAQ, AQICN, or PurpleAir immediately adds to the public record. The cost is near-zero; the benefit is a shared dataset everyone can verify.</p>
+        <strong data-i18n="brief.x.help3Title">Share whatever monitoring exists, openly.</strong>
+        <p data-i18n="brief.x.help3Body">Any operational sensor — hospitality, industrial, community, or official — that feeds an open platform such as OpenAQ, AQICN, or PurpleAir immediately adds to the public record. The cost is near-zero; the benefit is a shared dataset everyone can verify.</p>
       </li>
       <li>
-        <strong>Keep watching through the waste transition.</strong>
-        <p>As Bali's waste infrastructure evolves, live air-quality data is the clearest feedback available. More sensors mean a faster signal — and a record that will be useful long after the transition is complete.</p>
+        <strong data-i18n="brief.x.help4Title">Keep watching through the waste transition.</strong>
+        <p data-i18n="brief.x.help4Body">As Bali's waste infrastructure evolves, live air-quality data is the clearest feedback available. More sensors mean a faster signal — and a record that will be useful long after the transition is complete.</p>
       </li>
     </ol>
   </section>
@@ -875,8 +875,8 @@ body::before{
        ============================================================ -->
   <div class="call">
     <div class="cta">
-      <a class="primary" href="/">Open the Live Monitor →</a>
-      <a href="/appendix">Methodology &amp; Appendix →</a>
+      <a class="primary" href="/" data-i18n="brief.x.ctaMonitor">Open the Live Monitor →</a>
+      <a href="/appendix" data-i18n="brief.x.ctaAppendix">Methodology &amp; Appendix →</a>
     </div>
   </div>
 
