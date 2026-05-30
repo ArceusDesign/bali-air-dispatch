@@ -811,7 +811,7 @@
   "setup.x.rowBestFor": "Cocok untuk",
   "setup.x.agTag": "Thailand · Perangkat keras terbuka",
   "setup.x.agName": "AirGradient <em>· Sumber terbuka · regional</em>",
-  "setup.x.agPrice": "USD 165–249 · kit rakit sendiri atau terpasang",
+  "setup.x.agPrice": "USD 125–225 · kit rakit sendiri atau terpasang",
   "setup.x.agSummary": "Perusahaan yang berbasis di Chiang Mai dan membuat monitor kualitas udara sumber terbuka khusus untuk Asia Tenggara. Perangkat kerasnya paling mudah didapat dari kawasan ini (tanpa pengiriman lintas Pasifik) dan datanya mengalir ke OpenAQ — agregator yang sepenuhnya publik dan berkelas-riset. Berdasarkan harga-per-polutan dan keterbukaan, ini adalah pilihan terkuat untuk Bali.",
   "setup.x.agPublic": "Ya · OpenAQ + peta global AirGradient",
   "setup.x.agRefresh": "10 menit",
@@ -884,5 +884,7 @@
   "setup.x.step5P": "Pembacaan pertama langsung muncul di peta platform itu sendiri. Dalam satu siklus pembaruan situs ini (5 menit), data itu akan muncul di sini juga. Kami tidak menyaring atau menyetujui; jika sensor Anda ada di jaringan publik, ia ada di peta ini.",
   "setup.x.afterH": "Apa yang terjadi setelahnya.",
   "setup.x.afterP1": "Pembacaan per jam dan harian sensor Anda menjadi bagian dari rekam jejak publik. Data itu dapat diunduh dari platform sumber sebagai CSV mentah, dapat ditelusuri melalui arsip situs ini, dan dapat dikutip dalam laporan apa pun di masa depan tentang udara Bali. Kami tidak memiliki datanya; Anda yang memilikinya.",
-  "setup.x.afterP2": "Jika sensor Anda mati selama lebih dari dua minggu, ia akan muncul di <a href=\"/\" style=\"color:var(--ink);border-bottom:1px solid var(--hairline)\">Arsip Kepadaman</a> di beranda alih-alih menghilang tanpa rekam jejak. Pembacaan historisnya tetap tersimpan."
+  "setup.x.afterP2": "Jika sensor Anda mati selama lebih dari dua minggu, ia akan muncul di <a href=\"/\" style=\"color:var(--ink);border-bottom:1px solid var(--hairline)\">Arsip Kepadaman</a> di beranda alih-alih menghilang tanpa rekam jejak. Pembacaan historisnya tetap tersimpan.",
+  "nav.community": "Komunitas ↗",
+  "foot.community": "Bergabung jaringan WhatsApp →"
 }
