@@ -839,7 +839,7 @@ async function loadLive(){
   }catch(e){
     console.warn('live fetch failed',e);
     document.getElementById('nav-status').textContent='LIVE UNREACHABLE';
-    document.getElementById('mt-ts').textContent='Live unreachable';
+    document.getElementById('mt-ts').textContent=(window.I18N&&window.I18N.t)?window.I18N.t('home.liveUnreachable','Live unreachable'):'Live unreachable';
     const tb=document.getElementById('mt-ts2'); if(tb) tb.textContent='unreachable';
     renderAll(new Date().toISOString());
   }
@@ -935,7 +935,7 @@ function renderAll(ts){
   document.getElementById('hud-worst').textContent = worst.pm25>0 ? worst.pm25.toFixed(1) : '—';
 
   document.getElementById('nav-status').textContent = 'LIVE · '+liveStations.length+' SENSORS · '+offlineList.length+' OFFLINE';
-  const syncLabel = 'Synced '+new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA';
+  const syncLabel = ((window.I18N&&window.I18N.t)?window.I18N.t('home.synced','Synced'):'Synced')+' '+new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA';
   document.getElementById('mt-ts').textContent = syncLabel;
   const tb=document.getElementById('mt-ts2'); if(tb) tb.textContent=new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA';
 
@@ -1819,7 +1819,8 @@ table.roll th.c, table.roll td.c{text-align:center}
   // 1. Dynamic date in masthead-top center
   function updateDate(){
     const d = new Date();
-    const fmt = d.toLocaleDateString('en-GB',{
+    const loc = (window.I18N && window.I18N.lang && window.I18N.lang()==='id') ? 'id-ID' : 'en-GB';
+    const fmt = d.toLocaleDateString(loc,{
       weekday:'long', day:'numeric', month:'long', year:'numeric'
     }).toUpperCase();
     const el = document.getElementById('mt-date');
@@ -1827,6 +1828,7 @@ table.roll th.c, table.roll td.c{text-align:center}
   }
   updateDate();
   setInterval(updateDate, 60*1000);
+  document.addEventListener('i18n:changed', updateDate);
 
   // 2. Collapsible map cards (default expanded on both desktop and mobile)
   window.toggleCard = function(headerEl){

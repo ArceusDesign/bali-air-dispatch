@@ -279,5 +279,7 @@
   "worst.now": "Sekarang",
   "worst.mean30": "Rata-rata 30h",
   "worst.peak30": "Puncak 30h",
-  "worst.archiveStarting": "Arsip dimulai · riwayat terisi seiring waktu"
+  "worst.archiveStarting": "Arsip dimulai · riwayat terisi seiring waktu",
+  "home.synced": "Tersinkron",
+  "home.liveUnreachable": "Jaringan tak terjangkau"
 }
