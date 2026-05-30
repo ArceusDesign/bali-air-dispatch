@@ -914,8 +914,12 @@ function renderAll(ts){
     const icon = L.divIcon({ className:'', html, iconSize:[size,size], iconAnchor:[size/2,size/2] });
     const mk = L.marker([s.lat,s.lon],{icon, riseOnHover:true});
     mk.on('click',()=>openPanel(s.id));
-    (s.offline ? offLayer : liveLayer).addTo(map);
-    mk.addTo(s.offline ? offLayer : liveLayer);
+    // Stale stations look offline (dashed-ring "STALE" pin) and should
+    // toggle with the Offline layer alongside the hardcoded offline set.
+    // Without this, the Offline toggle silently leaves stale pins behind.
+    const goesOffline = !!(s.offline || s.stale);
+    (goesOffline ? offLayer : liveLayer).addTo(map);
+    mk.addTo(goesOffline ? offLayer : liveLayer);
     markers[s.id] = mk;
   });
 
@@ -928,18 +932,26 @@ function renderAll(ts){
   document.getElementById('b-med').innerHTML = median!=null ? median.toFixed(1)+'<em>µg</em>' : '—';
   document.getElementById('b-worst').textContent = worst.pm25>0 ? worst.pm25.toFixed(1) : '—';
   document.getElementById('b-worst-name').textContent = worst.pm25>0 ? (worst.name||'').split(' (')[0] : '—';
+  // "Offline-looking on the map" = hardcoded long-dark sensors + currently
+  // stale live sensors (API still lists them but station_till is > 24h old).
+  // Counts that drive the ticker / HUD / nav status use this combined number
+  // so it matches what the user can count on the map.
+  const staleCount = liveStations.filter(s => s && s.stale).length;
+  const offlineLikeCount = offlineList.length + staleCount;
+  // §I Bulletin "Offline since Nov '25" box keeps the historical count
+  // (the label is specifically about long-dark sensors, not stale ones).
   document.getElementById('b-off').textContent = offlineList.length;
 
   document.getElementById('hud-live').textContent = liveStations.length;
-  document.getElementById('hud-off').textContent = offlineList.length;
+  document.getElementById('hud-off').textContent = offlineLikeCount;
   document.getElementById('hud-worst').textContent = worst.pm25>0 ? worst.pm25.toFixed(1) : '—';
 
-  document.getElementById('nav-status').textContent = 'LIVE · '+liveStations.length+' SENSORS · '+offlineList.length+' OFFLINE';
+  document.getElementById('nav-status').textContent = 'LIVE · '+liveStations.length+' SENSORS · '+offlineLikeCount+' OFFLINE';
   const syncLabel = ((window.I18N&&window.I18N.t)?window.I18N.t('home.synced','Synced'):'Synced')+' '+new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA';
   document.getElementById('mt-ts').textContent = syncLabel;
   const tb=document.getElementById('mt-ts2'); if(tb) tb.textContent=new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA';
 
-  renderBulletinTicker(worst, median, overWho, offlineList.length);
+  renderBulletinTicker(worst, median, overWho, offlineLikeCount);
   renderRollTable();
   renderArchive();
 }
