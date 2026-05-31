@@ -81,35 +81,44 @@ async function ingestStation(db, slug, url, ex, nowSec) {
            pm25: ex.currentConcentration, name: ex.name, lat: ex.lat, lon: ex.lon };
 }
 
-async function runAll(env) {
+// Scrape + ingest a single station. Returns a summary row (never throws).
+async function processStation(db, slug, url, key, nowSec) {
+  try {
+    const { status, html, ok } = await firecrawlScrape(url, key);
+    if (!ok || !html) {
+      await db.prepare(`UPDATE iq_scrape_stations SET last_scrape_ts=?2, last_scrape_ok=0 WHERE slug=?1`)
+        .bind(slug, nowSec).run().catch(() => {});
+      return { slug, ok: false, http: status };
+    }
+    const ex = extractStation(html);
+    if (!ex || (!ex.hourly.length && ex.currentConcentration == null)) {
+      return { slug, ok: false, reason: 'no_data_parsed', http: status };
+    }
+    const r = await ingestStation(db, slug, url, ex, nowSec);
+    return { slug, ok: true, ...r };
+  } catch (e) {
+    return { slug, ok: false, error: String(e && e.message || e) };
+  }
+}
+
+// Run the scrape. `onlySlug` limits to one station (for low-latency manual
+// verification). Stations are scraped in PARALLEL: the page render dominates
+// wall-clock (~20-25s each), so sequential 10× would exceed the Worker limit;
+// Promise.all keeps the whole batch close to a single station's latency.
+async function runAll(env, onlySlug) {
   const key = env.FIRECRAWL_KEY;
   const db = env.ARCHIVE_DB;
   const nowSec = Math.floor(Date.now() / 1000);
   if (!key) return { error: 'no_firecrawl_key' };
   if (!db) return { error: 'no_d1_binding' };
 
-  const summary = [];
-  for (const [slug, url] of STATIONS) {
-    try {
-      const { status, html, ok } = await firecrawlScrape(url, key);
-      if (!ok || !html) {
-        await db.prepare(`UPDATE iq_scrape_stations SET last_scrape_ts=?2, last_scrape_ok=0 WHERE slug=?1`)
-          .bind(slug, nowSec).run().catch(() => {});
-        summary.push({ slug, ok: false, http: status });
-        continue;
-      }
-      const ex = extractStation(html);
-      if (!ex || (!ex.hourly.length && ex.currentConcentration == null)) {
-        summary.push({ slug, ok: false, reason: 'no_data_parsed', http: status });
-        continue;
-      }
-      const r = await ingestStation(db, slug, url, ex, nowSec);
-      summary.push({ slug, ok: true, ...r });
-    } catch (e) {
-      summary.push({ slug, ok: false, error: String(e && e.message || e) });
-    }
-  }
-  return { ran: nowSec, stations: summary };
+  const targets = onlySlug ? STATIONS.filter(([s]) => s === onlySlug) : STATIONS;
+  if (!targets.length) return { error: 'unknown_slug', slug: onlySlug };
+
+  const summary = await Promise.all(
+    targets.map(([slug, url]) => processStation(db, slug, url, key, nowSec))
+  );
+  return { ran: nowSec, count: summary.length, stations: summary };
 }
 
 export default {
@@ -124,7 +133,9 @@ export default {
       if (!want || url.searchParams.get('key') !== want) {
         return new Response('forbidden', { status: 403 });
       }
-      const out = await runAll(env);
+      // ?slug=<one> verifies a single station fast (avoids 10× latency).
+      const onlySlug = url.searchParams.get('slug') || null;
+      const out = await runAll(env, onlySlug);
       return new Response(JSON.stringify(out, null, 2), { headers: { 'Content-Type': 'application/json' } });
     }
     return new Response('iqair-scrape worker', { status: 200 });
