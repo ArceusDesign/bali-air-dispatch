@@ -31,8 +31,13 @@ function isUuid(s) {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
 function isStationId(s) {
-  // station_id format is restrictive — alnum + dash + underscore + dot only
-  return typeof s === 'string' && /^[a-zA-Z0-9._-]{2,80}$/.test(s);
+  // station_id charset: alnum + dash + underscore + dot + SPACE. The space is
+  // required because IQAir station ids are derived from city names
+  // (e.g. "iq-Seminyak town", "iq-Dajan Tangluk"); rejecting spaces returned
+  // bad_id and blanked those sensors' history charts even though they update
+  // every cron tick. Safe: id is only ever used in parameterized D1 queries
+  // (.bind(id)), never string-interpolated into SQL.
+  return typeof s === 'string' && /^[a-zA-Z0-9._ -]{2,80}$/.test(s);
 }
 function rangeToCutoffSec(range) {
   const now = Math.floor(Date.now() / 1000);
