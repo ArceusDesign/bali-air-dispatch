@@ -162,20 +162,22 @@ function metresBetween(aLat, aLon, bLat, bLon) {
 // removes scraped IQAir dots — it can never drop an existing one. Stations
 // unique to IQAir (the majority) are kept.
 //
-// Staleness: IQAir publishes hourly and the worker scrapes hourly, so "fresh"
-// is a 2-hour window (2 cycles) — one missed hour won't flag a healthy sensor
-// stale, but a genuinely dead device eventually goes stale. (The global 60-min
-// isRecent rule fits the minute-cadence sources; it is too tight for hourly
-// IQAir data, so `stale` is set explicitly here.)
+// Staleness: based on last_scrape_ts (when the worker fetched), not latest_ts
+// (IQAir's hourly series lags hours behind its live tile). See FRESH_MS below.
 async function scrapedIQAirFromD1(db, existing = []) {
   const DEDUP_M = 300;
   const rows = await db.prepare(`
-    SELECT slug, name, lat, lon, latest_pm25, latest_aqi, latest_ts
+    SELECT slug, name, lat, lon, latest_pm25, latest_aqi, latest_ts, last_scrape_ts
     FROM iq_scrape_stations
     WHERE active = 1 AND latest_pm25 IS NOT NULL
   `).all();
   const nowMs = Date.now();
-  const TWO_HOURS = 2 * 60 * 60 * 1000;
+  // Liveness is based on when WE last scraped, NOT latest_ts: IQAir's hourly
+  // *historic* series lags its live tile by several hours (a 13:08 UTC scrape
+  // still ends the hourly series at ~09:00 UTC), so latest_ts is always hours
+  // behind even though latest_pm25 is the page's CURRENT reading. The worker
+  // scrapes hourly, so 2.5h covers one missed cron before a station is stale.
+  const FRESH_MS = 2.5 * 60 * 60 * 1000;
   const out = [];
   for (const r of (rows.results || [])) {
     if (r.lat == null || r.lon == null) continue;
@@ -187,7 +189,7 @@ async function scrapedIQAirFromD1(db, existing = []) {
     if (dup) continue;
     const pm25 = r.latest_pm25 != null ? +(+r.latest_pm25).toFixed(1) : null;
     const { cat, cls } = pm25Category(pm25);
-    const ageMs = r.latest_ts ? (nowMs - new Date(r.latest_ts).getTime()) : Infinity;
+    const scrapeAgeMs = r.last_scrape_ts ? (nowMs - r.last_scrape_ts * 1000) : Infinity;
     out.push({
       id: `iqs-${r.slug}`,
       name: r.name,
@@ -200,7 +202,7 @@ async function scrapedIQAirFromD1(db, existing = []) {
       category: cat,
       cls,
       lastSeen: r.latest_ts || null,
-      stale: ageMs > TWO_HOURS,
+      stale: scrapeAgeMs > FRESH_MS,
     });
   }
   return out;

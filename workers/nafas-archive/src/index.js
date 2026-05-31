@@ -200,6 +200,12 @@ async function snapshotUniversal(db, live, nowSec) {
   const snapBatch = [];
   for (const s of live.stations) {
     if (!s?.id || !Number.isFinite(+s.lat) || !Number.isFinite(+s.lon)) continue;
+    // Skip scraped IQAir stations (iqs-*): the iqair-scrape worker already keeps
+    // their full hourly/daily/monthly history in the iq_scrape_* tables.
+    // Re-snapshotting them here duplicates them into stations/station_snapshots,
+    // which /api/live + /history would otherwise have to filter out as stale
+    // duplicate pins. Skipping at the source keeps those tables clean.
+    if (String(s.id).startsWith('iqs-')) continue;
     stationBatch.push(stmtStation.bind(
       s.id, s.source || 'Unknown', s.name || s.id,
       +s.lat, +s.lon, s.type || null, nowSec
