@@ -70,7 +70,10 @@ function jsonResponse(body, extraHeaders = {}) {
       'Content-Type': 'application/json',
       // Tight edge cache; stale-while-revalidate keeps hot responses warm
       // for a full day so a single revalidation per hour serves everything.
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+      // 15-min edge cache aligns with the archive worker's 15-min cron, so the
+      // station roster (sensors coming online / going dark) refreshes in step
+      // with the data instead of lagging up to an hour. swr keeps it hot.
+      'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=86400',
       'Access-Control-Allow-Origin': '*',
       ...extraHeaders,
     }
@@ -412,13 +415,55 @@ async function fetchOpenAQ(env) {
   const out = [];
   for (const { loc, ld } of latest) {
     if (!ld) continue;
-    let pm25=null, lastSeen=null;
+    // Match PM2.5 readings robustly across BOTH OpenAQ /latest response shapes:
+    //   (a) legacy: each result embeds r.parameter.name === "pm25"
+    //   (b) v3:     results carry only { sensorsId, value, datetime }; the
+    //               parameter↔sensor mapping lives on loc.sensors[] from the
+    //               /locations discovery call.
+    // The previous code only read r.parameter.name. If OpenAQ has moved to
+    // shape (b) that field is undefined → pm25 stayed null → the 30-day filter
+    // dropped every sensor (hypothesis for the OpenAQ=0 outage — NOT yet
+    // confirmed against the live key). Honouring both shapes is strictly safer.
+    const pm25SensorIds = new Set(
+      (loc.sensors || [])
+        .filter(s => {
+          // Confirmed v3 sensor shape: { id, name:"pm25 µg/m³", parameter:{ name:"pm25", displayName:"PM2.5" } }.
+          // Check parameter.name first, then fall back to the sensor's own name.
+          const pn = (s.parameter?.name || s.name || '').toString().toLowerCase();
+          return pn === 'pm25' || pn.startsWith('pm25') || pn.includes('pm2.5');
+        })
+        .map(s => s.id)
+    );
+    // Pick the PM2.5 reading with the NEWEST timestamp, not the last one in
+    // array order. OpenAQ's docs warn that a /latest "result" is the last value
+    // in the stored series, and that upstream providers may ingest measurements
+    // out of time order — so iterating and overwriting would keep whatever
+    // happened to come last in the array, which is not necessarily the most
+    // recent reading. We compare datetime (utc) and keep the max.
+    let pm25=null, lastSeen=null, bestMs=-Infinity;
     for (const r of (ld.results||[])) {
-      const pn = r.parameter?.name||'';
-      if (pn.toLowerCase().includes('pm25') || pn.toLowerCase().includes('pm2')) {
-        pm25 = r.value!=null ? +r.value.toFixed(1) : null;
-        lastSeen = r.datetime?.local || r.datetime?.utc || null;
+      const pn = (r.parameter?.name || '').toString().toLowerCase();
+      const isPm25 = (pn.includes('pm25') || pn.includes('pm2'))                  // shape (a)
+                  || (pm25SensorIds.size > 0 && pm25SensorIds.has(r.sensorsId));  // shape (b)
+      if (!isPm25) continue;
+      // Require a FINITE numeric value. r.value can be null/undefined, an empty
+      // string ("" coerces to 0 — that's "no data", not zero pollution), or a
+      // non-numeric string ("n/a" → NaN). Reject all of those; otherwise a
+      // value-less reading would survive and draw a blank/zero pin.
+      const val = (r.value == null || r.value === '') ? NaN : +r.value;
+      if (!Number.isFinite(val)) continue;
+      const tsRaw = r.datetime?.utc || r.datetime?.local || null;
+      const ms = tsRaw ? Date.parse(tsRaw) : NaN;
+      // Keep the reading with the newest valid timestamp. If a reading has no
+      // parseable timestamp, only accept it when we have nothing else yet.
+      if (Number.isFinite(ms)) {
+        if (ms <= bestMs) continue;
+        bestMs = ms;
+      } else if (bestMs > -Infinity) {
+        continue;
       }
+      pm25 = +val.toFixed(1);
+      lastSeen = r.datetime?.local || r.datetime?.utc || null;
     }
     if (!lastSeen || (Date.now() - new Date(lastSeen).getTime()) > 30*24*60*60*1000) continue;
     const { cat, cls } = pm25Category(pm25);

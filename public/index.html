@@ -868,7 +868,21 @@ function renderAll(ts){
     })),
     ...OFFLINE_OTHER.map(s=>({ ...s, pm25:null, offline:true }))
   ];
-  allStations = [...liveStations.map(s=>({...s,offline:false})), ...offlineList];
+  // Co-location de-dup: if an embedded OFFLINE sensor sits within ~300 m of a
+  // station that is currently LIVE (e.g. the Umalas Fusion unit went dark on
+  // AQICN but a live OpenAQ/Nafas unit now covers the same spot), suppress the
+  // stale "offline" pin so we never show a dead marker sitting on live air.
+  const _liveForDedup = liveStations.filter(s => Number.isFinite(+s.lat) && Number.isFinite(+s.lon) && !s.stale);
+  const _metresApart = (a, b) => {
+    const dLat = (a.lat - b.lat) * 111320;
+    const dLon = (a.lon - b.lon) * 111320 * Math.cos(a.lat * Math.PI / 180);
+    return Math.hypot(dLat, dLon);
+  };
+  const offlineFiltered = offlineList.filter(off => {
+    if (!Number.isFinite(+off.lat) || !Number.isFinite(+off.lon)) return true;
+    return !_liveForDedup.some(lv => _metresApart(off, lv) < 300);
+  });
+  allStations = [...liveStations.map(s=>({...s,offline:false})), ...offlineFiltered];
 
   // --- markers ---
   skeletonLayer.clearLayers();   // remove placeholder pins
