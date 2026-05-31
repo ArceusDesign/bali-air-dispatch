@@ -727,7 +727,9 @@ const OFFLINE_HISTORY = {"ubud_rozendal":{"name":"Ubud (Rozendal)","lat":-8.5303
 
 // Offline sensors WITHOUT detailed daily history (from the registry)
 const OFFLINE_OTHER = [
-  { id:'aq-umalas', name:'Umalas (Fusion) — Kerobokan', source:'AQICN', type:'GAIA / community', lat:-8.67220, lon:115.15640, last:'2026-03-15', reason:'offline · last reported March 2026' },
+  // Umalas (Fusion) — Kerobokan (was aq-umalas) removed: it carried no chart
+  // data and the live IQAir "Bali Umalas (Villa Fusion)" scrape now covers the
+  // same area, so the dead pin was redundant clutter.
   // Note: Denpasar Lumintang previously hardcoded here is now ingested via
   // /api/live as aq-A416893 (AQICN A-prefix direct probe). It still appears
   // on the map, with stale flag + the full 548-day historical chart.

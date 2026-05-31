@@ -458,10 +458,35 @@ function buildStationList(){
   // A station from the live feed lands in 1 or 2 if it's fresh, and 3 if
   // it's stale. The "no archive yet" tail (2) is genuinely transient —
   // 15-min worker run + rollup brings it to (1) within an hour or so.
-  const liveFresh    = liveCatalog.filter(s => !isStale(s));
-  const liveStale    = liveCatalog.filter(s =>  isStale(s));
+  // Stations confirmed permanently SILENCED (dark for good) even though an
+  // upstream API may still echo a stale reading. Pull them out of the live/stale
+  // groups and show them under "Silenced" with their full D1 history. Matched by
+  // name (case-insensitive), and sourced from the live feed AND the persistent
+  // archive catalogs so they appear here even on the frequent ticks when Nafas
+  // drops them from /api/live entirely.
+  const SILENCED_NAMES = new Set([
+    'denpasar lumintang', 'dauh puri kauh', 'ketewel', 'padangsambian kaja'
+  ]);
+  const normName = s => (s && s.name ? String(s.name) : '').trim().toLowerCase();
+  const isForcedSilenced = s => SILENCED_NAMES.has(normName(s));
+
+  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isForcedSilenced(s));
+  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isForcedSilenced(s));
   const liveArchived = liveFresh.filter(s =>  isArchived(s));
   const liveNoArch   = liveFresh.filter(s => !isArchived(s));
+
+  // Resolve the forced-silenced stations from every catalog, deduped by id.
+  const forcedSilenced = [];
+  const _seenSil = new Set();
+  const _addSil = (id, name, source) => {
+    if (!id || _seenSil.has(id)) return;
+    _seenSil.add(id);
+    forcedSilenced.push({ id, name, source: source || '', pm25: null,
+      lastSeen: null, archived: true, offline: true });
+  };
+  liveCatalog.forEach(s => { if (isForcedSilenced(s)) _addSil(s.id, s.name, s.source); });
+  (archiveCatalog || []).forEach(s => { if (SILENCED_NAMES.has(normName(s))) _addSil('nafas-' + s.uuid, s.name, 'Nafas'); });
+  (universalCatalog || []).forEach(s => { if (SILENCED_NAMES.has(normName(s))) _addSil(s.station_id, s.name, s.source); });
 
   const silenced     = [
     ...Object.entries(OFFLINE_HISTORY).map(([key,s])=>({
@@ -469,6 +494,7 @@ function buildStationList(){
       pm25: s.daily[s.daily.length-1]?.[1] ?? null,
       lastSeen: s.last, archived: true, offline: true
     })),
+    ...forcedSilenced,
     ...OFFLINE_OTHER.map(s => ({
       id: s.id, name: s.name, source: s.source, pm25: null,
       lastSeen: s.last, archived: false, offline: true
@@ -496,7 +522,7 @@ function buildStationList(){
       <input type="checkbox" data-id="${safeId}" ${selectedIds.has(s.id)?'checked':''}>
       <span class="swatch" style="background:${colour}"></span>
       <div>
-        <div class="stn-name">${escapeHtml((s.name||'').split(' (')[0])}</div>
+        <div class="stn-name">${escapeHtml(s.offline ? (s.name||'') : (s.name||'').split(' (')[0])}</div>
         <div class="stn-meta">${escapeHtml(subtitle)}</div>
       </div>
       <div class="stn-pm">${pmTxt}</div>

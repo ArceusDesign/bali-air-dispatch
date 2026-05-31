@@ -97,6 +97,13 @@ async function fastPathFromD1(db) {
       SELECT MAX(ts) FROM station_snapshots WHERE station_id = s.station_id
     )
     AND sn.ts >= ?1
+    -- Scraped IQAir stations (iqs-*) are served exclusively by
+    -- scrapedIQAirFromD1() from their own iq_scrape_* tables. The archive worker
+    -- also snapshots them here via /api/live, but those snapshots carry IQAir's
+    -- HOURLY timestamp (>60 min old) so they'd come back flagged stale and
+    -- render as a duplicate "offline" pin stacked on the live one. Exclude them
+    -- so each scraped station appears exactly once (fresh).
+    AND s.station_id NOT LIKE 'iqs-%'
     ORDER BY s.source, s.name
   `).bind(cutoff).all();
   const results = rows.results || [];
