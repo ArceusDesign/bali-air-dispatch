@@ -1,0 +1,24 @@
+# Cloudflare Worker — IQAir station scraper (hourly).
+#
+# Scrapes each configured IQAir station page via Firecrawl, decodes the page's
+# own React-Router stream payload (no IQAir API), and archives current PM2.5 +
+# hourly/daily/monthly history into D1 (iq_scrape_* tables).
+#
+# Secret (set once, never committed):
+#   npx wrangler secret put FIRECRAWL_KEY
+#
+# IQAir publishes hourly, so an hourly cron captures every point with no gaps
+# (the page also carries a 48h hourly window as backstop against a missed run).
+
+name = "iqair-scrape"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+# Same D1 database the rest of the site uses (separate iq_scrape_* tables).
+[[d1_databases]]
+binding = "ARCHIVE_DB"
+database_name = "bali-air-archive"
+database_id = "0a3c2a5d-6c11-40d6-ac01-7ca2a5a6c600"
+
+[triggers]
+crons = ["7 * * * *"]   # hourly, at :07 past (offset from other crons)
