@@ -886,7 +886,5 @@
   "setup.x.afterP1": "Pembacaan per jam dan harian sensor Anda menjadi bagian dari rekam jejak publik. Data itu dapat diunduh dari platform sumber sebagai CSV mentah, dapat ditelusuri melalui arsip situs ini, dan dapat dikutip dalam laporan apa pun di masa depan tentang udara Bali. Kami tidak memiliki datanya; Anda yang memilikinya.",
   "setup.x.afterP2": "Jika sensor Anda mati selama lebih dari dua minggu, ia akan muncul di <a href=\"/\" style=\"color:var(--ink);border-bottom:1px solid var(--hairline)\">Arsip Kepadaman</a> di beranda alih-alih menghilang tanpa rekam jejak. Pembacaan historisnya tetap tersimpan.",
   "nav.community": "Gabung komunitas WhatsApp",
-  "foot.community": "Gabung komunitas WhatsApp",
-  "history.chart.subHourly": "Pembacaan per jam selama 24 jam terakhir.",
-  "history.chart.subDaily": "Setiap titik adalah rata-rata harian hingga hari ini, sehingga garisnya lebih halus daripada tampilan per jam."
+  "foot.community": "Gabung komunitas WhatsApp"
 }
