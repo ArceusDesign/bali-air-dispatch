@@ -102,6 +102,57 @@ export async function onRequest(context) {
       return json({ range: range || 'daily', series: byId });
     }
 
+    // ── Scraped IQAir per-station mode (?id=iqs-<slug>) ────────────────
+    // These live in the iq_scrape_* tables (written by the iqair-scrape
+    // worker), not the universal stations/* tables. Hourly points carry an ISO
+    // `ts`; daily/monthly carry ISO `date`/`month`. Daily & monthly are PERIOD
+    // AVERAGES (averaged:true → the page shows the "period averages up to
+    // today" note). All queries parameterized; id is charset-validated.
+    if (id && id.startsWith('iqs-')) {
+      if (!isStationId(id)) return json({ error: 'bad_id' }, 400);
+      const slug = id.slice(4);
+      const srow = await db.prepare(`
+        SELECT slug, name, lat, lon, first_seen, latest_ts
+        FROM iq_scrape_stations WHERE slug = ?1
+      `).bind(slug).first();
+      const station = srow ? {
+        station_id: id, source: 'IQAir', name: srow.name,
+        lat: srow.lat, lon: srow.lon, type: 'Private sensor',
+        first_seen: srow.first_seen, last_seen: srow.latest_ts,
+      } : null;
+
+      // 24h → raw hourly readings (NOT averaged)
+      if (range === '24h') {
+        const cutoff = Math.floor(Date.now() / 1000) - 24 * 3600;
+        const rows = await db.prepare(`
+          SELECT ts, pm25, aqi FROM iq_scrape_hourly WHERE slug = ?1 ORDER BY ts ASC
+        `).bind(slug).all();
+        const points = (rows.results || []).filter(r => {
+          const ms = Date.parse(r.ts); return Number.isFinite(ms) && ms / 1000 >= cutoff;
+        });
+        return json({ station, range, points });
+      }
+      // 1y / monthly → monthly averages
+      if (range === '1y' || range === 'monthly' || range === '365d') {
+        const rows = await db.prepare(`
+          SELECT month AS date, pm25, aqi FROM iq_scrape_monthly WHERE slug = ?1 ORDER BY month ASC
+        `).bind(slug).all();
+        return json({ station, range, points: rows.results || [], averaged: true });
+      }
+      // 7d / 30d / 90d / daily / all → daily averages (cutoff-filtered)
+      const cutoff = rangeToCutoffSec(range);
+      const rows = await db.prepare(`
+        SELECT date, pm25, aqi FROM iq_scrape_daily WHERE slug = ?1 ORDER BY date ASC
+      `).bind(slug).all();
+      let points = rows.results || [];
+      if (cutoff != null) {
+        points = points.filter(r => {
+          const ms = Date.parse(r.date); return Number.isFinite(ms) && ms / 1000 >= cutoff;
+        });
+      }
+      return json({ station, range: range || 'daily', points, averaged: true });
+    }
+
     // ── Universal per-station mode (?id=…) ─────────────────────────────
     if (id) {
       if (!isStationId(id)) return json({ error: 'bad_id' }, 400);
@@ -210,9 +261,29 @@ export async function onRequest(context) {
              (SELECT COUNT(*) FROM nafas_daily   WHERE uuid = s.uuid)                       AS daily_n
       FROM nafas_stations s ORDER BY name
     `).all();
+
+    // Scraped IQAir stations (iq_scrape_* tables). Shaped to match the universal
+    // catalog rows so /history lists them alongside everything else; daily_n>0
+    // signals the chart can render. station_id uses the 'iqs-' prefix the
+    // per-id branch above understands.
+    let scrapedCatalog = { results: [] };
+    try {
+      scrapedCatalog = await db.prepare(`
+        SELECT 'iqs-' || slug AS station_id, 'IQAir' AS source, name, lat, lon,
+               'Private sensor' AS type, first_seen, latest_ts AS last_seen,
+               (SELECT COUNT(*) FROM iq_scrape_daily WHERE slug = s.slug) AS daily_n
+        FROM iq_scrape_stations s
+        WHERE active = 1
+        ORDER BY name
+      `).all();
+    } catch (_) { /* iq_scrape_* may be absent in some envs; skip gracefully */ }
+
     return json({
       stations: nafas.results || [],          // legacy field — keeps old clients working
-      universal: universal.results || [],     // new universal catalog
+      universal: [
+        ...(universal.results || []),
+        ...(scrapedCatalog.results || []),    // scraped IQAir stations
+      ],
     });
 
   } catch (e) {

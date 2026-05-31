@@ -133,6 +133,72 @@ async function fastPathFromD1(db) {
   };
 }
 
+// Metres between two lat/lon points (haversine).
+function metresBetween(aLat, aLon, bLat, bLon) {
+  const R = 6371000, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(bLat - aLat), dLon = toRad(bLon - aLon);
+  const s = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+// Scraped IQAir stations (written by the iqair-scrape worker into
+// iq_scrape_stations — see workers/iqair-scrape). These are REAL hourly PM2.5
+// readings decoded from each IQAir station page, NOT the AQI→PM2.5 estimate the
+// nearest_city probe (fetchIQAir) returns. Folded into the 'IQAir' source so
+// they share styling with the one real Kopernik node.
+//
+// De-dup: several IQAir devices ALSO publish to an open network we already read
+// (e.g. "Jimbaran" is PurpleAir's "Jimbaran by Lumi Clinic" ~12 m away). Any
+// scraped station within DEDUP_M of an already-present DIFFERENT-source station
+// is dropped so the native feed wins and there's no double dot. This only ever
+// removes scraped IQAir dots — it can never drop an existing one. Stations
+// unique to IQAir (the majority) are kept.
+//
+// Staleness: IQAir publishes hourly and the worker scrapes hourly, so "fresh"
+// is a 2-hour window (2 cycles) — one missed hour won't flag a healthy sensor
+// stale, but a genuinely dead device eventually goes stale. (The global 60-min
+// isRecent rule fits the minute-cadence sources; it is too tight for hourly
+// IQAir data, so `stale` is set explicitly here.)
+async function scrapedIQAirFromD1(db, existing = []) {
+  const DEDUP_M = 300;
+  const rows = await db.prepare(`
+    SELECT slug, name, lat, lon, latest_pm25, latest_aqi, latest_ts
+    FROM iq_scrape_stations
+    WHERE active = 1 AND latest_pm25 IS NOT NULL
+  `).all();
+  const nowMs = Date.now();
+  const TWO_HOURS = 2 * 60 * 60 * 1000;
+  const out = [];
+  for (const r of (rows.results || [])) {
+    if (r.lat == null || r.lon == null) continue;
+    const dup = existing.some(o =>
+      o && o.source !== 'IQAir' &&
+      Number.isFinite(o.lat) && Number.isFinite(o.lon) &&
+      metresBetween(r.lat, r.lon, o.lat, o.lon) < DEDUP_M
+    );
+    if (dup) continue;
+    const pm25 = r.latest_pm25 != null ? +(+r.latest_pm25).toFixed(1) : null;
+    const { cat, cls } = pm25Category(pm25);
+    const ageMs = r.latest_ts ? (nowMs - new Date(r.latest_ts).getTime()) : Infinity;
+    out.push({
+      id: `iqs-${r.slug}`,
+      name: r.name,
+      source: 'IQAir',
+      type: 'Private sensor',
+      lat: r.lat,
+      lon: r.lon,
+      pm25,
+      aqi: r.latest_aqi != null ? +r.latest_aqi : null,
+      category: cat,
+      cls,
+      lastSeen: r.latest_ts || null,
+      stale: ageMs > TWO_HOURS,
+    });
+  }
+  return out;
+}
+
 // ── UPSTREAM SOURCE FETCHERS — each returns an array of station objects ──
 // All fetchers run in parallel via Promise.allSettled.
 
@@ -566,7 +632,18 @@ export async function onRequest(context) {
   if (env.ARCHIVE_DB && !noFast) {
     try {
       const fast = await fastPathFromD1(env.ARCHIVE_DB);
-      if (fast) return jsonResponse(fast);
+      if (fast) {
+        // Fold in scraped IQAir stations (their own D1 tables, hourly cadence).
+        // Pass the base list so co-located duplicates are dropped.
+        try {
+          const scraped = await scrapedIQAirFromD1(env.ARCHIVE_DB, fast.stations);
+          if (scraped.length) {
+            fast.stations.push(...scraped);
+            fast.sources = new Set(fast.stations.map(s => s.source)).size;
+          }
+        } catch (_) { /* scraped optional; serve base fast path */ }
+        return jsonResponse(fast);
+      }
     } catch (e) {
       // Fall through to upstream
     }
@@ -596,6 +673,17 @@ export async function onRequest(context) {
       results.errors.push({ source: name, error: String(r.reason).slice(0, 200) });
     }
   });
+  // Fold in scraped IQAir stations (from D1; the upstream fetchers above do not
+  // include them — the iqair-scrape worker is what populates iq_scrape_*).
+  if (env.ARCHIVE_DB) {
+    try {
+      const scraped = await scrapedIQAirFromD1(env.ARCHIVE_DB, results.stations);
+      if (scraped.length) {
+        results.stations.push(...scraped);
+        results.sources = new Set(results.stations.map(s => s.source)).size;
+      }
+    } catch (_) { /* scraped optional */ }
+  }
   if (results.errors.length === 0) delete results.errors;
   return jsonResponse(results);
 }
