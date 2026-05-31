@@ -48,7 +48,16 @@ async function firecrawlScrape(url, key) {
 
 async function ingestStation(db, slug, url, ex, nowSec) {
   // Upsert station identity + latest snapshot.
+  // Use the LAST COMPLETED HOUR for value + AQI + timestamp together, so the
+  // stored reading and its timestamp always come from the same point. (We used
+  // to store the live-tile value ex.currentConcentration but stamp it with the
+  // last hourly ts — a source mismatch: the tile is a rolling sub-hour number,
+  // the hourly point is the completed-hour average. The site shows the
+  // completed-hour value, so read both from `latest`.) Falls back to the tile
+  // only if a page somehow has no hourly series at all.
   const latest = ex.hourly.length ? ex.hourly[ex.hourly.length - 1] : null;
+  const latestPm25 = latest && latest.concentration != null ? latest.concentration : ex.currentConcentration;
+  const latestAqi  = latest && latest.aqi != null ? latest.aqi : ex.currentAqi;
   await db.prepare(`
     INSERT INTO iq_scrape_stations
       (slug, iqair_url, name, lat, lon, source_type, source_subtype, contributor,
@@ -62,7 +71,7 @@ async function ingestStation(db, slug, url, ex, nowSec) {
       last_scrape_ts=excluded.last_scrape_ts, last_scrape_ok=1, active=1
   `).bind(
     slug, url, ex.name, ex.lat, ex.lon, ex.sourceType, ex.sourceSubType, ex.contributor,
-    ex.currentConcentration, ex.currentAqi, latest ? latest.ts : null, nowSec
+    latestPm25, latestAqi, latest ? latest.ts : null, nowSec
   ).run();
 
   // Batched UPSERTs for each series.
