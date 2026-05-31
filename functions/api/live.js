@@ -525,6 +525,9 @@ async function fetchIQAir(env) {
     if (!probe) continue;
     const { loc, d } = probe;
     const dd = d.data;
+    // Guard: nearest_city can return a neighbouring town under load; never
+    // emit it under this probe's stable slug if the city doesn't match.
+    if (loc.expectCity && dd.city !== loc.expectCity) continue;
     const aqi = dd.current?.pollution?.aqius;
     const mp = dd.current?.pollution?.mainus;
     const pm25Est = mp === 'p2' ? aqiToPm25(aqi) : null;
@@ -534,11 +537,13 @@ async function fetchIQAir(env) {
     seen.add(dk);
     out.push({
       id: dk,
-      name: `${loc.label} (${dd.city})`,
+      name: loc.override?.name || `${loc.label} (${dd.city})`,
       source: 'IQAir',
       type: 'Private sensor',
-      lat: dd.location?.coordinates?.[1],
-      lon: dd.location?.coordinates?.[0],
+      // nearest_city returns the town centroid; override to the true device
+      // location when known (Kopernik) so the map pin matches reality + D1.
+      lat: (loc.override?.lat != null) ? loc.override.lat : dd.location?.coordinates?.[1],
+      lon: (loc.override?.lon != null) ? loc.override.lon : dd.location?.coordinates?.[0],
       pm25: pm25Est,
       pm25_estimated: mp === 'p2',
       aqi,
