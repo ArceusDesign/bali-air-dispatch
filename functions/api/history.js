@@ -253,8 +253,8 @@ export async function onRequest(context) {
       FROM stations s
       WHERE s.station_id NOT IN (${hidePlaceholders})
       -- Scraped IQAir stations (iqs-*) are listed from iq_scrape_* via
-      -- scrapedCatalog below; the archive worker also leaks them into `stations`
-      -- through /api/live, so exclude them here to avoid a double catalog entry.
+      -- scrapedCatalog below; the archive worker also leaks them into the
+      -- stations table through /api/live, so exclude here (no double entry).
       AND s.station_id NOT LIKE 'iqs-%'
       ORDER BY s.name
     `).bind(...HIDDEN_STATION_IDS).all();
