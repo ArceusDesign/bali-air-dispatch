@@ -500,12 +500,12 @@ async function fetchIQAir(env) {
   //
   // nearest_city returns the town CENTROID, not the sensor location — for Ubud
   // that is ~6 km from the real Kopernik device — so we override to the true
-  // coordinates and name. id stays "iq-Ubud" (dd.city === 'Ubud') so the 31
-  // days of history already archived under that id stay linked; a stable-slug
-  // rename + migration is planned separately.
+  // coordinates and name. The id uses a STABLE per-probe slug ('kopernik')
+  // instead of the city name, so an upstream city-name change can't orphan
+  // history; existing D1 history was migrated iq-Ubud → iq-kopernik (#27).
   const iqLocs = [
     { label:'Ubud', lat:-8.50, lon:115.26,
-      expectCity:'Ubud',
+      expectCity:'Ubud', slug:'kopernik',
       override:{ name:'Kopernik (Mas, Ubud)', lat:-8.554004068111293, lon:115.27271248947794 } },
   ];
   const probes = await Promise.all(iqLocs.map(async (loc) => {
@@ -529,7 +529,7 @@ async function fetchIQAir(env) {
     const mp = dd.current?.pollution?.mainus;
     const pm25Est = mp === 'p2' ? aqiToPm25(aqi) : null;
     const { cat, cls } = pm25Category(pm25Est != null ? pm25Est : aqiToPm25(aqi));
-    const dk = `iq-${dd.city}`;
+    const dk = `iq-${loc.slug || dd.city}`;
     if (seen.has(dk)) continue;
     seen.add(dk);
     out.push({
