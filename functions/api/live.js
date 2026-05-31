@@ -487,14 +487,26 @@ async function fetchIQAir(env) {
   // 7 nearest_city probes — were sequential with 1.2s sleeps (8.4s total).
   // Now PARALLEL. Free tier is 10 req/min so 7-in-parallel-then-done is OK.
   // 429s are caught per-call.
+  // IQAir audit (May 2026): of the 7 nearest_city probes we used to run, only
+  // ONE backs a real ground sensor. Verified against each IQAir city page's
+  // "Data attribution":
+  //   • Ubud      → real station "Kopernik" (anonymous contributor)   ← KEEP
+  //   • Jimbaran  → real, but it's the SAME unit as PurpleAir "Jimbaran by
+  //                 Lumi Clinic", which we already pull natively         ← drop
+  //   • Seminyak town, Dajan Tangluk, Banjar, Subagan, Munduk
+  //                 → "satellite-derived model" estimates, NOT sensors  ← drop
+  // The 5 satellite nodes + Jimbaran are removed so the map only shows real,
+  // hyper-local ground data. Their existing D1 rows are left untouched (dormant).
+  //
+  // nearest_city returns the town CENTROID, not the sensor location — for Ubud
+  // that is ~6 km from the real Kopernik device — so we override to the true
+  // coordinates and name. id stays "iq-Ubud" (dd.city === 'Ubud') so the 31
+  // days of history already archived under that id stay linked; a stable-slug
+  // rename + migration is planned separately.
   const iqLocs = [
-    {label:'Denpasar',           lat:-8.65, lon:115.22},
-    {label:'Ubud',               lat:-8.50, lon:115.26},
-    {label:'Kerobokan / Seminyak',lat:-8.67, lon:115.15},
-    {label:'Jimbaran',           lat:-8.79, lon:115.17},
-    {label:'Lovina (north)',     lat:-8.16, lon:115.02},
-    {label:'Amlapura (east)',    lat:-8.45, lon:115.61},
-    {label:'Bedugul (mountains)',lat:-8.28, lon:115.16},
+    { label:'Ubud', lat:-8.50, lon:115.26,
+      expectCity:'Ubud',
+      override:{ name:'Kopernik (Mas, Ubud)', lat:-8.554004068111293, lon:115.27271248947794 } },
   ];
   const probes = await Promise.all(iqLocs.map(async (loc) => {
     try {
