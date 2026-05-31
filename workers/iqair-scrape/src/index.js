@@ -33,7 +33,13 @@ async function firecrawlScrape(url, key) {
   const r = await fetch('https://api.firecrawl.dev/v2/scrape', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, formats: ['rawHtml'], waitFor: 9000, onlyMainContent: false }),
+    // maxAge:0 forces a FRESH fetch every time. Firecrawl v2 caches scrapes by
+    // default (maxAge defaults to ~2 days), so without this every hourly run was
+    // handed the SAME stale cached page — IQAir values were frozen hours behind
+    // the live tile (verified: default scrape returned 06:00 UTC data at 14:13
+    // UTC; maxAge:0 returned the live 13:00 UTC reading). We scrape hourly and
+    // need each run to reflect the latest completed hour, so never use the cache.
+    body: JSON.stringify({ url, formats: ['rawHtml'], waitFor: 9000, onlyMainContent: false, maxAge: 0 }),
   });
   let j = {};
   try { j = await r.json(); } catch {}
