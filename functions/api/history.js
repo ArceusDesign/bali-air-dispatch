@@ -184,14 +184,25 @@ export async function onRequest(context) {
     // Combine universal stations + Nafas stations into a single list.
     // `daily_n` tells the /history UI whether a chart can be drawn yet
     // (0 = snapshots being captured but no daily rollup yet → "archive starting").
+    // Hidden from the catalog (display only — their D1 rows are intentionally
+    // KEPT, just not surfaced). These IQAir nearest_city nodes were retired in
+    // the May 2026 audit: 5 were "satellite-derived model" estimates rather
+    // than ground sensors, and iq-Jimbaran duplicated PurpleAir's "Jimbaran by
+    // Lumi Clinic". Only the real iq-Ubud (Kopernik) IQAir node is retained.
+    const HIDDEN_STATION_IDS = [
+      'iq-Seminyak town', 'iq-Dajan Tangluk', 'iq-Banjar',
+      'iq-Subagan', 'iq-Munduk', 'iq-Jimbaran',
+    ];
+    const hidePlaceholders = HIDDEN_STATION_IDS.map((_, i) => '?' + (i + 1)).join(',');
     const universal = await db.prepare(`
       SELECT
         s.station_id, s.source, s.name, s.lat, s.lon, s.type,
         s.first_seen, s.last_seen,
         (SELECT COUNT(*) FROM station_daily WHERE station_id = s.station_id) AS daily_n
       FROM stations s
+      WHERE s.station_id NOT IN (${hidePlaceholders})
       ORDER BY s.name
-    `).all();
+    `).bind(...HIDDEN_STATION_IDS).all();
     const nafas = await db.prepare(`
       SELECT uuid, name, lat, lon, first_seen, last_seen,
              (SELECT pm25 FROM nafas_snapshots WHERE uuid = s.uuid ORDER BY ts DESC LIMIT 1) AS latest_pm25,
