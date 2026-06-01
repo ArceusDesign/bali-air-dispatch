@@ -212,24 +212,37 @@ export async function onRequest(context) {
       `).bind(id).all();
       let points = dRows.results || [];
 
-      // Fallback: for nafas-* ids whose station_daily is sparse (their upstream
+      // Nafas special-case: station_daily is sparse for Nafas (their upstream
       // station_till is WITA-local, so the universal rollup's UTC staleness guard
-      // drops most rows), surface Nafas's own daily aggregates from nafas_daily.
-      // Those carry no separate max, so pm25_max = the daily mean (no spike layer
-      // at 90d/All for Nafas — 30d still shows true 4h max from raw snapshots).
+      // drops most rows). Build the daily series from two sources instead:
+      //   (a) daily mean+MAX computed live from station_snapshots — this carries
+      //       the spike layer, but only as far back as we have snapshots (~37d);
+      //   (b) Nafas's own nafas_daily for the deeper tail before that (mean only).
+      // Merge: snapshot-derived days win; older nafas_daily days are prepended.
       if (points.length < 5 && id.startsWith('nafas-')) {
         const u = id.slice(6);
         if (isUuid(u)) {
-          const r = await db.prepare(`
-            SELECT date, pm25, pm10, pm1, aqi, temperature, humidity, pressure
-            FROM nafas_daily WHERE uuid = ?1 ORDER BY date ASC
+          // (a) daily mean+max from raw snapshots, WITA day boundaries.
+          const snapDaily = await db.prepare(`
+            SELECT date(datetime(ts,'unixepoch','+8 hours')) AS date,
+                   ROUND(AVG(pm25),1) AS pm25,
+                   ROUND(MIN(pm25),1) AS pm25_min,
+                   ROUND(MAX(pm25),1) AS pm25_max,
+                   COUNT(*) AS sample_n
+            FROM station_snapshots
+            WHERE station_id = ?1 AND pm25 IS NOT NULL
+            GROUP BY 1 ORDER BY 1 ASC
+          `).bind(id).all();
+          const snapRows = snapDaily.results || [];
+          const snapDates = new Set(snapRows.map(r => r.date));
+          // (b) nafas_daily for the deeper tail (only days we lack snapshots for).
+          const nd = await db.prepare(`
+            SELECT date, pm25 FROM nafas_daily WHERE uuid = ?1 ORDER BY date ASC
           `).bind(u).all();
-          if ((r.results || []).length) {
-            points = r.results.map(p => ({
-              date: p.date, pm25: p.pm25,
-              pm25_min: p.pm25, pm25_max: p.pm25, sample_n: 1,
-            }));
-          }
+          const older = (nd.results || [])
+            .filter(p => !snapDates.has(p.date))
+            .map(p => ({ date: p.date, pm25: p.pm25, pm25_min: p.pm25, pm25_max: p.pm25, sample_n: 1 }));
+          points = [...older, ...snapRows].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
         }
       }
       if (cutoff90 != null) {
