@@ -121,14 +121,15 @@ export async function onRequest(context) {
         first_seen: srow.first_seen, last_seen: srow.latest_ts,
       } : null;
 
-      // 24h → raw hourly readings (NOT averaged)
-      if (range === '24h') {
-        const cutoff = Math.floor(Date.now() / 1000) - 24 * 3600;
+      // 24h / 7d → raw hourly readings (the finest IQAir-scraped resolution;
+      // there is no 15-minute data for scraped stations). NOT averaged.
+      if (range === '24h' || range === '7d') {
+        const cutoffSec = rangeToCutoffSec(range);
         const rows = await db.prepare(`
           SELECT ts, pm25, aqi FROM iq_scrape_hourly WHERE slug = ?1 ORDER BY ts ASC
         `).bind(slug).all();
         const points = (rows.results || []).filter(r => {
-          const ms = Date.parse(r.ts); return Number.isFinite(ms) && ms / 1000 >= cutoff;
+          const ms = Date.parse(r.ts); return Number.isFinite(ms) && ms / 1000 >= cutoffSec;
         });
         return json({ station, range, points });
       }
@@ -139,10 +140,26 @@ export async function onRequest(context) {
         `).bind(slug).all();
         return json({ station, range, points: rows.results || [], averaged: true });
       }
-      // 7d / 30d / 90d / daily / all → daily averages (cutoff-filtered)
+      // 30d → 4-hour buckets (mean + max) from the hourly series. ts is an ISO
+      // string here, so convert via unixepoch() before bucketing (WITA-aligned).
+      if (range === '30d') {
+        const cutoffSec = rangeToCutoffSec(range);
+        const rows = await db.prepare(`
+          SELECT (CAST((unixepoch(ts) + 28800) / 14400 AS INTEGER) * 14400 - 28800) AS ts,
+                 ROUND(AVG(pm25), 1) AS pm25,
+                 ROUND(MAX(pm25), 1) AS pm25_max,
+                 MAX(aqi) AS aqi
+          FROM iq_scrape_hourly
+          WHERE slug = ?1 AND unixepoch(ts) >= ?2 AND pm25 IS NOT NULL
+          GROUP BY 1 ORDER BY 1 ASC
+        `).bind(slug, cutoffSec).all();
+        return json({ station, range, bucket: '4h', points: rows.results || [] });
+      }
+      // 90d / daily / all → daily averages (cutoff-filtered). No stored max, so
+      // pm25_max = the daily mean (no spike layer at this range for scraped IQAir).
       const cutoff = rangeToCutoffSec(range);
       const rows = await db.prepare(`
-        SELECT date, pm25, aqi FROM iq_scrape_daily WHERE slug = ?1 ORDER BY date ASC
+        SELECT date, pm25, pm25 AS pm25_max, aqi FROM iq_scrape_daily WHERE slug = ?1 ORDER BY date ASC
       `).bind(slug).all();
       let points = rows.results || [];
       if (cutoff != null) {
@@ -160,8 +177,8 @@ export async function onRequest(context) {
         SELECT station_id, source, name, lat, lon, type, first_seen, last_seen
         FROM stations WHERE station_id = ?1
       `).bind(id).first();
-      // Time-window snapshots
-      if (range === '24h' || range === '7d' || range === '30d' || range === '90d') {
+      // 24h / 7d → raw 15-minute snapshots (full granularity; spikes visible).
+      if (range === '24h' || range === '7d') {
         const cutoff = rangeToCutoffSec(range);
         const rows = await db.prepare(`
           SELECT ts, pm25, pm10, pm1, aqi, temperature, humidity, station_till
@@ -171,28 +188,55 @@ export async function onRequest(context) {
         `).bind(id, cutoff).all();
         return json({ station: stn, range, points: rows.results || [] });
       }
-      // Daily aggregates — try station_daily first
+      // 30d → 4-hour buckets (mean + max) computed from the raw snapshots, so
+      // the chart stays light (~180 pts) while a sub-bucket spike still shows
+      // via the max layer. Buckets are aligned to WITA (UTC+8) 4-hour windows.
+      if (range === '30d') {
+        const cutoff = rangeToCutoffSec(range);
+        const rows = await db.prepare(`
+          SELECT (CAST((ts + 28800) / 14400 AS INTEGER) * 14400 - 28800) AS ts,
+                 ROUND(AVG(pm25), 1) AS pm25,
+                 ROUND(MAX(pm25), 1) AS pm25_max,
+                 MAX(aqi) AS aqi
+          FROM station_snapshots
+          WHERE station_id = ?1 AND ts >= ?2 AND pm25 IS NOT NULL
+          GROUP BY 1 ORDER BY 1 ASC
+        `).bind(id, cutoff).all();
+        return json({ station: stn, range, bucket: '4h', points: rows.results || [] });
+      }
+      // 90d / all → daily mean + max from station_daily.
+      const cutoff90 = rangeToCutoffSec(range); // null for "all"
       const dRows = await db.prepare(`
         SELECT date, pm25_mean AS pm25, pm25_min, pm25_max, sample_n
         FROM station_daily WHERE station_id = ?1 ORDER BY date ASC
       `).bind(id).all();
       let points = dRows.results || [];
 
-      // Fallback: for nafas-* ids whose station_daily is empty, surface the
-      // richer Nafas-specific daily aggregates from nafas_daily (which the
-      // worker mirrors from Nafas's own daily endpoint).
-      if (points.length === 0 && id.startsWith('nafas-')) {
+      // Fallback: for nafas-* ids whose station_daily is sparse (their upstream
+      // station_till is WITA-local, so the universal rollup's UTC staleness guard
+      // drops most rows), surface Nafas's own daily aggregates from nafas_daily.
+      // Those carry no separate max, so pm25_max = the daily mean (no spike layer
+      // at 90d/All for Nafas — 30d still shows true 4h max from raw snapshots).
+      if (points.length < 5 && id.startsWith('nafas-')) {
         const u = id.slice(6);
         if (isUuid(u)) {
           const r = await db.prepare(`
             SELECT date, pm25, pm10, pm1, aqi, temperature, humidity, pressure
             FROM nafas_daily WHERE uuid = ?1 ORDER BY date ASC
           `).bind(u).all();
-          points = (r.results || []).map(p => ({
-            date: p.date, pm25: p.pm25,
-            pm25_min: p.pm25, pm25_max: p.pm25, sample_n: 1,
-          }));
+          if ((r.results || []).length) {
+            points = r.results.map(p => ({
+              date: p.date, pm25: p.pm25,
+              pm25_min: p.pm25, pm25_max: p.pm25, sample_n: 1,
+            }));
+          }
         }
+      }
+      if (cutoff90 != null) {
+        points = points.filter(p => {
+          const ms = Date.parse(p.date);
+          return Number.isFinite(ms) && ms / 1000 >= cutoff90;
+        });
       }
       return json({ station: stn, range: range || 'daily', points });
     }

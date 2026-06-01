@@ -589,12 +589,12 @@ async function renderChart(){
   }
   empty.style.display = 'none';
 
-  // Fetch all selected stations in parallel
+  // Fetch all selected stations in parallel. pointsFor → {mean, max, granular}.
   const ids = [...selectedIds];
   const fetched = await Promise.all(
-    ids.map(id => pointsFor(id).then(points => ({ id, points })))
+    ids.map(id => pointsFor(id).then(res => ({ id, res })))
   );
-  const withData = fetched.filter(f => f.points.length > 0);
+  const withData = fetched.filter(f => f.res && f.res.mean.length > 0);
 
   if (withData.length === 0){
     empty.style.display = 'flex';
@@ -603,21 +603,40 @@ async function renderChart(){
 
   // BUG FIX: multi-station chart was bouncing because Chart.js' category
   // x-axis stitched together each dataset's date list in dataset order,
-  // producing an unsorted union (e.g. station A ends at May-19, station B
-  // ends at Mar-27 — chart axis ended up …May-19, Mar-27). Fix: compute the
-  // sorted union of dates across all datasets, pass as data.labels, and
-  // align each dataset's data array to that label set (nulls for gaps).
+  // producing an unsorted union. Fix: compute the sorted union of labels
+  // across all datasets (mean AND max), pass as data.labels, and align each
+  // dataset's data array to that label set (nulls for gaps).
   const dateSet = new Set();
   for (const f of withData){
-    for (const p of f.points) dateSet.add(p[0]);
+    for (const p of f.res.mean) dateSet.add(p[0]);
+    if (f.res.max) for (const p of f.res.max) dateSet.add(p[0]);
   }
-  const labels = [...dateSet].sort();   // YYYY-MM-DD lexical == chronological
+  const labels = [...dateSet].sort();   // labels sort chronologically as strings
 
   const datasets = [];
   let cidx = 0;
   for (const f of withData){
-    const lookup = new Map(f.points.map(p => [p[0], p[1]]));
     const colour = PALETTE[cidx % PALETTE.length];
+    // Faint MAX layer (drawn first, so the mean line sits on top). Shows the
+    // peak inside each aggregation bucket so spikes aren't averaged away.
+    if (f.res.max && f.res.max.length){
+      const maxLookup = new Map(f.res.max.map(p => [p[0], p[1]]));
+      datasets.push({
+        label: nameFor(f.id) + ' · peak',
+        data: labels.map(d => maxLookup.has(d) ? maxLookup.get(d) : null),
+        borderColor: colour + '55',          // ~33% opacity line
+        backgroundColor: colour + '12',
+        borderWidth: 1,
+        pointRadius: 0,
+        pointHoverRadius: 3,
+        tension: 0.18,
+        spanGaps: true,
+        fill: false,
+        _isPeak: true,
+      });
+    }
+    // Mean / trend line.
+    const lookup = new Map(f.res.mean.map(p => [p[0], p[1]]));
     datasets.push({
       label: nameFor(f.id),
       data: labels.map(d => lookup.has(d) ? lookup.get(d) : null),
@@ -670,12 +689,16 @@ async function renderChart(){
           ticks: {
             color:'#6a635a',
             font:{ family:'"IBM Plex Mono", monospace', size:10 },
-            maxTicksLimit: currentRange === '24h' ? 12 : 8,
+            maxTicksLimit: currentRange === '24h' ? 12 : (currentRange === '7d' || currentRange === '30d') ? 10 : 8,
             callback: function(val){
               const lbl = this.getLabelForValue(val);
-              // 24h labels are "YYYY-MM-DD HH:MM" — show just "HH:MM" on axis
-              if (currentRange === '24h' && typeof lbl === 'string' && lbl.length >= 16) return lbl.slice(11);
-              return lbl !== undefined ? lbl : val;
+              if (typeof lbl !== 'string') return lbl !== undefined ? lbl : val;
+              // Datetime labels are "YYYY-MM-DD HH:MM"; daily are "YYYY-MM-DD".
+              const hasTime = lbl.length >= 16;
+              if (currentRange === '24h' && hasTime) return lbl.slice(11);          // HH:MM
+              if (currentRange === '7d'  && hasTime) return lbl.slice(5);           // MM-DD HH:MM
+              if (currentRange === '30d' && hasTime) return lbl.slice(5, 10);       // MM-DD
+              return lbl;                                                            // daily as-is
             }
           },
           grid: { color:'rgba(20,17,13,0.06)' }
@@ -691,7 +714,12 @@ async function renderChart(){
         legend: {
           display: true,
           position: 'bottom',
-          labels: { color:'#34302a', font:{ family:'"IBM Plex Mono", monospace', size:11 }, boxWidth:14, boxHeight:2, padding:14 }
+          labels: {
+            color:'#34302a', font:{ family:'"IBM Plex Mono", monospace', size:11 }, boxWidth:14, boxHeight:2, padding:14,
+            // Hide the faint "· peak" spike layers from the legend — they'd
+            // double every station's entry. Only the mean lines are listed.
+            filter: (item, data) => !(data.datasets[item.datasetIndex] || {})._isPeak
+          }
         },
         tooltip: {
           backgroundColor: '#14110d', titleColor: '#f3ece0', bodyColor: '#f3ece0',
@@ -703,14 +731,23 @@ async function renderChart(){
     }
   });
 
-  const stationWord = datasets.length === 1
+  // Count real stations (mean lines), not the faint peak layers.
+  const stationCount = withData.length;
+  const stationWord = stationCount === 1
     ? T('history.x.stationOne','station')
     : T('history.x.stationMany','stations');
   document.getElementById('chartTitle').textContent =
-    `PM2.5 — ${datasets.length} ${stationWord} · ${currentRange.toUpperCase()}`;
-  document.getElementById('chartSub').textContent = currentRange === '24h'
-    ? T('history.x.chartSub24h','15-minute snapshots over the last 24 hours (WITA). WHO 24-hour guideline at 15 µg/m³.')
-    : T('history.x.chartSubDaily','Hover any line for the daily mean. WHO twenty-four-hour guideline at 15 µg/m³.');
+    `PM2.5 — ${stationCount} ${stationWord} · ${currentRange.toUpperCase()}`;
+  // Caption explains the resolution at the current range.
+  let sub;
+  if (currentRange === '24h' || currentRange === '7d') {
+    sub = T('history.x.chartSubRaw', 'Fifteen-minute readings (hourly for IQAir). WHO 24-hour guideline at 15 µg/m³.');
+  } else if (currentRange === '30d') {
+    sub = T('history.x.chartSub4h', 'Four-hour averages; the faint line is each window’s peak. WHO 24-hour guideline at 15 µg/m³.');
+  } else {
+    sub = T('history.x.chartSubDailyMax', 'Daily averages; the faint line is each day’s peak. WHO 24-hour guideline at 15 µg/m³.');
+  }
+  document.getElementById('chartSub').textContent = sub;
 }
 
 function nameFor(id){
@@ -729,54 +766,64 @@ function nameFor(id){
 }
 
 async function pointsFor(id){
-  // Returns [[label, value], ...] pairs for the chart.
+  // Returns { mean:[[label,val],…], max:[[label,val],…]|null, granular:bool }.
+  //   mean    — the trend line (raw reading at 24h/7d, bucket/daily mean beyond)
+  //   max     — faint spike layer for aggregated ranges (30d 4h-max, 90d/All
+  //             daily-max); null when the range is raw or no max is available
+  //   granular— true when points are raw readings (no aggregation)
   //
-  // 24h range: fetch 15-min snapshots from the API (station_snapshots /
-  // nafas_snapshots tables). Returns [[tsToLabel(ts), pm25], ...].
-  // Offline embedded sensors have no snapshots — return [] for 24h.
-  //
-  // All other ranges: fetch daily aggregates, post-filter by filterByRange().
-  if (currentRange === '24h'){
-    if (id.startsWith('off-')) return [];   // no snapshots for silenced sensors
-    let url;
-    if (id.startsWith('nafas-')){
-      url = API_BASE + `/api/history?uuid=${encodeURIComponent(id.slice(6))}&range=24h`;
-    } else {
-      url = API_BASE + `/api/history?id=${encodeURIComponent(id)}&range=24h`;
-    }
+  // Resolution ladder (see /api/history): 24h & 7d = raw (15-min for snapshot
+  // sources, hourly for scraped IQAir); 30d = 4-hour buckets (mean+max);
+  // 90d & All = daily (mean+max where stored). Offline sensors: daily only.
+  const empty = { mean: [], max: null, granular: false };
+
+  // ---- 24h / 7d : raw readings, full granularity ----
+  if (currentRange === '24h' || currentRange === '7d'){
+    if (id.startsWith('off-')) return empty;   // no snapshots for silenced sensors
+    // Nafas now uses the universal ?id= path (station_snapshots has the full
+    // 15-min series incl. spikes); the legacy ?uuid= path stays for old clients.
+    const url = API_BASE + `/api/history?id=${encodeURIComponent(id)}&range=${currentRange}`;
     try{
       const r = await fetch(url, { cache:'no-cache' });
-      if (!r.ok) return [];
+      if (!r.ok) return empty;
       const d = await r.json();
-      return (d.points || []).filter(p => p.pm25 != null).map(p => [tsToLabel(p.ts), +p.pm25]);
-    }catch(e){ return []; }
+      const mean = (d.points || []).filter(p => p.pm25 != null).map(p => [tsToLabel(p.ts), +p.pm25]);
+      return { mean, max: null, granular: true };
+    }catch(e){ return empty; }
   }
 
-  // Daily aggregate paths below
+  // ---- Offline embedded sensors: daily only (no finer data exists) ----
   if (id.startsWith('off-')){
     const key = id.slice(4);
     const data = OFFLINE_HISTORY[key];
-    if (!data) return [];
-    return filterByRange(data.daily);
+    if (!data) return empty;
+    return { mean: filterByRange(data.daily), max: null, granular: false };
   }
-  if (id.startsWith('nafas-')){
-    const uuid = id.slice(6);
-    try{
-      const r = await fetch(API_BASE + `/api/history?uuid=${encodeURIComponent(uuid)}&range=daily`, { cache:'no-cache' });
-      if (!r.ok) return [];
-      const d = await r.json();
-      const pts = (d.points || []).map(p => [p.date, p.pm25]).filter(p => p[1] != null);
-      return filterByRange(pts);
-    }catch(e){ return []; }
-  }
-  // Universal station_id (aq-A416893, airly-40883, iq-Ubud, pa-36601, oaq-…)
+
+  // ---- 30d : 4-hour buckets (mean + max). 90d / All : daily (mean + max). ----
+  // Nafas + scraped IQAir + universal all flow through the ?id= path now.
   try{
-    const r = await fetch(API_BASE + `/api/history?id=${encodeURIComponent(id)}&range=daily`, { cache:'no-cache' });
-    if (!r.ok) return [];
+    const r = await fetch(API_BASE + `/api/history?id=${encodeURIComponent(id)}&range=${currentRange}`, { cache:'no-cache' });
+    if (!r.ok) return empty;
     const d = await r.json();
-    const pts = (d.points || []).map(p => [p.date, p.pm25]).filter(p => p[1] != null);
-    return filterByRange(pts);
-  }catch(e){ return []; }
+    const raw = d.points || [];
+    // Bucketed (30d) points carry a unix `ts`; daily points carry a `date`.
+    const isBucket = d.bucket === '4h';
+    const lbl = p => isBucket ? tsToLabel(p.ts) : p.date;
+    const mean = [], max = [];
+    for (const p of raw){
+      if (p.pm25 == null) continue;
+      const L = lbl(p);
+      mean.push([L, +p.pm25]);
+      // Spike layer: only when a real max exists AND it exceeds the mean.
+      if (p.pm25_max != null && +p.pm25_max > +p.pm25) max.push([L, +p.pm25_max]);
+    }
+    // For daily ranges the API returns the full series; apply the range cutoff
+    // client-side (buckets are already cutoff-filtered server-side).
+    const meanF = isBucket ? mean : filterByRange(mean);
+    const maxF  = isBucket ? max  : filterByRange(max);
+    return { mean: meanF, max: maxF.length ? maxF : null, granular: false };
+  }catch(e){ return empty; }
 }
 
 function filterByRange(daily){
