@@ -98,6 +98,9 @@ body::before{
 .h-chart-controls label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
 .h-chart-controls input[type=checkbox]{accent-color:var(--crimson);width:14px;height:14px;cursor:pointer}
 .h-chart-controls .ctl-lab{color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+.h-chart-controls label.disabled{opacity:.42;cursor:not-allowed}
+.h-chart-controls label.disabled input{cursor:not-allowed}
+.peak-na{color:var(--ink-faint);font-size:9px;letter-spacing:.06em;text-transform:none}
 .region-select{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:5px 8px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer;letter-spacing:.04em;max-width:230px}
 /* WHO hours-above panel (below the chart) */
 .who-hours{margin-top:18px;border-top:1px solid var(--hairline);padding-top:14px}
@@ -246,7 +249,7 @@ body::before{
           <div class="grp">
             <span class="ctl-lab" data-i18n="history.x.show">Show</span>
             <label><input type="checkbox" id="toggleAvg" checked> <span data-i18n="history.x.avg">Average</span></label>
-            <label><input type="checkbox" id="togglePeak" checked> <span data-i18n="history.x.peak">Peak</span></label>
+            <label id="peakLabel"><input type="checkbox" id="togglePeak" checked> <span data-i18n="history.x.peak">Peak</span><span class="peak-na" id="peakNA" style="display:none" data-i18n="history.x.peakNa"> · 30d+</span></label>
           </div>
           <div class="grp">
             <span class="ctl-lab" data-i18n="history.x.region">Region</span>
@@ -730,21 +733,27 @@ function renderWhoHours(withData){
   const box = document.getElementById('whoHours');
   if (!box) return;
   if (!withData || !withData.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  // Percentages are of each sensor's RECORDED hours in the range (count above /
+  // total count — the per-point weighting cancels), so a partial-coverage sensor
+  // isn't unfairly diluted against the full clock.
+  const fmtPct = x => (Math.round(x * 10) / 10).toFixed(1).replace(/\.0$/, '');
   const rows = withData.map((f, i) => {
     const color = PALETTE[i % PALETTE.length];
     const pts = f.res.mean || [];
     const per = perPointHours(pts);
-    const h15 = Math.round(pts.filter(p => p[1] > 15).length * per);
-    const h55 = Math.round(pts.filter(p => p[1] > 55.4).length * per);
+    const n = pts.length || 1;
+    const c15 = pts.filter(p => p[1] > 15).length;
+    const c55 = pts.filter(p => p[1] > 55.4).length;
     return `<div class="who-row"><span class="sw" style="background:${color}"></span>` +
       `<span class="nm">${escapeHtml(nameFor(f.id))}</span>` +
-      `<span class="h15"><b>${h15}</b> ${escapeHtml(T('history.x.whoH15','h over 15 µg/m³'))}</span>` +
-      `<span class="h55"><b>${h55}</b> ${escapeHtml(T('history.x.whoH55','h over 55.4 µg/m³'))}</span></div>`;
+      `<span class="h15"><b>${Math.round(c15 * per)}</b> ${escapeHtml(T('history.x.whoH15','h over 15 µg/m³'))} (${fmtPct(100 * c15 / n)}%)</span>` +
+      `<span class="h55"><b>${Math.round(c55 * per)}</b> ${escapeHtml(T('history.x.whoH55','h over 55.4 µg/m³'))} (${fmtPct(100 * c55 / n)}%)</span></div>`;
   }).join('');
-  const note = (currentRange === '24h' || currentRange === '7d') ? '' :
-    `<div class="who-hours-note">${escapeHtml(T('history.x.whoNote','At 30-day and longer ranges these hours are estimated from averaged data, so short spikes between samples may be undercounted.'))}</div>`;
+  const pctNote = T('history.x.whoPctNote', 'Percentages are of each sensor’s recorded hours in the selected range.');
+  const avgNote = (currentRange === '24h' || currentRange === '7d') ? '' :
+    ' ' + T('history.x.whoNote', 'At 30-day and longer ranges these hours are estimated from averaged data, so short spikes between samples may be undercounted.');
   box.innerHTML = `<div class="who-hours-h">${escapeHtml(T('history.x.whoTitle','Hours above WHO guidelines'))} · ${escapeHtml(currentRange.toUpperCase())}</div>` +
-    `<div class="who-hours-grid">${rows}</div>${note}`;
+    `<div class="who-hours-grid">${rows}</div><div class="who-hours-note">${escapeHtml(pctNote + avgNote)}</div>`;
   box.style.display = 'block';
 }
 
@@ -753,6 +762,16 @@ async function renderChart(){
   if (!cv) return;
   const empty = document.getElementById('emptyState');
   if (chartInstance){ chartInstance.destroy(); chartInstance = null; }
+
+  // Peak only applies to aggregated ranges (30d+); at 24h/7d the raw line already
+  // shows every reading, so grey the Peak toggle there to read as N/A.
+  const peakNA = (currentRange === '24h' || currentRange === '7d');
+  const tpEl = document.getElementById('togglePeak');
+  const plEl = document.getElementById('peakLabel');
+  const pnaEl = document.getElementById('peakNA');
+  if (tpEl) tpEl.disabled = peakNA;
+  if (plEl) plEl.classList.toggle('disabled', peakNA);
+  if (pnaEl) pnaEl.style.display = peakNA ? 'inline' : 'none';
 
   if (selectedIds.size === 0){
     empty.style.display = 'flex';
@@ -803,7 +822,12 @@ async function renderChart(){
         pointRadius: 0,
         pointHoverRadius: 3,
         tension: 0.18,
-        spanGaps: false,                      // don't bridge no-data gaps
+        // The peak layer is SPARSE (only buckets/days where max > mean), so it
+        // must bridge the in-between nulls or it renders as invisible isolated
+        // points (pointRadius:0). A silenced/empty-in-range series can't draw a
+        // false line here — it's excluded upstream (withData) or by the frozen
+        // guard, so spanGaps:true is safe.
+        spanGaps: true,
         fill: false,
         _isPeak: true,
       });
@@ -820,7 +844,7 @@ async function renderChart(){
         pointRadius: 0,
         pointHoverRadius: 4,
         tension: 0.18,
-        spanGaps: false                       // only draw where data exists
+        spanGaps: true                        // bridge gaps; empty-in-range series are excluded upstream
       });
     }
     cidx++;
@@ -1021,7 +1045,16 @@ function filterByRange(daily){
 // Convert unix seconds to a sortable WITA (UTC+8) label "YYYY-MM-DD HH:MM".
 // Used for 24h snapshot x-axis labels — sorts chronologically as a string.
 function tsToLabel(ts){
-  const d = new Date((+ts + 8 * 3600) * 1000); // shift epoch to UTC+8
+  // Accept either unix SECONDS (universal/bucket queries) OR an ISO-8601 string
+  // (scraped-IQAir hourly rows store `ts` as ISO — passing those through `+ts`
+  // produced NaN, collapsing every iqs- point onto one bogus label so the line
+  // never drew at 24h/7d). Normalise to epoch-ms, then render the WITA (UTC+8)
+  // wall-clock as a sortable "YYYY-MM-DD HH:MM" label.
+  let ms;
+  if (typeof ts === 'number' || /^\d+(\.\d+)?$/.test(String(ts))) ms = (+ts) * 1000;
+  else ms = Date.parse(ts);
+  if (!Number.isFinite(ms)) return String(ts);
+  const d = new Date(ms + 8 * 3600 * 1000); // shift to UTC+8 wall-clock
   const pad = n => String(n).padStart(2, '0');
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }

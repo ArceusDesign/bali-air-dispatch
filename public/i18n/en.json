@@ -272,5 +272,7 @@
   "history.x.whoTitle": "Hours above WHO guidelines",
   "history.x.whoH15": "h over 15 µg/m³",
   "history.x.whoH55": "h over 55.4 µg/m³",
-  "history.x.whoNote": "At 30-day and longer ranges these hours are estimated from averaged data, so short spikes between samples may be undercounted."
+  "history.x.whoNote": "At 30-day and longer ranges these hours are estimated from averaged data, so short spikes between samples may be undercounted.",
+  "history.x.peakNa": " · 30d+",
+  "history.x.whoPctNote": "Percentages are of each sensor’s recorded hours in the selected range."
 }
