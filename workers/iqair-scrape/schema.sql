@@ -55,5 +55,16 @@ CREATE TABLE IF NOT EXISTS iq_scrape_monthly (
   PRIMARY KEY (slug, month)
 );
 
+-- One row per cron run — operational visibility so a stalled scraper is
+-- diagnosable without a manual trigger (ok/fail/skip counts + per-station detail).
+CREATE TABLE IF NOT EXISTS iq_scrape_runs (
+  ts            INTEGER PRIMARY KEY,         -- unix seconds the run started
+  duration_ms   INTEGER,
+  ok_count      INTEGER,
+  fail_count    INTEGER,
+  skip_count    INTEGER,                     -- stations not started before the soft deadline
+  detail        TEXT                         -- JSON: ["slug:ok","slug:http429",…]
+);
+
 CREATE INDEX IF NOT EXISTS idx_iq_hourly_slug_ts  ON iq_scrape_hourly  (slug, ts);
 CREATE INDEX IF NOT EXISTS idx_iq_daily_slug_date ON iq_scrape_daily   (slug, date);

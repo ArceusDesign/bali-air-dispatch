@@ -29,21 +29,32 @@ const STATIONS = [
   ['plataran-menjangan',         'https://www.iqair.com/ca/indonesia/bali/buleleng/plataran-menjangan-resort-spa'],
 ];
 
-async function firecrawlScrape(url, key) {
-  const r = await fetch('https://api.firecrawl.dev/v2/scrape', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-    // maxAge:0 forces a FRESH fetch every time. Firecrawl v2 caches scrapes by
-    // default (maxAge defaults to ~2 days), so without this every hourly run was
-    // handed the SAME stale cached page — IQAir values were frozen hours behind
-    // the live tile (verified: default scrape returned 06:00 UTC data at 14:13
-    // UTC; maxAge:0 returned the live 13:00 UTC reading). We scrape hourly and
-    // need each run to reflect the latest completed hour, so never use the cache.
-    body: JSON.stringify({ url, formats: ['rawHtml'], waitFor: 9000, onlyMainContent: false, maxAge: 0 }),
-  });
-  let j = {};
-  try { j = await r.json(); } catch {}
-  return { status: r.status, html: (j.data || {}).rawHtml || '', ok: !!j.success };
+async function firecrawlScrape(url, key, timeoutMs = 40000) {
+  // Hard per-request timeout: a single slow/hung IQAir render can no longer hold
+  // the fetch open indefinitely (which, across the batch, used to push the cron
+  // invocation past its execution budget). On timeout the fetch aborts → this
+  // station fails gracefully this run and self-heals next run.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch('https://api.firecrawl.dev/v2/scrape', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+      // maxAge:0 forces a FRESH fetch every time. Firecrawl v2 caches scrapes by
+      // default (maxAge defaults to ~2 days), so without this every hourly run was
+      // handed the SAME stale cached page — IQAir values were frozen hours behind
+      // the live tile (verified: default scrape returned 06:00 UTC data at 14:13
+      // UTC; maxAge:0 returned the live 13:00 UTC reading). We scrape hourly and
+      // need each run to reflect the latest completed hour, so never use the cache.
+      body: JSON.stringify({ url, formats: ['rawHtml'], waitFor: 9000, onlyMainContent: false, maxAge: 0 }),
+      signal: ctrl.signal,
+    });
+    let j = {};
+    try { j = await r.json(); } catch {}
+    return { status: r.status, html: (j.data || {}).rawHtml || '', ok: !!j.success };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function ingestStation(db, slug, url, ex, nowSec) {
@@ -101,8 +112,12 @@ async function processStation(db, slug, url, key, nowSec) {
   try {
     const { status, html, ok } = await firecrawlScrape(url, key);
     if (!ok || !html) {
-      await db.prepare(`UPDATE iq_scrape_stations SET last_scrape_ts=?2, last_scrape_ok=0 WHERE slug=?1`)
-        .bind(slug, nowSec).run().catch(() => {});
+      // Mark the attempt failed but DO NOT advance last_scrape_ts — it must keep
+      // pointing at the last SUCCESSFUL scrape so /api/live's staleness check
+      // (FRESH_MS) correctly flags the station stale when scraping is failing,
+      // instead of masking a stuck scraper as freshly-updated.
+      await db.prepare(`UPDATE iq_scrape_stations SET last_scrape_ok=0 WHERE slug=?1`)
+        .bind(slug).run().catch(() => {});
       return { slug, ok: false, http: status };
     }
     const ex = extractStation(html);
@@ -116,29 +131,94 @@ async function processStation(db, slug, url, key, nowSec) {
   }
 }
 
-// Run the scrape. `onlySlug` limits to one station (for low-latency manual
-// verification). Stations are scraped in PARALLEL: the page render dominates
-// wall-clock (~20-25s each), so sequential 10× would exceed the Worker limit;
-// Promise.all keeps the whole batch close to a single station's latency.
-async function runAll(env, onlySlug) {
+// Bounded-concurrency pool with a global soft deadline. Results come back in
+// input order; any item not STARTED before the deadline is marked {skipped}.
+// Crucially, only `concurrency` fetches are ever in flight at once and we stop
+// launching new ones past the deadline — so the invocation always finishes
+// cleanly (writing whatever completed) instead of being killed mid-flight.
+async function runPool(items, worker, { concurrency, deadlineMs }) {
+  const results = new Array(items.length);
+  const start = Date.now();
+  let next = 0;
+  async function lane() {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      if (Date.now() - start > deadlineMs) { results[i] = { skipped: true }; continue; }
+      results[i] = await worker(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, lane));
+  return results;
+}
+
+// Rotation: the 10 stations are split into 4 groups, one scraped per 15-min cron
+// tick (:07/:22/:37/:52). Each station is still scraped once an hour, but each
+// invocation only does ≤3 stations (~50s) — comfortably under the Worker budget,
+// so a slow Firecrawl window can no longer push a run over its limit. A missed
+// station self-heals next cycle (UPSERT + the page's 48h hourly backstop).
+const STATION_GROUPS = [[0, 1, 2], [3, 4, 5], [6, 7], [8, 9]];
+function groupForScheduledTime(scheduledTime) {
+  const min = scheduledTime ? new Date(scheduledTime).getUTCMinutes() : 0;
+  return STATION_GROUPS[Math.floor(min / 15) % STATION_GROUPS.length];
+}
+
+// Run the scrape.
+//   opts.onlySlug  → single station (fast manual verification)
+//   opts.group     → array of STATION indices (rotation subset for a cron tick)
+//   neither        → all 10 (manual full run / backfill)
+async function runAll(env, opts = {}) {
+  const { onlySlug = null, group = null } = opts;
   const key = env.FIRECRAWL_KEY;
   const db = env.ARCHIVE_DB;
-  const nowSec = Math.floor(Date.now() / 1000);
+  const t0 = Date.now();
+  const nowSec = Math.floor(t0 / 1000);
   if (!key) return { error: 'no_firecrawl_key' };
   if (!db) return { error: 'no_d1_binding' };
 
-  const targets = onlySlug ? STATIONS.filter(([s]) => s === onlySlug) : STATIONS;
+  let targets;
+  if (onlySlug) targets = STATIONS.filter(([s]) => s === onlySlug);
+  else if (group) targets = group.map((i) => STATIONS[i]).filter(Boolean);
+  else targets = STATIONS;
   if (!targets.length) return { error: 'unknown_slug', slug: onlySlug };
 
-  const summary = await Promise.all(
-    targets.map(([slug, url]) => processStation(db, slug, url, key, nowSec))
+  // Firecrawl allows only 2 concurrent scrapes (account maxConcurrency=2). Match
+  // it with a pool of 2 so nothing queues on Firecrawl's side, and cap each run
+  // with a soft deadline as a backstop.
+  const summary = await runPool(
+    targets,
+    ([slug, url]) => processStation(db, slug, url, key, nowSec),
+    { concurrency: 2, deadlineMs: onlySlug ? 60000 : 200000 }
   );
-  return { ran: nowSec, count: summary.length, stations: summary };
+
+  const okCount = summary.filter((s) => s && s.ok).length;
+  const failCount = summary.filter((s) => s && s.ok === false).length;
+  const skipCount = summary.filter((s) => s && s.skipped).length;
+  const durationMs = Date.now() - t0;
+
+  // Run log — so a future stall is visible (ok/fail/skip per run) WITHOUT needing
+  // a manual trigger to discover it. Best-effort; never fails the run.
+  try {
+    const detail = targets.map(([slug], i) => {
+      const s = summary[i];
+      if (!s) return `${slug}:none`;
+      if (s.skipped) return `${slug}:skip`;
+      return `${slug}:${s.ok ? 'ok' : (s.error || s.reason || ('http' + s.http) || 'fail')}`;
+    });
+    await db.prepare(`
+      INSERT INTO iq_scrape_runs (ts, duration_ms, ok_count, fail_count, skip_count, detail)
+      VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+    `).bind(nowSec, durationMs, okCount, failCount, skipCount, JSON.stringify(detail).slice(0, 1800)).run();
+  } catch (_) { /* never fail the run on log write */ }
+
+  return { ran: nowSec, count: summary.length, ok: okCount, fail: failCount, skip: skipCount, durationMs, stations: summary };
 }
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runAll(env));
+    // Each 15-min tick scrapes one rotating group (≤3 stations), so a single
+    // invocation stays small and can't be killed mid-batch by a slow window.
+    ctx.waitUntil(runAll(env, { group: groupForScheduledTime(event && event.scheduledTime) }));
   },
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -148,9 +228,10 @@ export default {
       if (!want || url.searchParams.get('key') !== want) {
         return new Response('forbidden', { status: 403 });
       }
-      // ?slug=<one> verifies a single station fast (avoids 10× latency).
+      // ?slug=<one> verifies a single station fast; otherwise a full 10-station
+      // run (manual backfill / post-deploy sanity check).
       const onlySlug = url.searchParams.get('slug') || null;
-      const out = await runAll(env, onlySlug);
+      const out = await runAll(env, { onlySlug });
       return new Response(JSON.stringify(out, null, 2), { headers: { 'Content-Type': 'application/json' } });
     }
     return new Response('iqair-scrape worker', { status: 200 });
