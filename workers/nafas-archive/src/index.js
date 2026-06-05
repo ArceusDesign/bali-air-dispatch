@@ -40,6 +40,25 @@ function dateOnly(isoLike) {
   return m ? m[1] : null;
 }
 
+// Parse an upstream `station_till` to unix-ms, WITA-aware (mirrors
+// functions/api/live.js parseLastSeenMs): a timestamp with no zone is Nafas's
+// "YYYY-MM-DD HH:MM:SS" in Asia/Makassar (UTC+8), so we append +08:00.
+function parseTillMs(s) {
+  if (!s) return null;
+  let t = String(s).trim();
+  if (t.includes(' ') && !t.includes('T')) t = t.replace(' ', 'T');
+  if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(t)) t = t + '+08:00';
+  const ms = Date.parse(t);
+  return Number.isFinite(ms) ? ms : null;
+}
+// Stop archiving a sensor's snapshots once its reading has been frozen/stale for
+// longer than this. A short outage (≤ 48 h) still records, so the series stays
+// continuous if the sensor recovers; a sensor stuck for days/months (e.g. a
+// frozen AQICN echo) stops painting a fake flat line on the chart and stops
+// inflating the "hours above WHO" counts. The catalog row is still upserted so
+// the station stays listed (it just gathers no new data points).
+const STALE_RECORD_MS = 48 * 60 * 60 * 1000;
+
 async function fetchBaliStations() {
   const r = await fetch(NAFAS_ALL, { headers: HTTP });
   if (!r.ok) throw new Error(`Nafas /all HTTP ${r.status}`);
@@ -210,6 +229,11 @@ async function snapshotUniversal(db, live, nowSec) {
       s.id, s.source || 'Unknown', s.name || s.id,
       +s.lat, +s.lon, s.type || null, nowSec
     ));
+    // Frozen-sensor guard: if the upstream reading time (station_till) is more
+    // than 48 h behind now, the sensor is stuck echoing a stale value — record
+    // the catalog row but NOT a snapshot, so we don't archive the frozen echo.
+    const tillMs = parseTillMs(s.lastSeen);
+    if (tillMs != null && (nowSec * 1000 - tillMs) > STALE_RECORD_MS) continue;
     snapBatch.push(stmtSnap.bind(
       s.id, nowSec,
       toNumberOrNull(s.pm25), toNumberOrNull(s.pm10), toNumberOrNull(s.pm1),

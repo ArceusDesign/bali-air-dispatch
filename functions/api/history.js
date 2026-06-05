@@ -184,6 +184,12 @@ export async function onRequest(context) {
           SELECT ts, pm25, pm10, pm1, aqi, temperature, humidity, station_till
           FROM station_snapshots
           WHERE station_id = ?1 AND ts >= ?2
+            -- Frozen-sensor guard: drop snapshots whose upstream reading time was
+            -- already > 48h stale when we fetched them (a stuck sensor echoing an
+            -- old value). Window is -9h..+48h so Nafas's WITA-local (UTC+8) tills,
+            -- which parse ~8h "ahead" of ts under unixepoch's UTC assumption, still
+            -- pass while genuinely-frozen rows (months old) are excluded.
+            AND (station_till IS NULL OR (ts - unixepoch(station_till)) BETWEEN -32400 AND 172800)
           ORDER BY ts ASC
         `).bind(id, cutoff).all();
         return json({ station: stn, range, points: rows.results || [] });
@@ -200,6 +206,8 @@ export async function onRequest(context) {
                  MAX(aqi) AS aqi
           FROM station_snapshots
           WHERE station_id = ?1 AND ts >= ?2 AND pm25 IS NOT NULL
+            -- Frozen-sensor guard (see 24h/7d query): exclude stale-echo rows.
+            AND (station_till IS NULL OR (ts - unixepoch(station_till)) BETWEEN -32400 AND 172800)
           GROUP BY 1 ORDER BY 1 ASC
         `).bind(id, cutoff).all();
         return json({ station: stn, range, bucket: '4h', points: rows.results || [] });
@@ -231,6 +239,7 @@ export async function onRequest(context) {
                    COUNT(*) AS sample_n
             FROM station_snapshots
             WHERE station_id = ?1 AND pm25 IS NOT NULL
+              AND (station_till IS NULL OR (ts - unixepoch(station_till)) BETWEEN -32400 AND 172800)
             GROUP BY 1 ORDER BY 1 ASC
           `).bind(id).all();
           const snapRows = snapDaily.results || [];
