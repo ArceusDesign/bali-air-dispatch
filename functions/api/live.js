@@ -2,7 +2,7 @@
 // API keys stored in Cloudflare env vars (Settings → Environment Variables),
 // never exposed to browser.
 // Sources: PurpleAir, AQICN, IQAir, Airly, Nafas (public JSON feed),
-// OpenAQ (AirGradient).
+// OpenAQ (AirGradient), Smart Citizen (public JSON API, OUTDOOR only).
 //
 // Edition III iter 5 — first-paint speed pass:
 //   1. D1 FAST PATH. If the universal `stations` + `station_snapshots`
@@ -447,6 +447,119 @@ async function fetchNafas() {
   });
 }
 
+// ── Smart Citizen (smartcitizen.me — public JSON API, no key) ───────────
+// OUTDOOR ONLY. Smart Citizen is a citizen-science network; every device
+// publishes location.exposure ('outdoor'|'indoor') plus an online/offline tag.
+// We surface ONLY currently-online OUTDOOR devices inside the Bali bbox that
+// carry a PM2.5 sensor. Indoor devices are NEVER surfaced — this map is outdoor
+// ambient air; an indoor reading is not comparable and must not appear.
+//
+// One request does it all: /v0/devices?near=<lat,lon>&distance=<m> returns the
+// device list WITH inline sensor values (.data.sensors[].value), so there is no
+// N+1 detail fetch (unlike Nafas). The filter is dynamic — any NEW outdoor SC
+// device that comes online in Bali appears automatically; there is no hardcoded
+// device list to maintain. Indoor devices can never slip in.
+//
+// De-dup: SC's Jimbaran test cluster has two units ~11 m apart — collapse
+// SC-internal near-duplicates here (keep the freshest). Cross-source de-dup
+// (drop an SC pin sitting on an existing PurpleAir/Nafas/etc. sensor) is applied
+// by the caller via dedupSmartCitizen(), mirroring scrapedIQAirFromD1.
+const SC_BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
+function scPickSensor(sensors, re) {
+  if (!Array.isArray(sensors)) return null;
+  const s = sensors.find(x => re.test(String(x?.name || '')));
+  const v = s ? +s.value : NaN;
+  return Number.isFinite(v) ? +v.toFixed(1) : null;
+}
+// Sanitise externally-controlled SC strings (device name / hardware label) at
+// the source boundary. Smart Citizen lets anyone name a device anything and
+// bring it online in Bali; the frontend injects names via innerHTML, so strip
+// the HTML/attribute breakout characters here so a hostile device name can never
+// reach the DOM as markup. (Pre-existing site-wide pattern for other sources is
+// flagged separately; this keeps the source WE add self-contained-safe.)
+function scClean(s) {
+  return String(s == null ? '' : s).replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+async function fetchSmartCitizen() {
+  // Bali centre + 80 km radius covers the whole island in a single request.
+  const r = await fetch(
+    'https://api.smartcitizen.me/v0/devices?near=-8.65,115.20&distance=80000&per_page=200',
+    { headers: { Accept: 'application/json' }, cf: { cacheTtl: 300, cacheEverything: true } }
+  );
+  if (!r.ok) return [];
+  const list = await r.json();
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const d of list) {
+    // HARD RULE #1: outdoor only. Never surface indoor devices.
+    if (d?.location?.exposure !== 'outdoor') continue;
+    // HARD RULE #2: live only. Skip anything not currently online.
+    const tags = Array.isArray(d.system_tags) ? d.system_tags : [];
+    if (!tags.includes('online') || tags.includes('offline')) continue;
+    const lat = +d.location?.latitude, lon = +d.location?.longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (lat < SC_BALI.latMin || lat > SC_BALI.latMax ||
+        lon < SC_BALI.lonMin || lon > SC_BALI.lonMax) continue;
+    // Device id must be a clean integer — the station_id (sc-<id>) is used as a
+    // D1 key and a history route param; reject anything non-numeric outright.
+    const devId = Number.parseInt(d.id, 10);
+    if (!Number.isFinite(devId) || String(devId) !== String(d.id)) continue;
+    const sensors = d.data?.sensors;
+    const pm25 = scPickSensor(sensors, /PM2\.5/i);
+    if (pm25 == null) continue;  // must carry a real PM2.5 reading
+    // Backstop staleness guard: if the 'online' tag lingers but the last reading
+    // is absurdly old (>24h), skip. A genuinely online SC device reports ~1/min.
+    const lastMs = d.last_reading_at ? Date.parse(d.last_reading_at) : NaN;
+    if (Number.isFinite(lastMs) && (Date.now() - lastMs) > 24 * 60 * 60 * 1000) continue;
+    const { cat, cls } = pm25Category(pm25);
+    out.push({
+      id: `sc-${devId}`,
+      name: scClean(d.name) || `Smart Citizen #${devId}`,
+      source: 'Smart Citizen',
+      type: scClean(d.hardware?.name) || 'Citizen sensor',
+      lat, lon,
+      pm25,
+      pm10: scPickSensor(sensors, /PM10/i),
+      pm1:  scPickSensor(sensors, /PM1\b/i),
+      temperature: scPickSensor(sensors, /Temperature/i),
+      humidity:    scPickSensor(sensors, /Humidity/i),
+      aqi: null,
+      category: cat,
+      cls,
+      lastSeen: d.last_reading_at || null,
+    });
+  }
+  // SC-internal co-location de-dup: collapse pins within 120 m of each other
+  // (the Jimbaran twins sit ~11 m apart). Tiebreak is the LOWEST device id —
+  // a STABLE choice (the same station_id always wins, so history never splits),
+  // and lowest id == oldest device == longest history. Liveness is already
+  // handled upstream: offline units are filtered out before this runs, so if the
+  // winning unit goes dark its co-located sibling is naturally kept next tick.
+  const INTERNAL_M = 120;
+  const devNum = (s) => { const n = +String(s.id).slice(3); return Number.isFinite(n) ? n : Infinity; };
+  const kept = [];
+  for (const s of out.sort((a, b) => devNum(a) - devNum(b))) {  // lowest id first
+    if (kept.some(k => metresBetween(s.lat, s.lon, k.lat, k.lon) < INTERNAL_M)) continue;
+    kept.push(s);
+  }
+  return kept;
+}
+
+// Drop Smart Citizen pins within 300 m of an already-present DIFFERENT-source
+// station (mirrors scrapedIQAirFromD1's de-dup). Only ever removes SC pins —
+// never an existing one. Future-proofs against an SC unit placed beside a
+// PurpleAir/Nafas/etc. device so the native feed wins and there's no double dot.
+function dedupSmartCitizen(scStations, existing) {
+  const DEDUP_M = 300;
+  return scStations.filter(s =>
+    !existing.some(o =>
+      o && o.source !== 'Smart Citizen' &&
+      Number.isFinite(o.lat) && Number.isFinite(o.lon) &&
+      metresBetween(s.lat, s.lon, o.lat, o.lon) < DEDUP_M
+    )
+  );
+}
+
 async function fetchOpenAQ(env) {
   // 6 search centers, parallel discovery, then parallel detail per station.
   // De-dup by id.
@@ -682,6 +795,20 @@ export async function onRequest(context) {
       results.errors.push({ source: name, error: String(r.reason).slice(0, 200) });
     }
   });
+  // Fold in Smart Citizen (smartcitizen.me public API — OUTDOOR only). Done
+  // here, not via sourceFetchers, so the 300 m cross-source de-dup runs against
+  // the already-assembled base list. The 15-min worker calls /api/live?fresh=1,
+  // sees this de-duped result, and archives SC into the universal tables — so
+  // history charts work automatically with no extra worker or table changes.
+  try {
+    const sc = await fetchSmartCitizen();
+    const scKept = dedupSmartCitizen(sc, results.stations);
+    if (scKept.length) {
+      results.sources++;
+      results.stations.push(...scKept.map(flagStale));
+    }
+  } catch (_) { /* Smart Citizen optional — never block the response */ }
+
   // Fold in scraped IQAir stations (from D1; the upstream fetchers above do not
   // include them — the iqair-scrape worker is what populates iq_scrape_*).
   if (env.ARCHIVE_DB) {

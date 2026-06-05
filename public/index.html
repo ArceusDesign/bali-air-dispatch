@@ -778,6 +778,14 @@ function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000)}
    STATE
    ========================================================= */
 const API_BASE = (location.hostname==='baliair.pages.dev' || location.hostname.endsWith('.pages.dev')) ? '' : 'https://baliair.pages.dev';
+// Escape externally-controlled strings (sensor names, source/type labels from
+// upstream feeds) before they go into innerHTML. Upstream networks let anyone
+// name a device, so an unescaped name like `<img onerror=…>` would otherwise
+// execute in every visitor's browser. Apply at EVERY innerHTML interpolation of
+// name/source/type. (Numeric/date values don't need it.)
+const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+));
 let liveStations = [];
 let allStations  = []; // live + offline
 const hazeLayer  = L.layerGroup().addTo(map);
@@ -989,7 +997,7 @@ function renderBulletinTicker(worst,median,overWho,offN){
   // i18n-aware string lookup with English fallback baked in.
   const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
   const parts = [];
-  if(worst.pm25>0) parts.push(`<span>${t('ticker.worstNow','Worst now')} · <b>${worst.pm25.toFixed(1)} µg/m³</b> ${t('ticker.at','at')} <b>${(worst.name||'').split(' (')[0]}</b></span>`);
+  if(worst.pm25>0) parts.push(`<span>${t('ticker.worstNow','Worst now')} · <b>${worst.pm25.toFixed(1)} µg/m³</b> ${t('ticker.at','at')} <b>${esc((worst.name||'').split(' (')[0])}</b></span>`);
   if(median!=null) parts.push(`<span>${t('ticker.netMedian','Network median')} · <b>${median.toFixed(1)} µg/m³</b></span>`);
   parts.push(`<span><b>${overWho}</b> ${t('ticker.aboveWhoMid','of')} ${liveStations.length} ${t('ticker.aboveWhoTail','stations above WHO 24h (15 µg/m³)')}</span>`);
   parts.push(`<span><b>${offN}</b> ${t('ticker.offline','sensors offline · historical data preserved below')}</span>`);
@@ -1028,8 +1036,8 @@ function renderRollTable(){
     if(s.offline){
       const dl = daysBetween(s.last, new Date());
       return `<tr class="offline" data-sid="${s.id}">
-        <td><b>${s.name.split(' (')[0]}</b></td>
-        <td>${s.source}</td>
+        <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
+        <td>${esc(s.source)}</td>
         <td class="r">—</td>
         <td><span class="badge off">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.offline','Offline') : 'Offline'} · ${dl}${(window.I18N && window.I18N.t) ? window.I18N.t('roll.daysShort','d') : 'd'}</span></td>
         <td class="c">${historyCell(s)}</td>
@@ -1042,8 +1050,8 @@ function renderRollTable(){
     if (s.stale) {
       const ageDays = Math.round((s.staleAgeHours || 0) / 24);
       return `<tr class="offline" data-sid="${s.id}">
-        <td><b>${(s.name||'').split(' (')[0]}</b></td>
-        <td>${s.source}</td>
+        <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
+        <td>${esc(s.source)}</td>
         <td class="r"><span class="pm-cell" style="color:var(--ink-whisper);font-style:italic">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
         <td><span class="badge off">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.stale','Stale') : 'Stale'} · ${ageDays}${(window.I18N && window.I18N.t) ? window.I18N.t('roll.daysShort','d') : 'd'}</span></td>
         <td class="c">${historyCell(s)}</td>
@@ -1051,8 +1059,8 @@ function renderRollTable(){
       </tr>`;
     }
     return `<tr data-sid="${s.id}">
-      <td><b>${(s.name||'').split(' (')[0]}</b>${s.pm25_estimated?' <em style="color:var(--ink-faint);font-size:11px">· est.</em>':''}</td>
-      <td>${s.source}</td>
+      <td><b>${esc((s.name||'').split(' (')[0])}</b>${s.pm25_estimated?' <em style="color:var(--ink-faint);font-size:11px">· est.</em>':''}</td>
+      <td>${esc(s.source)}</td>
       <td class="r"><span class="pm-cell">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
       <td><span class="badge ${c.cls}">${c.label}</span></td>
       <td class="c">${historyCell(s)}</td>
@@ -1143,8 +1151,8 @@ async function renderArchive(){
     el.style.cursor = 'pointer';
     el.innerHTML = `
       <div class="arc-lab" style="color:var(--crimson)">§ ${idx+1} · ${T('worst.label','Worst right now')}</div>
-      <div class="arc-name">${(stn.name||'').split(' (')[0]}</div>
-      <div class="arc-sub">${stn.source} · ${stn.type || ''}</div>
+      <div class="arc-name">${esc((stn.name||'').split(' (')[0])}</div>
+      <div class="arc-sub">${esc(stn.source)} · ${esc(stn.type || '')}</div>
       <div class="arc-stats">
         <div class="s"><div class="k">${T('worst.now','Now')}</div><div class="v" style="color:var(--${cat.cls==='good'?'aqi-good':cat.cls==='mod'?'aqi-mod':cat.cls==='usg'?'aqi-usg':cat.cls==='unh'?'aqi-unh':cat.cls==='vunh'?'aqi-vunh':'aqi-haz'})">${cur.toFixed(1)}</div></div>
         <div class="s"><div class="k">${T('worst.mean30','30d mean')}</div><div class="v">${mean!=null?mean.toFixed(1):'—'}</div></div>
@@ -1267,11 +1275,12 @@ function panelLive(s){
               : s.source==='IQAir'?'https://www.iqair.com/indonesia/bali'
               : s.source==='AQICN'?'https://aqicn.org/city/indonesia/bali/'
               : s.source==='Nafas'?'https://nafas.co.id'
+              : s.source==='Smart Citizen'?('https://smartcitizen.me/kits/'+String(s.id||'').replace(/^sc-/,''))
               : '#';
   return `
     <div class="side-hero">
-      <div class="side-kicker"><span class="tag">${t('panel.tagLive','Live')}</span> ${s.source}${s.type?' · '+s.type:''}</div>
-      <div class="side-name">${s.name||t('panel.unnamed','Unnamed station')}</div>
+      <div class="side-kicker"><span class="tag">${t('panel.tagLive','Live')}</span> ${esc(s.source)}${s.type?' · '+esc(s.type):''}</div>
+      <div class="side-name">${esc(s.name)||t('panel.unnamed','Unnamed station')}</div>
       <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.reporting','reporting')} ${s.lastSeen?t('panel.at','at')+' '+new Date(s.lastSeen).toLocaleTimeString('en-GB'):t('panel.now','now')}</div>
     </div>
     <div class="side-big">
@@ -1302,8 +1311,8 @@ function panelLive(s){
     <div class="side-section">
       <h4>${t('panel.register','Sensor register')}</h4>
       <div class="rows">
-        <div class="r"><span class="k">${t('panel.source','Source')}</span><span class="v">${s.source}</span></div>
-        <div class="r"><span class="k">${t('panel.type','Type')}</span><span class="v">${s.type||'—'}</span></div>
+        <div class="r"><span class="k">${t('panel.source','Source')}</span><span class="v">${esc(s.source)}</span></div>
+        <div class="r"><span class="k">${t('panel.type','Type')}</span><span class="v">${esc(s.type)||'—'}</span></div>
         <div class="r"><span class="k">${t('panel.aqi','AQI')}</span><span class="v">${s.aqi!=null?s.aqi:'—'}</span></div>
         <div class="r"><span class="k">${t('panel.lastSeen','Last seen')}</span><span class="v">${tsLocal}</span></div>
         <div class="r"><span class="k">${t('panel.coords','Coordinates')}</span><span class="v">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}</span></div>
@@ -1315,7 +1324,7 @@ function panelLive(s){
         ${t('panel.windHelp','Toggle the <b>Wind</b> layer on the map to see the direction smoke would carry from this station right now — upwind is where a burn would have to be.')}
       </p>
     </div>
-    <a class="side-link" href="${srcUrl}" target="_blank" rel="noopener noreferrer">${t('panel.viewOn','View on')} ${s.source} ↗</a>`;
+    <a class="side-link" href="${srcUrl}" target="_blank" rel="noopener noreferrer">${t('panel.viewOn','View on')} ${esc(s.source)} ↗</a>`;
 }
 
 function panelOffline(s){
@@ -1331,8 +1340,8 @@ function panelOffline(s){
   }
   return `
     <div class="side-hero">
-      <div class="side-kicker"><span class="tag gone">${t('panel.tagOffline','Offline')}</span> ${s.source}${s.type?' · '+s.type:''}</div>
-      <div class="side-name">${s.name}</div>
+      <div class="side-kicker"><span class="tag gone">${t('panel.tagOffline','Offline')}</span> ${esc(s.source)}${s.type?' · '+esc(s.type):''}</div>
+      <div class="side-name">${esc(s.name)}</div>
       <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.lastReported','last reported')} ${fmtDate(s.last)} · ${t('panel.silentFor','silent for')} <b style="color:var(--crimson)">${days} ${t('panel.days','days')}</b></div>
     </div>
     <div class="side-big">
@@ -1372,8 +1381,8 @@ function panelOffline(s){
     <div class="side-section">
       <h4>Register</h4>
       <div class="rows">
-        <div class="r"><span class="k">Platform</span><span class="v">${s.source}</span></div>
-        <div class="r"><span class="k">Type</span><span class="v">${s.type||'—'}</span></div>
+        <div class="r"><span class="k">Platform</span><span class="v">${esc(s.source)}</span></div>
+        <div class="r"><span class="k">Type</span><span class="v">${esc(s.type)||'—'}</span></div>
         ${s.first?`<div class="r"><span class="k">First reading</span><span class="v">${fmtDate(s.first)}</span></div>`:''}
         <div class="r"><span class="k">Last reading</span><span class="v" style="color:var(--crimson)">${fmtDate(s.last)}</span></div>
         <div class="r"><span class="k">Silent for</span><span class="v" style="color:var(--crimson)">${days} days</span></div>
