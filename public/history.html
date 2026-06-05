@@ -92,6 +92,24 @@ body::before{
 /* CHART */
 .h-chart-wrap{position:relative;background:var(--paper);border:1px solid var(--rule);padding:16px 18px 20px}
 .h-chart-wrap::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--crimson)}
+/* Chart filter controls (above the chart) */
+.h-chart-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;margin:4px 0 14px;padding-bottom:13px;border-bottom:1px dashed var(--hairline);font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.04em}
+.h-chart-controls .grp{display:flex;align-items:center;gap:10px}
+.h-chart-controls label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em}
+.h-chart-controls input[type=checkbox]{accent-color:var(--crimson);width:14px;height:14px;cursor:pointer}
+.h-chart-controls .ctl-lab{color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+.region-select{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:5px 8px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer;letter-spacing:.04em;max-width:230px}
+/* WHO hours-above panel (below the chart) */
+.who-hours{margin-top:18px;border-top:1px solid var(--hairline);padding-top:14px}
+.who-hours-h{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:11px}
+.who-hours-grid{display:flex;flex-direction:column;gap:8px}
+.who-row{display:flex;align-items:baseline;gap:10px 14px;flex-wrap:wrap;font-family:"Source Serif 4",serif;font-size:13px}
+.who-row .sw{width:10px;height:10px;flex-shrink:0;display:inline-block;border:1px solid var(--rule);align-self:center}
+.who-row .nm{font-weight:600;color:var(--ink);min-width:150px}
+.who-row .h15{color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.02em}
+.who-row .h55{color:var(--crimson);font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.02em}
+.who-row .h15 b,.who-row .h55 b{font-size:13px}
+.who-hours-note{margin-top:11px;font-family:"Source Serif 4",serif;font-style:italic;font-size:11.5px;color:var(--ink-faint);line-height:1.45}
 .h-chart-title{font-family:"Fraunces",serif;font-weight:700;font-size:18px;line-height:1.15;margin-bottom:6px;color:var(--ink)}
 .h-chart-sub{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;color:var(--ink-faint);margin-bottom:14px}
 .h-canvas-wrap{position:relative;height:420px}
@@ -224,6 +242,17 @@ body::before{
       <div class="h-chart-wrap">
         <div class="h-chart-title" id="chartTitle" data-i18n="history.chart.title">PM2.5 — selected stations</div>
         <div class="h-chart-sub" id="chartSub" data-i18n="history.chart.sub">Pick stations from the list to chart. Default selection is the three highest current readings with archive data.</div>
+        <div class="h-chart-controls" id="chartControls">
+          <div class="grp">
+            <span class="ctl-lab" data-i18n="history.x.show">Show</span>
+            <label><input type="checkbox" id="toggleAvg" checked> <span data-i18n="history.x.avg">Average</span></label>
+            <label><input type="checkbox" id="togglePeak" checked> <span data-i18n="history.x.peak">Peak</span></label>
+          </div>
+          <div class="grp">
+            <span class="ctl-lab" data-i18n="history.x.region">Region</span>
+            <select class="region-select" id="regionSelect"><option value="" data-i18n="history.x.regionChoose">Choose a region…</option></select>
+          </div>
+        </div>
         <div class="h-canvas-wrap">
           <canvas id="historyChart"></canvas>
           <div class="h-empty" id="emptyState" style="display:none">
@@ -231,6 +260,7 @@ body::before{
             <div data-i18n="history.empty.body">Pick at least one station from the list, or change the time range.</div>
           </div>
         </div>
+        <div class="who-hours" id="whoHours" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -395,9 +425,11 @@ async function loadCatalogs(){
   for (const u of archUniversal)  if (u.station_id && (+u.daily_n) > 0) archivedIds.add(u.station_id);
 
   buildStationList();
+  buildRegionDropdown();
   // Default selection: top-3 worst current PM2.5 from chartable stations
   const archivedLive = liveCatalog
     .filter(s => isArchived(s))
+    .filter(s => !isStale(s))                 // skip frozen/stale sensors — they'd chart empty
     .filter(s => Number.isFinite(+s.pm25))
     .sort((a,b)=>(+b.pm25)-(+a.pm25));
   archivedLive.slice(0,3).forEach(s => selectedIds.add(s.id));
@@ -501,6 +533,11 @@ function buildStationList(){
     }))
   ];
 
+  // Record every selectable monitor that has coordinates (for the region filter).
+  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...silenced]
+    .map(s => { const c = coordOf(s.id); return c ? { id: s.id, name: s.name, lat: c.lat, lon: c.lon } : null; })
+    .filter(Boolean);
+
   const renderRow = (s, idx, opts = {}) => {
     const colour = PALETTE[idx % PALETTE.length];
     // Archived = chartable: real live archived, offline-with-data, OR an
@@ -577,6 +614,140 @@ function syncCheckboxes(){
 }
 
 /* ---------- chart rendering ---------- */
+/* ---------- chart filter state · AQI bands · regions · WHO-hours ---------- */
+let showAvg = true, showPeak = true;
+
+// Faint AQI background bands behind the chart lines. Opacities kept low so the
+// data lines stay dominant (visible, not overpowering). Drawn before datasets.
+const bandsPlugin = {
+  id: 'aqi-bands',
+  beforeDatasetsDraw(chart){
+    const { ctx, chartArea, scales } = chart;
+    const y = scales && scales.y;
+    if (!chartArea || !y) return;
+    const { left, right } = chartArea;
+    const bands = [
+      [0,     12,    'rgba(79,122,63,0.07)'],   // Good · green
+      [12,    35.4,  'rgba(190,150,40,0.09)'],  // Moderate · yellow
+      [35.4,  55.4,  'rgba(200,100,35,0.10)'],  // USG · orange
+      [55.4,  150.4, 'rgba(168,38,38,0.11)'],   // Unhealthy · red
+      [150.4, 1000,  'rgba(120,55,140,0.13)'],  // Very Unhealthy+ · purple
+    ];
+    ctx.save();
+    for (const [lo, hi, col] of bands){
+      const yLo = y.getPixelForValue(Math.min(lo, y.max));
+      const yHi = y.getPixelForValue(Math.min(hi, y.max));
+      if (Number.isFinite(yLo) && Number.isFinite(yHi) && Math.abs(yLo - yHi) > 0.5){
+        ctx.fillStyle = col;
+        ctx.fillRect(left, Math.min(yLo, yHi), right - left, Math.abs(yLo - yHi));
+      }
+    }
+    ctx.restore();
+  }
+};
+
+// ---- Regions (regency grouping by coordinate; Badung split N/C/S) ----
+// Approximate boundaries — Bali's regencies are irregular, so this is a
+// best-judgment classifier checked against the actual monitor set.
+const REGION_NAMES = {
+  'denpasar':'Denpasar City','badung-n':'North Badung','badung-c':'Central Badung',
+  'badung-s':'South Badung','gianyar':'Gianyar','tabanan':'Tabanan','bangli':'Bangli',
+  'klungkung':'Klungkung','karangasem':'Karangasem','buleleng':'Buleleng','jembrana':'Jembrana'
+};
+const REGION_ORDER = ['denpasar','badung-n','badung-c','badung-s','gianyar','tabanan','bangli','klungkung','karangasem','buleleng','jembrana'];
+function regionOf(lat, lon){
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < -8.60 && lon > 115.42) return 'klungkung';   // Nusa Penida islands
+  if (lon >= 115.50) return 'karangasem';                // far east
+  if (lon <= 114.72) return 'jembrana';                  // far west
+  if (lat >= -8.27) return 'buleleng';                   // north-coast strip
+  if (lon >= 115.31 && lon < 115.50 && lat >= -8.52) return 'bangli';  // landlocked highlands
+  if (lon >= 115.38 && lat < -8.45) return 'klungkung';  // Semarapura mainland
+  // Denpasar City — checked BEFORE Gianyar so the east coast (Sanur, lon~115.24)
+  // and the west edge (Padangsambian/Sidakarya, lon~115.18) aren't pulled into
+  // Gianyar/Badung. Bukit (lat < -8.74) is excluded so it stays South Badung.
+  if (lon >= 115.18 && lon <= 115.27 && lat <= -8.62 && lat >= -8.74) return 'denpasar';
+  if (lon >= 115.235) return 'gianyar';                  // Ubud belt + east coast (Ketewel)
+  if (lon < 115.06) return 'tabanan';                    // west-central
+  if (lat > -8.45) return 'badung-n';                    // Badung strip, split by latitude
+  if (lat > -8.70) return 'badung-c';
+  return 'badung-s';
+}
+function coordOf(id){
+  if (id.startsWith('off-')){ const o = OFFLINE_HISTORY[id.slice(4)]; return o && Number.isFinite(+o.lat) ? { lat:+o.lat, lon:+o.lon } : null; }
+  const lv = liveCatalog.find(s => s.id === id);
+  if (lv && Number.isFinite(+lv.lat)) return { lat:+lv.lat, lon:+lv.lon };
+  const un = universalCatalog.find(u => u.station_id === id);
+  if (un && Number.isFinite(+un.lat)) return { lat:+un.lat, lon:+un.lon };
+  if (id.startsWith('nafas-')){ const na = (archiveCatalog||[]).find(a => ('nafas-'+a.uuid) === id); if (na && Number.isFinite(+na.lat)) return { lat:+na.lat, lon:+na.lon }; }
+  return null;
+}
+let selectableMonitors = [];  // [{id,name,lat,lon}] — populated by buildStationList()
+function buildRegionDropdown(){
+  const sel = document.getElementById('regionSelect');
+  if (!sel) return;
+  const counts = {};
+  for (const m of selectableMonitors){
+    const rk = regionOf(m.lat, m.lon);
+    if (rk) counts[rk] = (counts[rk]||0) + 1;
+  }
+  const cur = sel.value;
+  let html = `<option value="">${escapeHtml(T('history.x.regionChoose','Choose a region…'))}</option>`;
+  for (const rk of REGION_ORDER){
+    if (!counts[rk]) continue;
+    html += `<option value="${rk}">${escapeHtml(REGION_NAMES[rk])} (${counts[rk]})</option>`;
+  }
+  sel.innerHTML = html;
+  if (cur && counts[cur]) sel.value = cur;
+}
+function applyRegion(regionKey){
+  selectedIds = new Set(selectableMonitors.filter(m => regionOf(m.lat, m.lon) === regionKey).map(m => m.id));
+  syncCheckboxes();
+  renderChart();
+}
+
+// ---- WHO hours-above (per sensor, below the chart) ----
+function labelToMs(l){
+  if (typeof l !== 'string') return NaN;
+  return l.length >= 16 ? Date.parse(l.replace(' ','T') + ':00Z') : Date.parse(l + 'T00:00:00Z');
+}
+function perPointHours(meanPoints){
+  if (currentRange === '30d') return 4;
+  if (currentRange === '90d' || currentRange === 'all') return 24;
+  // 24h / 7d raw — median consecutive gap, capped at 1h so an offline stretch
+  // isn't counted as continuous exposure.
+  if (!meanPoints || meanPoints.length < 2) return currentRange === '24h' ? 0.25 : 1;
+  const gaps = [];
+  for (let i = 1; i < meanPoints.length; i++){
+    const a = labelToMs(meanPoints[i-1][0]), b = labelToMs(meanPoints[i][0]);
+    if (Number.isFinite(a) && Number.isFinite(b) && b > a) gaps.push((b - a) / 3600000);
+  }
+  if (!gaps.length) return 0.25;
+  gaps.sort((x,y)=>x-y);
+  return Math.min(gaps[Math.floor(gaps.length/2)], 1);
+}
+function renderWhoHours(withData){
+  const box = document.getElementById('whoHours');
+  if (!box) return;
+  if (!withData || !withData.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const rows = withData.map((f, i) => {
+    const color = PALETTE[i % PALETTE.length];
+    const pts = f.res.mean || [];
+    const per = perPointHours(pts);
+    const h15 = Math.round(pts.filter(p => p[1] > 15).length * per);
+    const h55 = Math.round(pts.filter(p => p[1] > 55.4).length * per);
+    return `<div class="who-row"><span class="sw" style="background:${color}"></span>` +
+      `<span class="nm">${escapeHtml(nameFor(f.id))}</span>` +
+      `<span class="h15"><b>${h15}</b> ${escapeHtml(T('history.x.whoH15','h over 15 µg/m³'))}</span>` +
+      `<span class="h55"><b>${h55}</b> ${escapeHtml(T('history.x.whoH55','h over 55.4 µg/m³'))}</span></div>`;
+  }).join('');
+  const note = (currentRange === '24h' || currentRange === '7d') ? '' :
+    `<div class="who-hours-note">${escapeHtml(T('history.x.whoNote','At 30-day and longer ranges these hours are estimated from averaged data, so short spikes between samples may be undercounted.'))}</div>`;
+  box.innerHTML = `<div class="who-hours-h">${escapeHtml(T('history.x.whoTitle','Hours above WHO guidelines'))} · ${escapeHtml(currentRange.toUpperCase())}</div>` +
+    `<div class="who-hours-grid">${rows}</div>${note}`;
+  box.style.display = 'block';
+}
+
 async function renderChart(){
   const cv = document.getElementById('historyChart');
   if (!cv) return;
@@ -585,6 +756,7 @@ async function renderChart(){
 
   if (selectedIds.size === 0){
     empty.style.display = 'flex';
+    renderWhoHours([]);
     return;
   }
   empty.style.display = 'none';
@@ -598,6 +770,7 @@ async function renderChart(){
 
   if (withData.length === 0){
     empty.style.display = 'flex';
+    renderWhoHours([]);
     return;
   }
 
@@ -619,7 +792,7 @@ async function renderChart(){
     const colour = PALETTE[cidx % PALETTE.length];
     // Faint MAX layer (drawn first, so the mean line sits on top). Shows the
     // peak inside each aggregation bucket so spikes aren't averaged away.
-    if (f.res.max && f.res.max.length){
+    if (showPeak && f.res.max && f.res.max.length){
       const maxLookup = new Map(f.res.max.map(p => [p[0], p[1]]));
       datasets.push({
         label: nameFor(f.id) + ' · peak',
@@ -630,24 +803,26 @@ async function renderChart(){
         pointRadius: 0,
         pointHoverRadius: 3,
         tension: 0.18,
-        spanGaps: true,
+        spanGaps: false,                      // don't bridge no-data gaps
         fill: false,
         _isPeak: true,
       });
     }
     // Mean / trend line.
-    const lookup = new Map(f.res.mean.map(p => [p[0], p[1]]));
-    datasets.push({
-      label: nameFor(f.id),
-      data: labels.map(d => lookup.has(d) ? lookup.get(d) : null),
-      borderColor: colour,
-      backgroundColor: colour + '22',
-      borderWidth: 2,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-      tension: 0.18,
-      spanGaps: true
-    });
+    if (showAvg){
+      const lookup = new Map(f.res.mean.map(p => [p[0], p[1]]));
+      datasets.push({
+        label: nameFor(f.id),
+        data: labels.map(d => lookup.has(d) ? lookup.get(d) : null),
+        borderColor: colour,
+        backgroundColor: colour + '22',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.18,
+        spanGaps: false                       // only draw where data exists
+      });
+    }
     cidx++;
   }
 
@@ -678,7 +853,7 @@ async function renderChart(){
   chartInstance = new Chart(cv, {
     type: 'line',
     data: { labels, datasets },
-    plugins: [whoPlugin],
+    plugins: [bandsPlugin, whoPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -748,6 +923,9 @@ async function renderChart(){
     sub = T('history.x.chartSubDailyMax', 'Daily averages; the faint line is each day’s peak. WHO 24-hour guideline at 15 µg/m³.');
   }
   document.getElementById('chartSub').textContent = sub;
+
+  // Per-sensor hours above WHO guidelines, below the chart.
+  renderWhoHours(withData);
 }
 
 function nameFor(id){
@@ -858,6 +1036,16 @@ document.getElementById('rangePills').addEventListener('click', (ev)=>{
   renderChart();
 });
 
+/* ---------- chart filter controls (Avg/Peak toggles + region) ---------- */
+(function wireChartControls(){
+  const ta = document.getElementById('toggleAvg');
+  const tp = document.getElementById('togglePeak');
+  const rs = document.getElementById('regionSelect');
+  if (ta) ta.addEventListener('change', e => { showAvg  = e.target.checked; renderChart(); });
+  if (tp) tp.addEventListener('change', e => { showPeak = e.target.checked; renderChart(); });
+  if (rs) rs.addEventListener('change', e => { if (e.target.value) applyRegion(e.target.value); });
+})();
+
 /* ---------- archive of silence cards ---------- */
 function renderArchiveCards(){
   const grid = document.getElementById('archiveGrid');
@@ -958,6 +1146,7 @@ loadCatalogs();
 document.addEventListener('i18n:changed', () => {
   if (!liveCatalog.length && !archiveCatalog.length && !universalCatalog.length) return;
   buildStationList();
+  buildRegionDropdown();
   syncCheckboxes();
   renderChart();
   renderArchiveCards();

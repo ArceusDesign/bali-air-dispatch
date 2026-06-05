@@ -889,5 +889,14 @@
   "foot.community": "Gabung komunitas WhatsApp",
   "history.x.chartSubRaw": "Pembacaan lima belas menit (per jam untuk IQAir). Pedoman 24 jam WHO pada 15 µg/m³.",
   "history.x.chartSub4h": "Rata-rata empat jam; garis samar adalah puncak tiap jendela. Pedoman 24 jam WHO pada 15 µg/m³.",
-  "history.x.chartSubDailyMax": "Rata-rata harian; garis samar adalah puncak tiap hari. Pedoman 24 jam WHO pada 15 µg/m³."
+  "history.x.chartSubDailyMax": "Rata-rata harian; garis samar adalah puncak tiap hari. Pedoman 24 jam WHO pada 15 µg/m³.",
+  "history.x.show": "Tampilkan",
+  "history.x.avg": "Rata-rata",
+  "history.x.peak": "Puncak",
+  "history.x.region": "Wilayah",
+  "history.x.regionChoose": "Pilih wilayah…",
+  "history.x.whoTitle": "Jam di atas pedoman WHO",
+  "history.x.whoH15": "jam di atas 15 µg/m³",
+  "history.x.whoH55": "jam di atas 55,4 µg/m³",
+  "history.x.whoNote": "Pada rentang 30 hari ke atas, jam ini diperkirakan dari data rata-rata, sehingga lonjakan singkat di antara sampel mungkin kurang terhitung."
 }

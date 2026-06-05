@@ -263,5 +263,14 @@
   "chart.peak": "peak",
   "chart.overWho": "of readings over WHO 24h",
   "roll.stale": "Stale",
-  "panel.staleSub": "Sensor is listed in the upstream API but its timestamp has not advanced in over 24 hours. The reading shown is the last value the upstream actually reported."
+  "panel.staleSub": "Sensor is listed in the upstream API but its timestamp has not advanced in over 24 hours. The reading shown is the last value the upstream actually reported.",
+  "history.x.show": "Show",
+  "history.x.avg": "Average",
+  "history.x.peak": "Peak",
+  "history.x.region": "Region",
+  "history.x.regionChoose": "Choose a region…",
+  "history.x.whoTitle": "Hours above WHO guidelines",
+  "history.x.whoH15": "h over 15 µg/m³",
+  "history.x.whoH55": "h over 55.4 µg/m³",
+  "history.x.whoNote": "At 30-day and longer ranges these hours are estimated from averaged data, so short spikes between samples may be undercounted."
 }
