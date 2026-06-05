@@ -248,7 +248,7 @@ body::before{
         <div class="h-chart-controls" id="chartControls">
           <div class="grp">
             <span class="ctl-lab" data-i18n="history.x.show">Show</span>
-            <label><input type="checkbox" id="toggleAvg" checked> <span data-i18n="history.x.avg">Average</span></label>
+            <label id="avgLabel"><input type="checkbox" id="toggleAvg" checked> <span data-i18n="history.x.avg">Average</span><span class="peak-na" id="avgNA" style="display:none" data-i18n="history.x.peakNa"> · 30d+</span></label>
             <label id="peakLabel"><input type="checkbox" id="togglePeak" checked> <span data-i18n="history.x.peak">Peak</span><span class="peak-na" id="peakNA" style="display:none" data-i18n="history.x.peakNa"> · 30d+</span></label>
           </div>
           <div class="grp">
@@ -763,15 +763,22 @@ async function renderChart(){
   const empty = document.getElementById('emptyState');
   if (chartInstance){ chartInstance.destroy(); chartInstance = null; }
 
-  // Peak only applies to aggregated ranges (30d+); at 24h/7d the raw line already
-  // shows every reading, so grey the Peak toggle there to read as N/A.
-  const peakNA = (currentRange === '24h' || currentRange === '7d');
+  // At 24h/7d the chart is RAW readings — neither "Average" nor "Peak" applies
+  // (the single line already shows every reading). Grey BOTH toggles there and
+  // always draw the raw line; restore the real toggle state at 30d+.
+  const rawRange = (currentRange === '24h' || currentRange === '7d');
+  const taEl = document.getElementById('toggleAvg');
   const tpEl = document.getElementById('togglePeak');
+  const alEl = document.getElementById('avgLabel');
   const plEl = document.getElementById('peakLabel');
+  const anaEl = document.getElementById('avgNA');
   const pnaEl = document.getElementById('peakNA');
-  if (tpEl) tpEl.disabled = peakNA;
-  if (plEl) plEl.classList.toggle('disabled', peakNA);
-  if (pnaEl) pnaEl.style.display = peakNA ? 'inline' : 'none';
+  if (taEl){ taEl.disabled = rawRange; taEl.checked = rawRange ? true : showAvg; }
+  if (tpEl){ tpEl.disabled = rawRange; tpEl.checked = rawRange ? true : showPeak; }
+  if (alEl) alEl.classList.toggle('disabled', rawRange);
+  if (plEl) plEl.classList.toggle('disabled', rawRange);
+  if (anaEl) anaEl.style.display = rawRange ? 'inline' : 'none';
+  if (pnaEl) pnaEl.style.display = rawRange ? 'inline' : 'none';
 
   if (selectedIds.size === 0){
     empty.style.display = 'flex';
@@ -832,8 +839,9 @@ async function renderChart(){
         _isPeak: true,
       });
     }
-    // Mean / trend line.
-    if (showAvg){
+    // Mean / trend line. At raw ranges (24h/7d) always draw it — it IS the data
+    // and the Average toggle is greyed there.
+    if (showAvg || rawRange){
       const lookup = new Map(f.res.mean.map(p => [p[0], p[1]]));
       datasets.push({
         label: nameFor(f.id),
