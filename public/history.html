@@ -367,7 +367,7 @@ let archivedIds = new Set(); // station_ids with daily_n > 0 (chartable today)
 let selectedIds = new Set(); // currently checked station ids
 let currentRange = '30d';
 let chartInstance = null;
-// Expected-indoor monitors (consistently far below nearby outdoor sensors):
+// Suspected-indoor monitors (consistently far below nearby outdoor sensors):
 // grouped on their own between Live and Silenced, and tagged in the chart.
 const INDOOR_IDS = new Set([
   'nafas-ba19b143-3580-4a60-a3ce-135a5e5936dd',  // Pemogan
@@ -514,7 +514,7 @@ function buildStationList(){
   const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id));
   const liveArchived = liveFresh.filter(s =>  isArchived(s));
   const liveNoArch   = liveFresh.filter(s => !isArchived(s));
-  // Expected-indoor monitors — pulled out of the live groups into their own group.
+  // Suspected-indoor monitors — pulled out of the live groups into their own group.
   const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isForcedSilenced(s));
 
   // Resolve the forced-silenced stations from every catalog, deduped by id.
@@ -598,7 +598,7 @@ function buildStationList(){
     });
   }
   if (indoorMons.length){
-    html += groupHeader(T('history.x.grp.indoor','Expected indoor'));
+    html += groupHeader(T('history.x.grp.indoor','Suspected indoor'));
     indoorMons.forEach(s => { html += renderRow(s, idx); idx++; });
   }
   if (silenced.length){
@@ -972,9 +972,9 @@ async function renderChart(){
 }
 
 function nameFor(id){
-  // Expected-indoor monitors get a tag to the right of the name everywhere the
+  // Suspected-indoor monitors get a tag to the right of the name everywhere the
   // name is shown in the chart (legend + hours-above-WHO rows).
-  const tag = isIndoorId(id) ? ' ' + T('history.x.indoorTag', '(EXPECTED INDOOR)') : '';
+  const tag = isIndoorId(id) ? ' ' + T('history.x.indoorTag', '(SUSPECTED INDOOR)') : '';
   let base = id;
   if (id.startsWith('off-')){
     base = OFFLINE_HISTORY[id.slice(4)]?.name || id;

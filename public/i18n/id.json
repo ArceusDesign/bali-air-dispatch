@@ -902,7 +902,8 @@
   "history.x.peakNa": " · 30h+",
   "history.x.whoPctNote": "Persentase dihitung dari jam terekam masing-masing sensor dalam rentang yang dipilih.",
   "brief.x.statusLiveIqair": "Aktif · IQAir",
-  "panel.expectedIndoor": "Diperkirakan monitor dalam ruangan",
-  "history.x.grp.indoor": "Diperkirakan dalam ruangan",
-  "history.x.indoorTag": "(DALAM RUANGAN)"
+  "panel.suspectedIndoor": "Diduga monitor dalam ruangan",
+  "history.x.grp.indoor": "Diduga dalam ruangan",
+  "history.x.indoorTag": "(DIDUGA DALAM RUANGAN)",
+  "roll.suspectedIndoor": "Diduga dalam ruangan"
 }

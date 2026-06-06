@@ -325,6 +325,8 @@ table.roll td.r{text-align:right;font-variant-numeric:tabular-nums}
 table.roll tr{cursor:pointer;transition:background .1s}
 table.roll tr:hover td{background:var(--paper-2)}
 table.roll tr.offline td{color:var(--ink-faint)}
+tr.indoor-row td{color:var(--ink-faint)}
+.badge.indoor{color:#6f6b64;border-color:#a9a499;background:#e6e3dc}
 table.roll tr.offline td:first-child{color:var(--crimson);font-style:italic}
 table.roll .pm-cell{font-family:"Fraunces",serif;font-weight:800;font-size:17px;letter-spacing:-.015em}
 table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border:1px solid currentColor}
@@ -930,7 +932,7 @@ function renderAll(ts){
         size = 38;
         html = `<div class="pin offline" data-sid="${s.id}"><span class="pm" style="font-size:9px;font-weight:600;letter-spacing:.06em">STALE</span></div>`;
       } else if (isIndoor(s)) {
-        // Expected indoor monitor: gray + faint, no AQI colour coding.
+        // Suspected indoor monitor: gray + faint, no AQI colour coding.
         html = `<div class="pin indoor" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
       } else {
         html = `<div class="pin ${c.cls}${pulse}" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
@@ -1069,6 +1071,18 @@ function renderRollTable(){
         <td><span class="badge off">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.stale','Stale') : 'Stale'} · ${ageDays}${(window.I18N && window.I18N.t) ? window.I18N.t('roll.daysShort','d') : 'd'}</span></td>
         <td class="c">${historyCell(s)}</td>
         <td class="r">${s.lastSeen?new Date(s.lastSeen).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</td>
+      </tr>`;
+    }
+    if (isIndoor(s)) {
+      // Suspected indoor: gray the whole row + a gray "Suspected indoor" badge in
+      // place of the AQI category, so it's never read as clean outdoor air.
+      return `<tr class="indoor-row" data-sid="${s.id}">
+        <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
+        <td>${esc(s.source)}</td>
+        <td class="r"><span class="pm-cell">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
+        <td><span class="badge indoor">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.suspectedIndoor','Suspected indoor') : 'Suspected indoor'}</span></td>
+        <td class="c">${historyCell(s)}</td>
+        <td class="r">${s.lastSeen?new Date(s.lastSeen).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA':'—'}</td>
       </tr>`;
     }
     return `<tr data-sid="${s.id}">
@@ -1294,7 +1308,7 @@ function panelLive(s){
     <div class="side-hero">
       <div class="side-kicker"><span class="tag">${t('panel.tagLive','Live')}</span> ${esc(s.source)}${s.type?' · '+esc(s.type):''}</div>
       <div class="side-name">${esc(s.name)||t('panel.unnamed','Unnamed station')}</div>
-      ${isIndoor(s) ? `<div class="indoor-flag">${t('panel.expectedIndoor','Expected indoor monitor')}</div>` : ''}
+      ${isIndoor(s) ? `<div class="indoor-flag">${t('panel.suspectedIndoor','Suspected indoor monitor')}</div>` : ''}
       <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.reporting','reporting')} ${s.lastSeen?t('panel.at','at')+' '+new Date(s.lastSeen).toLocaleTimeString('en-GB'):t('panel.now','now')}</div>
     </div>
     <div class="side-big">
