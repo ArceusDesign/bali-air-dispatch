@@ -1428,11 +1428,13 @@ async function loadAndDrawLiveChart(s){
         y: +p.pm25
       }));
     } else {
-      // [{ts:unix-sec, pm25:…}, …]
-      points = raw.filter(p => p.pm25 != null).map(p => ({
-        x: (+p.ts) * 1000,
-        y: +p.pm25
-      }));
+      // [{ts: unix-sec OR ISO-string, pm25:…}, …] — universal sources return unix
+      // seconds; scraped IQAir (iqs-) returns ISO timestamps. `(+p.ts)*1000` on an
+      // ISO string is NaN, which left every IQAir popup chart blank. Handle both.
+      points = raw.filter(p => p.pm25 != null).map(p => {
+        const numeric = (typeof p.ts === 'number' || /^\d+(\.\d+)?$/.test(String(p.ts)));
+        return { x: numeric ? (+p.ts) * 1000 : Date.parse(p.ts), y: +p.pm25 };
+      }).filter(p => Number.isFinite(p.x));
     }
   } catch (e) {
     showFallback('History unavailable right now. Check back shortly.');
