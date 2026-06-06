@@ -282,5 +282,8 @@
   "brief.x.ch4SvgSilent": "SILENT · viii.25",
   "brief.x.statusLiveIqair": "Live · IQAir",
   "brief.x.ch2pB1": "The Kerobokan community sensor, part of the AQICN / GAIA network, recorded <strong>469 days</strong> from November 2024 to March 2026. Its public AQICN feed went quiet on the 15th of March — two weeks before organic waste was banned from the Suwung landfill — though the same device has since resumed reporting through IQAir.",
-  "brief.x.ch2pB2": "The sensor is privately owned. The record it left behind during that window — daily medians averaging <strong>21.9 µg/m³</strong>, with 68% of days exceeding the WHO 24-hour guideline — remains one of the most detailed openly downloadable windows we have into the air above south Bali."
+  "brief.x.ch2pB2": "The sensor is privately owned. The record it left behind during that window — daily medians averaging <strong>21.9 µg/m³</strong>, with 68% of days exceeding the WHO 24-hour guideline — remains one of the most detailed openly downloadable windows we have into the air above south Bali.",
+  "panel.expectedIndoor": "Expected indoor monitor",
+  "history.x.grp.indoor": "Expected indoor",
+  "history.x.indoorTag": "(EXPECTED INDOOR)"
 }

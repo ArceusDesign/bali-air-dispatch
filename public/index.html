@@ -153,6 +153,7 @@ body::before{
 /* OFFLINE markers — hollow, ink ring with dashed border */
 .pin.offline{background:transparent;border-style:dashed;border-width:2px;border-color:var(--crimson);color:var(--crimson);font-family:"IBM Plex Mono",monospace;font-size:11px;position:relative}
 .pin.offline::before{content:"OFF";font-size:9px;letter-spacing:.05em}
+.pin.indoor{background:#dcd8d0;color:#6f6b64;border-color:#a39e94;opacity:.45;box-shadow:none}
 .pin.offline .pm{display:none}
 /* SEED / skeleton pins — shown instantly while the API is still in flight */
 .pin.seed{background:var(--paper);border-color:var(--rule);color:var(--ink-faint);animation:seedPulse 1.25s ease-in-out infinite;cursor:default}
@@ -246,6 +247,7 @@ body::before{
 .side-kicker .tag.warn{background:var(--ochre)}
 .side-kicker .tag.gone{background:var(--ink)}
 .side-name{font-family:"Fraunces",serif;font-weight:800;font-variation-settings:"opsz" 120;font-size:clamp(28px,3.6vw,40px);line-height:1.02;letter-spacing:-.02em;color:var(--ink);margin-bottom:6px}
+.indoor-flag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:#5c5852;background:#e2ded6;border:1px solid #a9a499;border-radius:3px;padding:4px 10px;margin-bottom:10px}
 .side-byline{font-family:"Source Serif 4",serif;font-style:italic;color:var(--ink-faint);font-size:13px}
 
 .side-big{padding:24px 28px;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start}
@@ -786,6 +788,14 @@ const API_BASE = (location.hostname==='baliair.pages.dev' || location.hostname.e
 const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c => (
   { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
 ));
+// Monitors we believe are INDOOR (consistently far below nearby outdoor sensors).
+// Rendered gray + faint on the map (never AQI/green colour-coded), flagged in the
+// popup, and grouped/tagged separately in History. Matched by stable id.
+const INDOOR_IDS = new Set([
+  'nafas-ba19b143-3580-4a60-a3ce-135a5e5936dd',  // Pemogan (Nafas)
+  'pa-36601',                                     // Jimbaran by Lumi Clinic (PurpleAir)
+]);
+const isIndoor = (s) => INDOOR_IDS.has(typeof s === 'string' ? s : (s && s.id));
 let liveStations = [];
 let allStations  = []; // live + offline
 const hazeLayer  = L.layerGroup().addTo(map);
@@ -919,13 +929,16 @@ function renderAll(ts){
       if (s.stale) {
         size = 38;
         html = `<div class="pin offline" data-sid="${s.id}"><span class="pm" style="font-size:9px;font-weight:600;letter-spacing:.06em">STALE</span></div>`;
+      } else if (isIndoor(s)) {
+        // Expected indoor monitor: gray + faint, no AQI colour coding.
+        html = `<div class="pin indoor" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
       } else {
         html = `<div class="pin ${c.cls}${pulse}" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
       }
 
       // Draw a "haze cloud" around affected live stations. Radius grows with PM2.5,
-      // rendered in meters so it scales naturally with zoom. Skip for stale stations.
-      if (!s.stale && s.pm25!=null && s.pm25 > 12 && HAZE[c.cls]) {
+      // rendered in meters so it scales naturally with zoom. Skip stale + indoor.
+      if (!s.stale && !isIndoor(s) && s.pm25!=null && s.pm25 > 12 && HAZE[c.cls]) {
         const color = HAZE[c.cls];
         // inner denser cloud
         const rInner = 600 + s.pm25 * 55;   // e.g. 20 µg/m³ → 1.7 km
@@ -1281,6 +1294,7 @@ function panelLive(s){
     <div class="side-hero">
       <div class="side-kicker"><span class="tag">${t('panel.tagLive','Live')}</span> ${esc(s.source)}${s.type?' · '+esc(s.type):''}</div>
       <div class="side-name">${esc(s.name)||t('panel.unnamed','Unnamed station')}</div>
+      ${isIndoor(s) ? `<div class="indoor-flag">${t('panel.expectedIndoor','Expected indoor monitor')}</div>` : ''}
       <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.reporting','reporting')} ${s.lastSeen?t('panel.at','at')+' '+new Date(s.lastSeen).toLocaleTimeString('en-GB'):t('panel.now','now')}</div>
     </div>
     <div class="side-big">

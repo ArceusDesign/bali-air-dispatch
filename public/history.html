@@ -367,6 +367,13 @@ let archivedIds = new Set(); // station_ids with daily_n > 0 (chartable today)
 let selectedIds = new Set(); // currently checked station ids
 let currentRange = '30d';
 let chartInstance = null;
+// Expected-indoor monitors (consistently far below nearby outdoor sensors):
+// grouped on their own between Live and Silenced, and tagged in the chart.
+const INDOOR_IDS = new Set([
+  'nafas-ba19b143-3580-4a60-a3ce-135a5e5936dd',  // Pemogan
+  'pa-36601',                                     // Jimbaran by Lumi Clinic
+]);
+const isIndoorId = (id) => INDOOR_IDS.has(id);
 
 /* ---------- date helpers ---------- */
 function updateDate(){
@@ -503,10 +510,12 @@ function buildStationList(){
   const normName = s => (s && s.name ? String(s.name) : '').trim().toLowerCase();
   const isForcedSilenced = s => SILENCED_NAMES.has(normName(s));
 
-  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isForcedSilenced(s));
-  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isForcedSilenced(s));
+  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id));
+  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id));
   const liveArchived = liveFresh.filter(s =>  isArchived(s));
   const liveNoArch   = liveFresh.filter(s => !isArchived(s));
+  // Expected-indoor monitors — pulled out of the live groups into their own group.
+  const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isForcedSilenced(s));
 
   // Resolve the forced-silenced stations from every catalog, deduped by id.
   const forcedSilenced = [];
@@ -535,7 +544,7 @@ function buildStationList(){
   ];
 
   // Record every selectable monitor that has coordinates (for the region filter).
-  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...silenced]
+  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...indoorMons, ...silenced]
     .map(s => { const c = coordOf(s.id); return c ? { id: s.id, name: s.name, lat: c.lat, lon: c.lon } : null; })
     .filter(Boolean);
 
@@ -587,6 +596,10 @@ function buildStationList(){
       html += renderRow(s, idx, { staleHours: +s.staleAgeHours || 0, forceArchived: isArchived(s) });
       idx++;
     });
+  }
+  if (indoorMons.length){
+    html += groupHeader(T('history.x.grp.indoor','Expected indoor'));
+    indoorMons.forEach(s => { html += renderRow(s, idx); idx++; });
   }
   if (silenced.length){
     html += groupHeader(T('history.x.grp.silenced','Silenced'));
@@ -959,18 +972,21 @@ async function renderChart(){
 }
 
 function nameFor(id){
+  // Expected-indoor monitors get a tag to the right of the name everywhere the
+  // name is shown in the chart (legend + hours-above-WHO rows).
+  const tag = isIndoorId(id) ? ' ' + T('history.x.indoorTag', '(EXPECTED INDOOR)') : '';
+  let base = id;
   if (id.startsWith('off-')){
-    const key = id.slice(4);
-    return OFFLINE_HISTORY[key]?.name || id;
+    base = OFFLINE_HISTORY[id.slice(4)]?.name || id;
+  } else {
+    // Prefer live catalog (freshest naming), fall back to universal D1 catalog
+    // (covers stations with D1 history not currently in /api/live).
+    const live = liveCatalog.find(s => s.id === id);
+    const uni  = live ? null : universalCatalog.find(u => u.station_id === id);
+    if (live)     base = (live.name || '').split(' (')[0];
+    else if (uni) base = (uni.name  || '').split(' (')[0];
   }
-  // Prefer live catalog (freshest naming), fall back to universal D1 catalog
-  // (covers stations that have D1 history but aren't currently in /api/live —
-  // e.g. an upstream provider hiccup).
-  const live = liveCatalog.find(s => s.id === id);
-  if (live) return (live.name || '').split(' (')[0];
-  const uni = universalCatalog.find(u => u.station_id === id);
-  if (uni)  return (uni.name  || '').split(' (')[0];
-  return id;
+  return base + tag;
 }
 
 async function pointsFor(id){
