@@ -207,7 +207,7 @@
   "brief.body.p1": "In April 2026, Bali's regulations on organic waste disposal were tightened. The Suwung landfill, long the island's primary waste endpoint, stopped accepting organic material. In the weeks that followed, residents across Ubud, Kerobokan, Canggu and Jimbaran reported a marked increase in the smell and visible presence of burning waste — particularly in the early morning and after dark.",
   "brief.body.p2": "This document sets out what the available air quality monitoring records can and cannot tell us about that change. It is written for journalists, researchers, and residents who want to verify the numbers themselves.",
   "brief.body.h1": "Two networks, seven sensors",
-  "brief.body.p3": "Public historical data exists for only a handful of Bali air quality monitors. The AQICN network preserves records for the Kerobokan community sensor (469 days, now offline) and the Denpasar government KLHK station (548 days, offline since August 2025). OpenAQ preserves CSVs for three additional private AirGradient sensors in Ubud, Balangan and Kopernik — all now offline as well.",
+  "brief.body.p3": "Public historical data exists for only a handful of Bali air quality monitors. The AQICN network preserves records for the Denpasar government KLHK station (548 days, offline since August 2025) and the Kerobokan community sensor (469 days, now reporting again through IQAir). OpenAQ preserves CSVs for three additional private AirGradient sensors in Ubud, Balangan and Kopernik — all now offline as well.",
   "brief.body.p4": "Two PurpleAir units in Klungkung and Jimbaran are still reporting. Between them, they cover roughly two years of continuous data.",
   "brief.body.h2": "The province lacks a network",
   "brief.body.p5": "Bali has no distributed public air quality monitoring network. There is no multi-year record for Sanur, North Bali, or East Bali. There is no open data feed from the provincial government. There is no requirement for industrial, hospitality, or municipal operators to publish ambient readings.",
@@ -274,5 +274,13 @@
   "history.x.whoH55": "h over 55.4 µg/m³",
   "history.x.whoNote": "At 30-day and longer ranges these hours are estimated from averaged data, so short spikes between samples may be undercounted.",
   "history.x.peakNa": " · 30d+",
-  "history.x.whoPctNote": "Percentages are of each sensor’s recorded hours in the selected range."
+  "history.x.whoPctNote": "Percentages are of each sensor’s recorded hours in the selected range.",
+  "brief.x.glance2": "The Denpasar Lumintang station's 548-day average (15.1 µg/m³) relative to the WHO 2021 annual guideline of 5 µg/m³.",
+  "brief.x.ch4FigTitle": "Denpasar Lumintang · Daily median PM2.5 · Sep 2023 – Aug 2025",
+  "brief.x.ch4FigMeta": "548 days · mean 15.1 µg/m³ · 3.0× WHO · sensor offline Aug 2025",
+  "brief.x.ch4FigFoot": "Daily-median PM2.5 at the Denpasar Lumintang (KLHK) government station, Sep 2023 – Aug 2025. Horizontal rule marks the <abbr title=\"World Health Organization\">WHO</abbr> 15 µg/m³ annual guideline. Dashed right band is the silence after the sensor went offline. Source: <a href=\"https://aqicn.org/station/@416893/\" target=\"_blank\" rel=\"noopener\">AQICN / KLHK</a>.",
+  "brief.x.ch4SvgSilent": "SILENT · viii.25",
+  "brief.x.statusLiveIqair": "Live · IQAir",
+  "brief.x.ch2pB1": "The Kerobokan community sensor, part of the AQICN / GAIA network, recorded <strong>469 days</strong> from November 2024 to March 2026. Its public AQICN feed went quiet on the 15th of March — two weeks before organic waste was banned from the Suwung landfill — though the same device has since resumed reporting through IQAir.",
+  "brief.x.ch2pB2": "The sensor is privately owned. The record it left behind during that window — daily medians averaging <strong>21.9 µg/m³</strong>, with 68% of days exceeding the WHO 24-hour guideline — remains one of the most detailed openly downloadable windows we have into the air above south Bali."
 }
