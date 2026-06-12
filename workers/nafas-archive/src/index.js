@@ -296,6 +296,7 @@ async function archiveOnce(env) {
   let stationsSeen = 0, snapshots = 0, hourly = 0, daily = 0;
   let universalStations = 0, universalSnaps = 0, universalDailyRows = 0;
   let ok = 1, errMsg = null;
+  let watchdogNote = null;
 
   // ── Universal pass: snapshot every station from /api/live ────────────
   let universalWarning = null;
@@ -317,6 +318,34 @@ async function archiveOnce(env) {
     // Non-fatal — Nafas-specific path below still runs. Record the failure.
     universalWarning = 'universal_fetch_failed: ' + (e.message || String(e));
     console.warn(universalWarning);
+  }
+
+  // ── IQAir-scrape watchdog ─────────────────────────────────────────────
+  // The iqair-scrape worker's SCHEDULED invocations have twice been killed
+  // platform-side (June 12: every cron tick died "Exceeded CPU Limit" before
+  // writing anything), while its HTTP invocations run fine. This worker's cron
+  // is demonstrably reliable, so it doubles as the scheduler-of-last-resort:
+  // if the STALEST active IQAir station hasn't been scraped in > 70 min
+  // (healthy cron keeps every station ≤ ~60 min), trigger one rotation group
+  // via the secret-gated /watchdog route — an HTTP invocation, which survives.
+  // Healthy periods: never fires, zero extra Firecrawl spend.
+  try {
+    if (env.IQAIR_WATCHDOG_KEY) {
+      const st = await db.prepare(
+        `SELECT MIN(last_scrape_ts) AS stalest FROM iq_scrape_stations WHERE active = 1`
+      ).first();
+      const ageMin = st && st.stalest ? (nowSec - st.stalest) / 60 : null;
+      if (ageMin != null && ageMin > 70) {
+        const r = await fetch('https://iqair-scrape.baliair.workers.dev/watchdog', {
+          method: 'POST',
+          headers: { 'X-Watchdog-Key': env.IQAIR_WATCHDOG_KEY },
+        });
+        watchdogNote = `iqair_watchdog_fired (stalest ${Math.round(ageMin)}m, HTTP ${r.status})`;
+        console.warn(watchdogNote);
+      }
+    }
+  } catch (e) {
+    watchdogNote = 'iqair_watchdog_error: ' + (e.message || String(e));
   }
 
   try {
@@ -383,7 +412,7 @@ async function archiveOnce(env) {
     // archive_runs schema only knows about Nafas counters; encode universal
     // counts into the higher columns via simple addition for visibility.
     // Combine errors: Nafas-specific failure + universal-pass warning.
-    const combinedErr = [errMsg, universalWarning].filter(Boolean).join(' | ') || null;
+    const combinedErr = [errMsg, universalWarning, watchdogNote].filter(Boolean).join(' | ') || null;
     await db.prepare(`
       INSERT OR REPLACE INTO archive_runs
         (ts, stations_seen, snapshots_written, hourly_upserts, daily_upserts, duration_ms, ok, error)

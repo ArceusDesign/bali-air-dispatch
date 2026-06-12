@@ -222,6 +222,36 @@ export default {
   },
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/watchdog') {
+      // Cross-worker watchdog/scheduler — called by nafas-archive when scrapes
+      // look stale. Needed because Cloudflare CPU-kills this worker's SCHEDULED
+      // invocations (June 12: every cron tick died "Exceeded CPU Limit" before
+      // writing anything) while identical work via HTTP invocations succeeds.
+      // Gated by a dedicated shared secret header — never the Firecrawl key.
+      const want = env.IQAIR_WATCHDOG_KEY;
+      if (!want || request.headers.get('X-Watchdog-Key') !== want) {
+        return new Response('forbidden', { status: 403 });
+      }
+      // Pick the STALEST rotation group server-side (caller sends no input):
+      // per group, freshness = its most recently scraped station; scrape the
+      // group whose freshness is oldest. UPSERTs make any overlap harmless.
+      const db = env.ARCHIVE_DB;
+      let groupIdx = 0;
+      try {
+        const rows = await db.prepare(
+          `SELECT slug, last_scrape_ts FROM iq_scrape_stations WHERE active = 1`
+        ).all();
+        const bySlug = new Map((rows.results || []).map(r => [r.slug, r.last_scrape_ts || 0]));
+        let oldest = Infinity;
+        STATION_GROUPS.forEach((idxs, gi) => {
+          const newest = Math.max(...idxs.map(i => bySlug.get(STATIONS[i] && STATIONS[i][0]) || 0));
+          if (newest < oldest) { oldest = newest; groupIdx = gi; }
+        });
+      } catch (_) { /* default group 0 */ }
+      const out = await runAll(env, { group: STATION_GROUPS[groupIdx] });
+      return new Response(JSON.stringify({ via: 'watchdog', group: groupIdx, ...out }),
+        { headers: { 'Content-Type': 'application/json' } });
+    }
     if (url.pathname === '/run') {
       // Gated manual trigger: require the caller to know the key prefix.
       const want = (env.FIRECRAWL_KEY || '').slice(0, 8);
