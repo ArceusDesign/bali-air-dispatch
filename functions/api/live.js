@@ -560,6 +560,26 @@ function dedupSmartCitizen(scStations, existing) {
   );
 }
 
+// Airly de-dup (display only). Both Bali Airly installations are Nafas-SPONSORED
+// hardware co-located (~12 m) with a Nafas station, publishing the same readings
+// (daily-mean r≈0.97, mean |Δ|<1 µg/m³). Show one pin: drop any Airly station
+// within 300 m of a FRESH (non-stale) Nafas station. If Nafas isn't reporting
+// that spot, the Airly is kept → automatic failover to the redundant feed.
+// Applied ONLY to the served fast-path response — the archive worker reads the
+// slow path (?fresh=1) and keeps snapshotting BOTH into D1, so the failover
+// history is preserved and the Airly reappears the moment Nafas goes quiet.
+function dropAirlyNearNafas(stations) {
+  const DEDUP_M = 300;
+  const freshNafas = stations.filter(s =>
+    s && s.source === 'Nafas' && !s.stale &&
+    Number.isFinite(s.lat) && Number.isFinite(s.lon));
+  if (!freshNafas.length) return stations;  // no live Nafas → keep Airly (failover)
+  return stations.filter(s => {
+    if (!s || s.source !== 'Airly' || !Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return true;
+    return !freshNafas.some(n => metresBetween(s.lat, s.lon, n.lat, n.lon) < DEDUP_M);
+  });
+}
+
 async function fetchOpenAQ(env) {
   // 6 search centers, parallel discovery, then parallel detail per station.
   // De-dup by id.
@@ -764,6 +784,9 @@ export async function onRequest(context) {
             fast.sources = new Set(fast.stations.map(s => s.source)).size;
           }
         } catch (_) { /* scraped optional; serve base fast path */ }
+        // Collapse co-located Airly (Nafas-sponsored) onto its live Nafas twin.
+        fast.stations = dropAirlyNearNafas(fast.stations);
+        fast.sources = new Set(fast.stations.map(s => s.source)).size;
         return jsonResponse(fast);
       }
     } catch (e) {
