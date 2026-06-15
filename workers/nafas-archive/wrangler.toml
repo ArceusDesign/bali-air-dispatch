@@ -25,6 +25,19 @@ binding = "ARCHIVE_DB"
 database_name = "bali-air-archive"
 database_id = "REPLACE_WITH_REAL_D1_ID"
 
+# Service binding → iqair-scrape worker. Used by the IQAir-scrape watchdog so the
+# call routes DIRECTLY to that worker via the runtime (no DNS, no public edge).
+# This replaces the old `fetch('https://iqair-scrape.<sub>.workers.dev/watchdog')`
+# call, which returned HTTP 404 from inside a Worker: a same-account Worker-to-
+# Worker subrequest over the public workers.dev hostname is intercepted by the
+# edge and never reaches the target (external curl to the same URL returns 403 —
+# the route's own gated response — proving the route is live; only the in-Worker
+# path 404'd). A service binding is the canonical, reliable fix and keeps the
+# call entirely inside Cloudflare's network (no public exposure → more anonymous).
+[[services]]
+binding = "IQAIR_SCRAPE"
+service = "iqair-scrape"
+
 # Keep the worker anonymous — no observability that logs request bodies,
 # no tail subscribers. If you enable observability later, disable sampling
 # and keep logs out of any third-party sink.
