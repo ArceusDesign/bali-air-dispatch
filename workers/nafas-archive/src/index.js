@@ -320,34 +320,6 @@ async function archiveOnce(env) {
     console.warn(universalWarning);
   }
 
-  // ── IQAir-scrape watchdog ─────────────────────────────────────────────
-  // The iqair-scrape worker's SCHEDULED invocations have twice been killed
-  // platform-side (June 12: every cron tick died "Exceeded CPU Limit" before
-  // writing anything), while its HTTP invocations run fine. This worker's cron
-  // is demonstrably reliable, so it doubles as the scheduler-of-last-resort:
-  // if the STALEST active IQAir station hasn't been scraped in > 70 min
-  // (healthy cron keeps every station ≤ ~60 min), trigger one rotation group
-  // via the secret-gated /watchdog route — an HTTP invocation, which survives.
-  // Healthy periods: never fires, zero extra Firecrawl spend.
-  try {
-    if (env.IQAIR_WATCHDOG_KEY) {
-      const st = await db.prepare(
-        `SELECT MIN(last_scrape_ts) AS stalest FROM iq_scrape_stations WHERE active = 1`
-      ).first();
-      const ageMin = st && st.stalest ? (nowSec - st.stalest) / 60 : null;
-      if (ageMin != null && ageMin > 70) {
-        const r = await fetch('https://iqair-scrape.baliair.workers.dev/watchdog', {
-          method: 'POST',
-          headers: { 'X-Watchdog-Key': env.IQAIR_WATCHDOG_KEY },
-        });
-        watchdogNote = `iqair_watchdog_fired (stalest ${Math.round(ageMin)}m, HTTP ${r.status})`;
-        console.warn(watchdogNote);
-      }
-    }
-  } catch (e) {
-    watchdogNote = 'iqair_watchdog_error: ' + (e.message || String(e));
-  }
-
   try {
     const stations = await fetchBaliStations();
     stationsSeen = stations.length;
@@ -405,6 +377,50 @@ async function archiveOnce(env) {
   } catch (e) {
     ok = 0;
     errMsg = e.message || String(e);
+  }
+
+  // ── IQAir-scrape watchdog ─────────────────────────────────────────────
+  // The iqair-scrape worker's SCHEDULED invocations get killed platform-side
+  // ("Exceeded CPU Limit" before writing anything) while its HTTP/binding
+  // invocations run fine. This worker's cron is demonstrably reliable, so it
+  // doubles as the scheduler-of-last-resort: if the STALEST active IQAir station
+  // hasn't been scraped in > 70 min (a healthy cron keeps every station ≤ ~60
+  // min; /api/live's FRESH_MS is 2.5 h, so 70–85 min keeps stations "live"),
+  // trigger one rotation group on the iqair-scrape worker.
+  //
+  // ORDER: this runs LAST, AFTER the universal + Nafas archival passes above, so
+  // a firing watchdog can never delay or eat the wall-clock budget of the
+  // critical data writes. With the binding the call actually reaches the worker
+  // and `await` now blocks for as long as that scrape takes (tens of seconds) —
+  // which is exactly why it must come after archival, not before it.
+  //
+  // INVOCATION: via the IQAIR_SCRAPE service binding, NOT a workers.dev fetch.
+  // The previous version called fetch('https://iqair-scrape.<sub>.workers.dev/
+  // watchdog'), which silently returned HTTP 404 from inside a Worker — a same-
+  // account Worker→Worker subrequest over the public hostname is intercepted by
+  // the edge and never reaches the target. That broke the safety net: on 2026-
+  // 06-14 the cron died ~01:22 UTC and this watchdog fired every 15 min for ~9h,
+  // each time getting 404, so nothing recovered. The service binding routes
+  // directly through the runtime (reliable, no DNS/edge, stays inside CF's
+  // network). The /watchdog route stays secret-gated as defense-in-depth.
+  // Healthy periods: never fires, zero extra Firecrawl spend.
+  try {
+    if (env.IQAIR_SCRAPE) {
+      const st = await db.prepare(
+        `SELECT MIN(last_scrape_ts) AS stalest FROM iq_scrape_stations WHERE active = 1`
+      ).first();
+      const ageMin = st && st.stalest ? (nowSec - st.stalest) / 60 : null;
+      if (ageMin != null && ageMin > 70) {
+        const r = await env.IQAIR_SCRAPE.fetch('https://iqair-scrape.internal/watchdog', {
+          method: 'POST',
+          headers: { 'X-Watchdog-Key': env.IQAIR_WATCHDOG_KEY || '' },
+        });
+        watchdogNote = `iqair_watchdog_fired (stalest ${Math.round(ageMin)}m, HTTP ${r.status})`;
+        console.warn(watchdogNote);
+      }
+    }
+  } catch (e) {
+    watchdogNote = 'iqair_watchdog_error: ' + (e.message || String(e));
   }
 
   const duration = Date.now() - t0;
