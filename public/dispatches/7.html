@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dispatch VII — Ninety days of data on the island's garbage fires. · Bali Air Dispatch</title>
+<meta name="description" content="Dispatch VII of the Bali Air Dispatch — ninety days of data on the island's garbage fires. The first data review since Dispatch VI.">
+<meta name="referrer" content="no-referrer">
+<link rel="preload" as="style" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --paper:#f3ece0;
+  --paper-dark:#eae1d1;
+  --ink:#14110d;
+  --ink-soft:#34302a;
+  --ink-faint:#6a635a;
+  --rule:#2b2620;
+  --hairline:#c0b9a8;
+  --crimson:#8b1a1a;
+  --ochre:#a7742e;
+  --forest:#355e3b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{
+  font-family:"Source Serif 4",Georgia,serif;
+  font-optical-sizing:auto;
+  font-size:16px;line-height:1.55;
+  padding:0 0 80px 0;
+}
+.wrap{max-width:1320px;margin:0 auto;padding:0 32px}
+@media(max-width:720px){.wrap{padding:0 18px}}
+
+/* subtle grain — identical to brief.html */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.35;
+}
+
+/* ===== MASTHEAD ===== */
+.masthead{border-bottom:3px double var(--rule);padding:22px 0 18px 0;position:relative}
+.masthead-top{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+  padding-bottom:10px;border-bottom:1px solid var(--hairline);
+}
+.masthead-top .r{text-align:right}
+.nameplate{text-align:center;padding:28px 0 18px 0}
+.nameplate h1{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;
+  font-size:clamp(52px,8.6vw,132px);line-height:.92;letter-spacing:-.015em;color:var(--ink);
+}
+.nameplate .sub{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(16px,2vw,22px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em;
+}
+.folio{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+  padding-top:10px;border-top:1px solid var(--hairline);
+}
+.folio .c{text-align:center;letter-spacing:.22em}
+.folio .r{text-align:right}
+
+/* ===== NAV BAR ===== */
+.navbar{
+  border-bottom:1px solid var(--rule);padding:12px 0;margin-top:0;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  display:flex;justify-content:center;gap:32px;flex-wrap:wrap;
+}
+.navbar a{color:var(--ink);text-decoration:none}
+.navbar a:hover{color:var(--crimson)}
+.navbar a.on{color:var(--crimson);border-bottom:1px solid var(--crimson);padding-bottom:4px;margin-bottom:-5px}
+
+/* ===== BULLETIN ===== */
+.bulletin{
+  margin:26px 0 10px 0;padding:10px 14px;
+  background:var(--crimson);color:var(--paper);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  display:flex;justify-content:space-between;gap:16px;
+}
+.bulletin .tag{font-weight:700}
+.bulletin .when{opacity:.85}
+
+/* ===== CHAPTER / DISPATCH ===== */
+.chapter{padding:60px 0 28px;border-top:3px double var(--rule);margin-top:18px;scroll-margin-top:12px}
+.chapter-head{
+  display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:baseline;
+  border-bottom:1px solid var(--rule);padding-bottom:14px;margin-bottom:30px;
+}
+.chapter-no{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--crimson);
+  border:1px solid var(--crimson);padding:6px 12px;
+}
+.chapter-title{
+  font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144,"SOFT" 10;
+  font-size:clamp(34px,4.4vw,62px);line-height:.98;letter-spacing:-.02em;
+}
+.chapter-title em{font-style:italic;font-weight:500;color:var(--crimson)}
+.chapter-meta{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+  text-align:right;
+}
+@media(max-width:720px){
+  .chapter-head{grid-template-columns:1fr;gap:10px}
+  .chapter-meta{text-align:left}
+}
+.chapter-lede{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(19px,2.1vw,24px);line-height:1.42;color:var(--ink-soft);
+  max-width:880px;margin-bottom:26px;
+}
+.chapter-body{display:grid;grid-template-columns:repeat(2,1fr);gap:38px}
+.chapter-body>div{min-width:0}
+@media(max-width:900px){.chapter-body{grid-template-columns:1fr}.chapter-body>div{grid-column:auto !important}}
+.chapter-body p{margin-bottom:16px}
+.chapter-body p strong{font-weight:700;color:var(--ink)}
+.chapter-body a{color:var(--crimson);text-decoration:none;border-bottom:1px dotted var(--crimson)}
+.chapter-body a:hover{background:var(--crimson);color:var(--paper)}
+.chapter-body p.first::first-letter{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:78px;line-height:.82;float:left;padding:8px 12px 0 0;color:var(--crimson);
+}
+
+/* Sub-headings within a dispatch chapter */
+.sub-h{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 120;font-size:22px;line-height:1.1;letter-spacing:-.005em;color:var(--ink);margin:8px 0 12px}
+.chapter-body h3.sub-h{margin-top:6px}
+.sub-h .sub-kicker{display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson);font-weight:500;margin-bottom:6px}
+
+/* Data tables — Dispatch VII */
+.data-tbl-wrap{overflow-x:auto;border:1px solid var(--rule);background:var(--paper);margin:14px 0 8px}
+.data-tbl{width:100%;border-collapse:collapse;font-family:"Source Serif 4",serif;font-size:13.5px;font-variant-numeric:tabular-nums}
+.data-tbl th,.data-tbl td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--hairline);vertical-align:top;line-height:1.45}
+.data-tbl th{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid var(--rule);background:var(--paper-dark,#eae1d1)}
+.data-tbl td.r,.data-tbl th.r{text-align:right}
+.data-tbl td.r{white-space:nowrap}
+.data-tbl tr:last-child td{border-bottom:none}
+.data-tbl tr.peak td{background:rgba(139,26,26,0.07);color:var(--crimson);font-weight:700}
+.data-tbl tr.peak td:first-child{border-left:3px solid var(--crimson)}
+.data-tbl .cleanest{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--forest);white-space:nowrap}
+@media(max-width:720px){.data-tbl{font-size:12px}.data-tbl th,.data-tbl td{padding:8px 7px}}
+
+/* Numbered step list — for the closing section */
+.steps{list-style:none;padding-left:0;margin:14px 0;counter-reset:step}
+.steps li{
+  counter-increment:step;
+  position:relative;
+  padding:18px 0 18px 64px;
+  border-bottom:1px dotted var(--hairline);
+}
+.steps li:last-child{border-bottom:none}
+.steps li::before{
+  content:counter(step,decimal-leading-zero);
+  position:absolute;left:0;top:18px;
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:38px;line-height:.9;color:var(--crimson);letter-spacing:-.02em;
+}
+.steps li .lab{
+  font-family:"Fraunces",serif;font-weight:700;font-size:18px;line-height:1.2;
+  color:var(--ink);display:block;margin-bottom:6px;
+}
+.steps li .lab em{font-style:italic;font-weight:500;color:var(--crimson)}
+.steps li .body{
+  font-family:"Source Serif 4",Georgia,serif;font-size:14.5px;line-height:1.6;color:var(--ink-soft);
+}
+
+/* ===== PULL QUOTE ===== */
+.pull{
+  grid-column:span 2;
+  border-top:3px double var(--rule);border-bottom:3px double var(--rule);
+  padding:42px 0;margin:28px 0;text-align:center;
+}
+@media(max-width:900px){.pull{grid-column:span 1}}
+.pull blockquote{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:500;
+  font-size:clamp(26px,3.4vw,42px);line-height:1.2;color:var(--ink);
+  max-width:900px;margin:0 auto;
+}
+.pull cite{
+  display:block;margin-top:18px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-style:normal;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+}
+
+/* Closing note box — green-tinted */
+.closing-note{margin-top:34px;padding:24px 28px;background:var(--paper-dark,#eae1d1);border-left:4px solid var(--forest)}
+.closing-note p{font-family:"Source Serif 4",serif;font-size:15px;line-height:1.6;color:var(--ink-soft);margin-bottom:10px}
+.closing-note p:last-child{margin-bottom:0}
+.closing-note p b{color:var(--ink);font-weight:700}
+.closing-note a{color:var(--forest);text-decoration:none;border-bottom:1px dotted var(--forest)}
+.closing-note a:hover{background:var(--forest);color:var(--paper)}
+.closing-note .signoff{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* ===== FOOTER ===== */
+.foot{padding:34px 0 60px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.65;color:var(--ink-soft);text-transform:none;letter-spacing:.02em;border-top:3px double var(--rule);margin-top:50px}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1.6fr 1fr;gap:36px;margin-bottom:30px}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:22px}}
+.foot-col h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
+.foot-col a{display:block;color:var(--ink);text-decoration:none;padding:3px 0;border-bottom:none;letter-spacing:.02em}
+.foot-col a:hover{color:var(--crimson)}
+.foot-strip{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;text-align:center}
+.foot-rights,.foot-sources{margin-top:14px;font-size:11px;line-height:1.55;color:var(--ink-faint);max-width:920px;margin-left:auto;margin-right:auto;text-align:center;letter-spacing:.02em}
+.foot-rights strong,.foot-sources strong{color:var(--ink-soft);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px;margin-right:6px}
+</style>
+<style>
+/* WhatsApp community button — green box (matches Dispatch VI / --forest accent) */
+.navbar a.wa-btn,.foot-col a.wa-btn{display:inline-flex;align-items:center;gap:7px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--forest);border:1px solid var(--forest);background:rgba(53,94,59,0.08);padding:6px 13px;border-radius:3px;text-decoration:none;line-height:1.2;transition:background .15s,color .15s,border-color .15s}
+.navbar a.wa-btn::before,.foot-col a.wa-btn::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--forest);flex:none}
+.navbar a.wa-btn:hover,.foot-col a.wa-btn:hover{background:var(--forest);color:var(--paper);border-color:var(--forest)}
+.navbar a.wa-btn:hover::before,.foot-col a.wa-btn:hover::before{background:var(--paper)}
+.foot-col a.wa-btn{margin-top:12px}
+.navbar-second{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:9px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+
+
+  <!-- MASTHEAD -->
+  <header class="masthead wrap">
+    <div class="masthead-top">
+      <div data-i18n="mast.published">Published since April · 2026</div>
+      <a href="/" style="color:inherit;text-decoration:none" data-i18n-attr="aria-label:nav.live" aria-label="Live Monitor">Bali Air Dispatch</a>
+      <div class="r" data-i18n="mast.tagline">Anonymous, non-commercial</div>
+    </div>
+    <div class="nameplate">
+      <h1>Bali&nbsp;Air&nbsp;Dispatch</h1>
+      <div class="sub" data-i18n="disp.7.x.sub">Dispatch VII — Ninety days of data on the island's garbage fires.</div>
+    </div>
+    <div class="folio">
+      <div data-i18n="mast.editionXXIX">Edition XXIX</div>
+      <div class="c" id="mt-date">—</div>
+      <div class="r" id="nav-status">LIVE · — SENSORS · — OFFLINE</div>
+    </div>
+  </header>
+
+  <!-- NAV (universal · keep in sync across all pages) -->
+  <nav class="navbar">
+    <a href="/" data-i18n="nav.live">Live Monitor</a>
+    <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+    <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+    <a href="/articles" class="on current" data-i18n="nav.dispatches">Dispatches</a>
+    <a href="/history" data-i18n="nav.history">History</a>
+    <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="nav.community">Join the WhatsApp community</a>
+    <div id="lang-switcher"></div>
+  </nav>
+<div class="wrap">
+
+  <!-- BULLETIN -->
+  <div class="bulletin">
+    <div class="tag" data-i18n="disp.7.x.bulTag">Bulletin · Dispatch VII</div>
+    <div data-i18n="disp.7.x.bulLine">Ninety days of data — the first data review since Dispatch VI</div>
+    <div class="when" id="bul-when">—</div>
+  </div>
+
+  <!-- DISPATCH CONTENT -->
+  <section class="chapter" id="dispatch-7">
+    <div class="chapter-head">
+      <div class="chapter-no" data-i18n="disp.7.x.chapNo">Dispatch · VII</div>
+      <div class="chapter-title" data-i18n-html="disp.7.title">Ninety days of <em>data</em> on the island's garbage fires.</div>
+      <div class="chapter-meta" data-i18n-html="disp.7.x.meta">Filed · 20 July 2026<br>Approx. 9-minute read</div>
+    </div>
+    <p class="chapter-lede" data-i18n="disp.7.lede">Bali Air Dispatch · 20 July 2026 · The first data review since Dispatch VI</p>
+
+    <div class="chapter-body">
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.7.sub.1"><span class="sub-kicker">§ I</span>What this dispatch is</h3>
+        <p class="first" data-i18n-html="disp.7.body.p1">Our last dispatch went out in April, as the dry season began and this register was still small. Since 17 April the network has grown to <strong>twenty-plus live sensors across seven networks</strong> and has logged roughly <strong>two thousand sensor-days of PM2.5</strong> — the island's air, measured every fifteen minutes, in the first dry season under Bali's new waste rules.</p>
+        <p data-i18n-html="disp.7.body.p2">We built this network to answer one question: what is the routine open burning of garbage doing to the air Balinese families breathe? Ninety days in, the data has begun to answer — in the numbers, and, more tellingly, <strong>in the clock</strong>.</p>
+      </div>
+
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.7.sub.2"><span class="sub-kicker">§ II</span>The season turned, and it is worse than last year</h3>
+        <p data-i18n-html="disp.7.body.p3">The island-wide picture, month by month (mean of every archived sensor-day; the WHO 24-hour guideline is <strong>15 µg/m³</strong>):</p>
+        <div class="data-tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th data-i18n="disp.7.x.t1h1">Month</th>
+                <th class="r" data-i18n="disp.7.x.t1h2">Sensor-days</th>
+                <th class="r" data-i18n="disp.7.x.t1h3">Mean PM2.5</th>
+                <th class="r" data-i18n="disp.7.x.t1h4">Days over WHO guideline</th>
+                <th class="r" data-i18n="disp.7.x.t1h5">Worst single day</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-i18n="disp.7.x.t1r1m">April</td>
+                <td class="r">146</td>
+                <td class="r">18.7</td>
+                <td class="r">55%</td>
+                <td class="r">57.0</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.7.x.t1r2m">May</td>
+                <td class="r">816</td>
+                <td class="r">13.5</td>
+                <td class="r">35%</td>
+                <td class="r">87.1</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.7.x.t1r3m">June</td>
+                <td class="r">621</td>
+                <td class="r">22.6</td>
+                <td class="r">59%</td>
+                <td class="r">164.6</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.7.x.t1r4m">July (to the 20th)</td>
+                <td class="r">364</td>
+                <td class="r">26.5</td>
+                <td class="r">58%</td>
+                <td class="r">152.0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="grid-column:span 2">
+        <p data-i18n-html="disp.7.body.p4">A caveat we owe the reader: the sensor mix changed as the network grew, so monthly means partly reflect where coverage was added. The cleaner test holds one sensor constant. At Bali Umalas (Villa Fusion) — a residential neighbourhood sensor archived continuously since November 2024, nowhere near a rice field — the same 1 June–20 July window reads: <strong>2025, mean 26.2 µg/m³, 92% of days over the guideline. 2026, mean 31.4 µg/m³, 100% of days over.</strong> At the one sensor able to compare, this season runs about a fifth dirtier than last year's, and not one day since June began has met the WHO guideline.</p>
+      </div>
+
+      <div style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.7.sub.3"><span class="sub-kicker">§ III</span>The clock evidence: smoke on a household schedule</h3>
+        <p data-i18n-html="disp.7.body.p5">If the island's smoke came mainly from a seasonal agricultural event, the record would show broad daytime plumes where the harvest is. It shows something else: <strong>a twice-daily rhythm, everywhere, on the clock of domestic life</strong>.</p>
+        <p data-i18n-html="disp.7.body.p6">Averaging every 15-minute reading since 17 April by hour of day (WITA), at two kinds of sensor held constant all season:</p>
+        <div class="data-tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th data-i18n="disp.7.x.t2h1">Hour (WITA)</th>
+                <th class="r" data-i18n="disp.7.x.t2h2">Residential (Ubud + Mengwi)</th>
+                <th class="r" data-i18n="disp.7.x.t2h3">Rural west (Tabanan + Umadawa)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>05:00</td>
+                <td class="r">27.8</td>
+                <td class="r">31.9</td>
+              </tr>
+              <tr>
+                <td>07:00</td>
+                <td class="r">31.1</td>
+                <td class="r">38.8</td>
+              </tr>
+              <tr class="peak">
+                <td>09:00</td>
+                <td class="r">41.0</td>
+                <td class="r">61.5</td>
+              </tr>
+              <tr>
+                <td>12:00</td>
+                <td class="r">24.6</td>
+                <td class="r">30.5</td>
+              </tr>
+              <tr>
+                <td>16:00</td>
+                <td class="r">16.9 <span class="cleanest" data-i18n="disp.7.x.t2cleanest">(cleanest)</span></td>
+                <td class="r">20.9 <span class="cleanest" data-i18n="disp.7.x.t2cleanest">(cleanest)</span></td>
+              </tr>
+              <tr>
+                <td>19:00</td>
+                <td class="r">21.8</td>
+                <td class="r">34.6</td>
+              </tr>
+              <tr>
+                <td>22:00</td>
+                <td class="r">27.3</td>
+                <td class="r">50.3</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <p data-i18n-html="disp.7.body.p7">Two peaks, the same two peaks, at every sensor: a morning maximum at <strong>08:00–09:00</strong> — when household rubbish fires are lit and the night's accumulated smoke still sits trapped under the overnight inversion layer — and an evening climb from <strong>19:00</strong> as the day's second round of burning starts and the air stills again. The cleanest air of the day is mid-afternoon, when burning pauses and the sea breeze and daytime heat stir the boundary layer.</p>
+      </div>
+
+      <div>
+        <p data-i18n-html="disp.7.body.p8">This is not the signature of a harvest. It is the signature of a <strong>chore</strong> — the daily, island-wide routine of burning mixed household waste in yards, roadsides, ditches and field edges, morning and evening, seven days a week. The rural western sensors show the same schedule at higher amplitude: more fires, bigger piles, stiller air — and, as anyone who has walked a field edge knows, those piles are rarely crop residue alone. Plastic, packaging and household rubbish are burned alongside whatever else is at hand.</p>
+        <p data-i18n-html="disp.7.body.p9">The practical reading is blunt. <strong>The worst hour of the day is nine in the morning</strong> — the school run, the market run, the commute. The "fresh morning air" instinct has it exactly backwards in burn season. The clean window is roughly <strong>14:00–17:00</strong>.</p>
+      </div>
+
+      <div class="pull">
+        <blockquote data-i18n="disp.7.x.pullQ">"The smoke keeps house hours — morning and evening, everywhere at once — the schedule of garbage fires, not of any harvest."</blockquote>
+        <cite data-i18n="disp.7.x.pullCite">Dispatch VII · 20 July 2026</cite>
+      </div>
+
+      <div style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.7.sub.4"><span class="sub-kicker">§ IV</span>Everywhere, not somewhere</h3>
+        <p data-i18n-html="disp.7.body.p10">The heaviest validated days since 17 April belong to <strong>ten different stations</strong> in every corner of the island — city, suburb, and countryside:</p>
+        <div class="data-tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th data-i18n="disp.7.x.t3h1">Station</th>
+                <th data-i18n="disp.7.x.t3h2">Area</th>
+                <th class="r" data-i18n="disp.7.x.t3h3">Worst day (µg/m³)</th>
+                <th class="r" data-i18n="disp.7.x.t3h4">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Tonja</td>
+                <td data-i18n="disp.7.x.t3r1a">Denpasar</td>
+                <td class="r">164.6</td>
+                <td class="r" data-i18n="disp.7.x.t3r1d">10 June</td>
+              </tr>
+              <tr>
+                <td>Tabanan</td>
+                <td data-i18n="disp.7.x.t3r2a">West</td>
+                <td class="r">125.2</td>
+                <td class="r" data-i18n="disp.7.x.t3r2d">30 June</td>
+              </tr>
+              <tr>
+                <td>Umadawa</td>
+                <td data-i18n="disp.7.x.t3r3a">North-west</td>
+                <td class="r">105.9</td>
+                <td class="r" data-i18n="disp.7.x.t3r3d">14 July</td>
+              </tr>
+              <tr>
+                <td>Kuwum</td>
+                <td data-i18n="disp.7.x.t3r4a">Mengwi</td>
+                <td class="r">91.4</td>
+                <td class="r" data-i18n="disp.7.x.t3r4d">1 July</td>
+              </tr>
+              <tr>
+                <td>Sanur</td>
+                <td data-i18n="disp.7.x.t3r5a">Coast</td>
+                <td class="r">87.1</td>
+                <td class="r" data-i18n="disp.7.x.t3r5d">30 May</td>
+              </tr>
+              <tr>
+                <td>Klungkung</td>
+                <td data-i18n="disp.7.x.t3r6a">East</td>
+                <td class="r">81.3</td>
+                <td class="r" data-i18n="disp.7.x.t3r6d">16 July</td>
+              </tr>
+              <tr>
+                <td>Ubud (Airly)</td>
+                <td data-i18n="disp.7.x.t3r7a">Centre</td>
+                <td class="r">68.5</td>
+                <td class="r" data-i18n="disp.7.x.t3r7d">3 June</td>
+              </tr>
+              <tr>
+                <td>Kopernik (Mas)</td>
+                <td data-i18n="disp.7.x.t3r8a">Ubud</td>
+                <td class="r">59.4</td>
+                <td class="r" data-i18n="disp.7.x.t3r8d">20 July</td>
+              </tr>
+              <tr>
+                <td>Sempidi</td>
+                <td data-i18n="disp.7.x.t3r9a">Badung</td>
+                <td class="r">57.0</td>
+                <td class="r" data-i18n="disp.7.x.t3r9d">27 April</td>
+              </tr>
+              <tr>
+                <td>Sidakarya</td>
+                <td data-i18n="disp.7.x.t3r10a">South Denpasar</td>
+                <td class="r">54.6</td>
+                <td class="r" data-i18n="disp.7.x.t3r10d">3 July</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <p data-i18n-html="disp.7.body.p11">Days at <strong>90–165 µg/m³</strong> are six to eleven times the WHO daily guideline. (A community sensor in Tabanan's rice country recorded days higher still, up to 162; its calibration is unverified, so we leave it out of the tables — but its direction agrees with the validated Tabanan and Umadawa stations beside it.)</p>
+      </div>
+
+      <div>
+        <p data-i18n-html="disp.7.body.p12">And the residential burden is constant, not episodic. Since mid-April: Umalas exceeded the WHO daily guideline on <strong>95% of days</strong> (mean 27.6), Sidakarya in south Denpasar on <strong>82%</strong> (mean 23.0), Kopernik in Mas, Ubud on <strong>74%</strong> (mean 24.2) — with instantaneous readings in Ubud as high as 133 µg/m³. These are neighbourhoods of homes, schools and warungs. Nobody is harvesting rice in Umalas.</p>
+      </div>
+
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.7.sub.5"><span class="sub-kicker">§ V</span>What we can and cannot claim</h3>
+        <p data-i18n-html="disp.7.body.p13">A PM2.5 sensor weighs smoke; it cannot chemically tell burning plastic from burning straw. What the record can establish is this: the smoke follows the daily schedule of domestic waste burning, it is island-wide rather than confined to any crop zone, it burdens residential neighbourhoods on nine days in ten, and it is heavier than the same season last year. The single practice that fits all four observations is <strong>the routine open burning of mixed household waste</strong> — in yards and at field edges alike — intensifying in a season when every fire's smoke hangs longer in dry, still air.</p>
+        <p data-i18n-html="disp.7.body.p14">Settling the attribution beyond argument needs the next instrument: chemical speciation, or at minimum paired sensors beside known burn sites and waste-transfer points. That is where this project goes next.</p>
+      </div>
+
+      <div>
+        <h3 class="sub-h" data-i18n-html="disp.7.sub.6"><span class="sub-kicker">§ VI</span>The network itself: what died watching</h3>
+        <p data-i18n-html="disp.7.body.p15">Ninety days of measurement cost us machines. The Nafas network in Bali went dark station by station — Pemogan on 13 June, Sanur and Ubud on 16 June, and Tonja, the station that recorded the island's worst day, on 1 July. Nafas stations elsewhere in Indonesia update normally; the withdrawal is Bali-specific, and it removed what was once the island's best consumer network mid-season. Their final readings are <a href="/history">preserved here</a>, and co-located failover feeds now cover two of the sites. The Jimbaran Smart Citizen cluster also left the outdoor record in June–July.</p>
+        <p data-i18n-html="disp.7.body.p16">Against the losses: hourly records from <strong>ten IQAir stations</strong>, a second government-adjacent station, and a direct line to the AirGradient community network.</p>
+      </div>
+
+      <div style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.7.sub.7"><span class="sub-kicker">§ VII</span>What the data is telling us</h3>
+        <ol class="steps">
+          <li>
+            <span class="lab" data-i18n-html="disp.7.step.1.lab">The air is <em>worse</em> than last year</span>
+            <span class="body" data-i18n-html="disp.7.step.1.body">— about a fifth dirtier at the one sensor that can compare seasons, with residential neighbourhoods over the WHO daily guideline nine days in ten.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.7.step.2.lab">The dominant pattern is <em>domestic</em>, not agricultural.</span>
+            <span class="body" data-i18n-html="disp.7.step.2.body">The smoke keeps house hours — morning and evening, everywhere at once — the schedule of garbage fires, not of any harvest. Where field burning occurs, household waste burns with it.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.7.step.3.lab">Exposure is worst when people are <em>most exposed</em>.</span>
+            <span class="body" data-i18n-html="disp.7.step.3.body">The 08:00–09:00 peak coincides with school runs and markets. Shifting outdoor exercise, ventilation and children's travel toward the 14:00–17:00 window is free and cuts the daily dose materially.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.7.step.4.lab">The record is <em>fragile</em> exactly where it matters.</span>
+            <span class="body" data-i18n-html="disp.7.step.4.body">The stations that recorded the worst air kept dying, and a commercial network withdrew mid-season. The next step is more independent sensors in more hands — especially beside the burn sites themselves — with every record preserved when the hardware fails.</span>
+          </li>
+        </ol>
+      </div>
+
+      <div style="grid-column:span 2">
+        <div class="closing-note">
+          <p data-i18n-html="disp.7.close.p1">Every number in this dispatch is drawn from the archive and can be re-derived from it and every silenced sensor's record stays on the <a href="/history">history page</a>.</p>
+          <p class="signoff" data-i18n="disp.7.close.p2">— Bali Air Dispatch, 20 July 2026</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+<style>
+.disp-pager{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:38px 0 26px;border-top:3px double var(--rule);border-bottom:3px double var(--rule);padding:24px 0}
+@media(max-width:700px){.disp-pager{grid-template-columns:1fr}}
+.disp-pager-link{display:flex;flex-direction:column;gap:4px;padding:18px 22px;border:1px solid var(--rule);background:var(--paper);text-decoration:none;color:var(--ink);transition:background .15s,color .15s,transform .15s}
+.disp-pager-link:hover{background:var(--ink);color:var(--paper);transform:translateY(-2px)}
+.disp-pager-link.next{text-align:right}
+.disp-pager-link .lab{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson)}
+.disp-pager-link:hover .lab{color:var(--paper)}
+.disp-pager-link .ttl{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 96;font-size:18px;line-height:1.2;letter-spacing:-.005em}
+.disp-back{margin:18px 0 8px;text-align:center;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+.disp-back a{color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted var(--hairline);padding-bottom:1px}
+.disp-back a:hover{color:var(--crimson);border-color:var(--crimson)}
+</style>
+
+  <nav class="disp-pager wrap" aria-label="Dispatch navigation">
+    <a class="disp-pager-link prev" href="/dispatches/6"><span class="lab" data-i18n="disp.7.x.pPrev">← Previous</span><span class="ttl" data-i18n="disp.7.x.pPrevT">Dispatch VI</span></a>
+    <a class="disp-pager-link next" href="/articles"><span class="lab" data-i18n="disp.7.x.pAll">All dispatches →</span><span class="ttl" data-i18n="disp.7.x.pAllT">Back to the index</span></a>
+  </nav>
+  <div class="disp-back wrap"><a href="/articles" data-i18n="disp.7.x.index">Index of dispatches</a></div>
+
+
+  <!-- UNIVERSAL FOOTER · keep in sync across all pages -->
+  <footer class="foot">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.pages">Pages</h4>
+        <a href="/" data-i18n="nav.live">Live Monitor</a>
+        <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+        <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+        <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
+        <a href="/history" data-i18n="nav.history">History</a>
+        <a href="/appendix" data-i18n="foot.appendix">Appendix &amp; Methodology</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.dispatches">Dispatches</h4>
+        <a href="/dispatches/1" data-i18n="foot.disp.1">I — The daily guideline, exceeded.</a>
+        <a href="/dispatches/2" data-i18n="foot.disp.2">II — One government sensor.</a>
+        <a href="/dispatches/3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
+        <a href="/dispatches/4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
+        <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
+        <a href="/dispatches/6" data-i18n="foot.disp.6">VI — The fix, in order of impact.</a>
+        <a href="/dispatches/7" data-i18n="foot.disp.7">VII — Ninety days of data.</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.contact">Contact</h4>
+        <span class="email" tabindex="0" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;color:var(--ink);user-select:all;-webkit-user-select:all;cursor:text;border-bottom:1px dotted var(--hairline);padding:1px 4px;display:inline-block">baliair@protonmail.com</span>
+        <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="foot.community">Join the WhatsApp community</a>
+      </div>
+    </div>
+    <div class="foot-strip" data-i18n="foot.strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+    <div class="foot-rights"><strong data-i18n="foot.rights.label">Rights.</strong><span data-i18n="foot.rights.body"> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</span></div>
+    <div class="foot-sources"><strong data-i18n="foot.sources.label">Sources.</strong><span data-i18n="foot.sources.body"> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</span></div>
+  </footer>
+
+</div>
+<script>
+// Dynamic WITA date for masthead folio + bulletin "when"
+(function(){
+  function update(){
+    const d = new Date();
+    const fmt = d.toLocaleDateString('en-GB',{
+      weekday:'long', day:'numeric', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    }).toUpperCase();
+    const el = document.getElementById('mt-date');
+    if (el) el.textContent = fmt;
+    const when = d.toLocaleDateString('en-GB',{
+      day:'2-digit', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    });
+    const bw = document.getElementById('bul-when');
+    if (bw) bw.textContent = 'Last updated ' + when + ' WITA';
+  }
+  update();
+  setInterval(update, 60*1000);
+})();
+</script>
+<script src="/js/i18n.js" defer></script>
+</body>
+</html>
