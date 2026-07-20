@@ -468,7 +468,11 @@ const SC_BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
 function scPickSensor(sensors, re) {
   if (!Array.isArray(sensors)) return null;
   const s = sensors.find(x => re.test(String(x?.name || '')));
-  const v = s ? +s.value : NaN;
+  // Explicit null/empty check BEFORE coercion (same fix as agNum in
+  // fetchAirGradient): a sensor entry with value:null — a dead module on a
+  // live device — would otherwise coerce via `+null === 0` into a phantom
+  // 0.0 reading that gets displayed and archived as false clean air.
+  const v = (s && s.value != null && s.value !== '') ? +s.value : NaN;
   return Number.isFinite(v) ? +v.toFixed(1) : null;
 }
 // Sanitise externally-controlled SC strings (device name / hardware label) at
