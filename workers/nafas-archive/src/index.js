@@ -225,6 +225,13 @@ async function snapshotUniversal(db, live, nowSec) {
     // which /api/live + /history would otherwise have to filter out as stale
     // duplicate pins. Skipping at the source keeps those tables clean.
     if (String(s.id).startsWith('iqs-')) continue;
+    // Skip OFFLINE tombstone pins (off:true — Smart Citizen retention): they
+    // carry no current reading (pm25 null, lastSeen = last archived day).
+    // Without this, a freshly-dead unit would get null-pm25 snapshots for the
+    // first 48 h until the frozen-sensor guard below kicks in. Skip the
+    // catalog upsert too — it would overwrite last_seen with the tombstone's
+    // resurfacing time rather than real data time.
+    if (s.off) continue;
     stationBatch.push(stmtStation.bind(
       s.id, s.source || 'Unknown', s.name || s.id,
       +s.lat, +s.lon, s.type || null, nowSec
@@ -244,7 +251,9 @@ async function snapshotUniversal(db, live, nowSec) {
   }
   if (stationBatch.length) await db.batch(stationBatch);
   if (snapBatch.length)    await db.batch(snapBatch);
-  return { stationsSeen: live.stations.length, snapshots: snapBatch.length };
+  // stationsSeen excludes off:true tombstones — they're skipped above and
+  // would otherwise drift the archive_runs stations_seen ops metric.
+  return { stationsSeen: live.stations.filter(s => !(s && s.off)).length, snapshots: snapBatch.length };
 }
 
 // Roll up the last 3 days of station_snapshots into station_daily.

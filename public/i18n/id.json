@@ -905,5 +905,8 @@
   "panel.suspectedIndoor": "Diduga monitor dalam ruangan",
   "history.x.grp.indoor": "Diduga dalam ruangan",
   "history.x.indoorTag": "(DIDUGA DALAM RUANGAN)",
-  "roll.suspectedIndoor": "Diduga dalam ruangan"
+  "roll.suspectedIndoor": "Diduga dalam ruangan",
+  "history.x.grp.recentOffline": "Baru saja offline",
+  "history.x.tag.offline": "offline",
+  "history.x.offlineTag": "(OFFLINE)"
 }

@@ -560,6 +560,85 @@ function dedupSmartCitizen(scStations, existing) {
   );
 }
 
+// Smart Citizen OFFLINE retention — grey "tombstone" pins for units that stop
+// being eligible live outdoor sensors, so months of archived readings never
+// silently vanish from the map/history the moment a device dies (Pangkung
+// Tibah, Jul 2026) or its owner retags it indoor (SCK@Jimbaran, Jul 2026).
+//
+// Driven entirely by OUR D1 archive (stations catalog + station_daily), not by
+// upstream tags — so it works identically on the fast path and even if the
+// device is deleted from the Smart Citizen API. Gates keep it curated:
+//   • ≥ MIN_DAILY_DAYS archived days — flapping hobby nodes and week-old test
+//     blips never earn a tombstone;
+//   • last archived day within RETENTION_DAYS — long-dark units age off the
+//     map (their history stays in D1 + /api/history forever);
+//   • ≥ NEAR_M from any live SC pin — a live sibling covers the spot (Kios
+//     Utak Atik: the live board suppresses the dead node 10 m away); among
+//     co-located dead twins the lowest id (= longest record) wins, so
+//     SCK@Jimbaran-2025 absorbs SCK-TWO 11 m away — one pin, one record.
+// Tombstones are EXEMPT from cross-source de-dup: they mark a distinct dead
+// device whose record must stay reachable; a live foreign sensor nearby does
+// not make that history redundant. Always additive, never blocking: any D1
+// failure returns [] and live air is served unchanged.
+async function scOfflineFromD1(db, baseStations) {
+  const RETENTION_DAYS = 90;
+  const MIN_DAILY_DAYS = 5;
+  const NEAR_M = 120;          // matches the SC-internal live de-dup radius
+  try {
+    const rows = await db.prepare(`
+      SELECT st.station_id AS id, st.name, st.lat, st.lon, st.type,
+             d.days, d.last_date
+      FROM stations st
+      JOIN (SELECT station_id, COUNT(*) AS days, MAX(date) AS last_date
+              FROM station_daily WHERE station_id LIKE 'sc-%'
+             GROUP BY station_id) d ON d.station_id = st.station_id
+      WHERE st.station_id LIKE 'sc-%'
+    `).all();
+    const present = new Set((baseStations || []).map(s => s && s.id).filter(Boolean));
+    const anchors = (baseStations || []).filter(s =>
+      s && s.source === 'Smart Citizen' &&
+      Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+    const nowMs = Date.now();
+    const devNum = (id) => { const n = +String(id).slice(3); return Number.isFinite(n) ? n : Infinity; };
+    const out = [];
+    for (const r of (rows.results || []).sort((a, b) => devNum(a.id) - devNum(b.id))) {
+      if (!r || present.has(r.id)) continue;               // currently live on the map
+      if (+r.days < MIN_DAILY_DAYS) continue;
+      // End of the last archived WITA day — a unit that reported yesterday
+      // evening local time isn't "36h dead" just because dates are UTC-naive.
+      const lastMs = Date.parse(String(r.last_date) + 'T23:59:59+08:00');
+      if (!Number.isFinite(lastMs)) continue;
+      if (nowMs - lastMs > RETENTION_DAYS * 86400000) continue;
+      // Explicit null check first: +null coerces to 0, which Number.isFinite
+      // accepts — a NULL-coord catalog row would otherwise pin at (0,0).
+      if (r.lat == null || r.lon == null ||
+          !Number.isFinite(+r.lat) || !Number.isFinite(+r.lon)) continue;
+      if (anchors.some(a => metresBetween(+r.lat, +r.lon, +a.lat, +a.lon) < NEAR_M)) continue;
+      if (out.some(k => metresBetween(+r.lat, +r.lon, k.lat, k.lon) < NEAR_M)) continue;
+      out.push({
+        id: r.id,
+        name: r.name || r.id,
+        source: 'Smart Citizen',
+        type: r.type || 'Citizen sensor',
+        lat: +r.lat, lon: +r.lon,
+        pm25: null, pm10: null, pm1: null, aqi: null,
+        temperature: null, humidity: null,
+        category: null, cls: 'off',
+        off: true,                          // frontends: offline family, not live
+        offlineSince: String(r.last_date),  // last archived day (YYYY-MM-DD)
+        // Clamp to now: a device whose last archived day is today would
+        // otherwise report a future lastSeen / negative staleAgeHours.
+        lastSeen: new Date(Math.min(lastMs, nowMs)).toISOString(),
+        stale: true,                        // never counted as a current reading
+        staleAgeHours: Math.max(0, Math.round((nowMs - lastMs) / 3600000)),
+      });
+    }
+    return out;
+  } catch (_) {
+    return [];  // tombstones are optional — never break live air
+  }
+}
+
 // Airly de-dup (display only). Both Bali Airly installations are Nafas-SPONSORED
 // hardware co-located (~12 m) with a Nafas station, publishing the same readings
 // (daily-mean r≈0.97, mean |Δ|<1 µg/m³). Show one pin: drop any Airly station
@@ -786,7 +865,15 @@ export async function onRequest(context) {
         } catch (_) { /* scraped optional; serve base fast path */ }
         // Collapse co-located Airly (Nafas-sponsored) onto its live Nafas twin.
         fast.stations = dropAirlyNearNafas(fast.stations);
-        fast.sources = new Set(fast.stations.map(s => s.source)).size;
+        // Fold in Smart Citizen OFFLINE tombstones (off:true) — dead or
+        // indoor-retagged units keep a grey pin + reachable history. Added
+        // after the live folds so live pins act as the de-dup anchors.
+        try {
+          const tomb = await scOfflineFromD1(env.ARCHIVE_DB, fast.stations);
+          if (tomb.length) fast.stations.push(...tomb);
+        } catch (_) { /* tombstones optional */ }
+        // Source count reflects LIVE feeds only — tombstones aren't a source.
+        fast.sources = new Set(fast.stations.filter(s => !s.off).map(s => s.source)).size;
         return jsonResponse(fast);
       }
     } catch (e) {
@@ -839,9 +926,19 @@ export async function onRequest(context) {
       const scraped = await scrapedIQAirFromD1(env.ARCHIVE_DB, results.stations);
       if (scraped.length) {
         results.stations.push(...scraped);
-        results.sources = new Set(results.stations.map(s => s.source)).size;
       }
     } catch (_) { /* scraped optional */ }
+    // Smart Citizen OFFLINE tombstones (see scOfflineFromD1) — folded LAST so
+    // every live pin (including scraped IQAir) is already in the base list and
+    // a tombstone can never act as a de-dup anchor against a live station.
+    // The archive worker reads this path (?fresh=1) and skips off:true
+    // stations, so tombstones are never re-snapshotted into D1.
+    try {
+      const tomb = await scOfflineFromD1(env.ARCHIVE_DB, results.stations);
+      if (tomb.length) results.stations.push(...tomb);
+    } catch (_) { /* tombstones optional */ }
+    // Source count reflects LIVE feeds only — tombstones aren't a source.
+    results.sources = new Set(results.stations.filter(s => !s.off).map(s => s.source)).size;
   }
   if (results.errors.length === 0) delete results.errors;
   return jsonResponse(results);

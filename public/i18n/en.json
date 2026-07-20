@@ -286,5 +286,8 @@
   "panel.suspectedIndoor": "Suspected indoor monitor",
   "history.x.grp.indoor": "Suspected indoor",
   "history.x.indoorTag": "(SUSPECTED INDOOR)",
-  "roll.suspectedIndoor": "Suspected indoor"
+  "roll.suspectedIndoor": "Suspected indoor",
+  "history.x.grp.recentOffline": "Recently offline",
+  "history.x.tag.offline": "offline",
+  "history.x.offlineTag": "(OFFLINE)"
 }

@@ -459,9 +459,10 @@ function renderMetaInfo(){
   const el = document.getElementById('metaInfo');
   if (!el) return;
   if (!metaCounts){
-    const chartableLive = liveCatalog.filter(s => isArchived(s)).length;
+    const chartableLive = liveCatalog.filter(s => !s.off && isArchived(s)).length;
     metaCounts = {
-      live: liveCatalog.length,
+      // off:true tombstones ride in the live payload but aren't live sensors.
+      live: liveCatalog.filter(s => !s.off).length,
       archived: chartableLive,
       silenced: Object.keys(OFFLINE_HISTORY).length + OFFLINE_OTHER.length
     };
@@ -510,12 +511,17 @@ function buildStationList(){
   const normName = s => (s && s.name ? String(s.name) : '').trim().toLowerCase();
   const isForcedSilenced = s => SILENCED_NAMES.has(normName(s));
 
-  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id));
-  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id));
+  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id) && !s.off);
+  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id) && !s.off);
   const liveArchived = liveFresh.filter(s =>  isArchived(s));
   const liveNoArch   = liveFresh.filter(s => !isArchived(s));
   // Suspected-indoor monitors — pulled out of the live groups into their own group.
-  const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isForcedSilenced(s));
+  const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isForcedSilenced(s) && !s.off);
+  // Recently-offline tombstones (off:true from /api/live): dead or
+  // indoor-retagged units whose archived record stays selectable. Always
+  // chartable — the server only emits a tombstone when D1 daily history exists.
+  const recentOffline = liveCatalog.filter(s => s.off && !isForcedSilenced(s))
+    .map(s => ({ ...s, offline: true, archived: true }));
 
   // Resolve the forced-silenced stations from every catalog, deduped by id.
   const forcedSilenced = [];
@@ -544,7 +550,7 @@ function buildStationList(){
   ];
 
   // Record every selectable monitor that has coordinates (for the region filter).
-  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...indoorMons, ...silenced]
+  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...indoorMons, ...recentOffline, ...silenced]
     .map(s => { const c = coordOf(s.id); return c ? { id: s.id, name: s.name, lat: c.lat, lon: c.lon } : null; })
     .filter(Boolean);
 
@@ -557,7 +563,7 @@ function buildStationList(){
                  : (chartable ? '—' : 'no data');
     const cls = chartable ? '' : 'no-data';
     let subtitle = s.source || '';
-    if (s.offline) subtitle += ' · ' + T('history.x.tag.silenced','silenced');
+    if (s.offline) subtitle += ' · ' + (s.off ? T('history.x.tag.offline','offline') : T('history.x.tag.silenced','silenced'));
     else if (opts.staleHours) subtitle += ` · ${T('history.x.tag.stale','stale')} ${Math.round(opts.staleHours)}h`;
     // Defense-in-depth: escape s.id when interpolating into HTML attributes.
     // IDs originate from external providers (IQAir, AQICN, PurpleAir, etc.)
@@ -600,6 +606,10 @@ function buildStationList(){
   if (indoorMons.length){
     html += groupHeader(T('history.x.grp.indoor','Suspected indoor'));
     indoorMons.forEach(s => { html += renderRow(s, idx); idx++; });
+  }
+  if (recentOffline.length){
+    html += groupHeader(T('history.x.grp.recentOffline','Recently offline'));
+    recentOffline.forEach(s => { html += renderRow(s, idx, { forceArchived: true }); idx++; });
   }
   if (silenced.length){
     html += groupHeader(T('history.x.grp.silenced','Silenced'));
@@ -973,8 +983,12 @@ async function renderChart(){
 
 function nameFor(id){
   // Suspected-indoor monitors get a tag to the right of the name everywhere the
-  // name is shown in the chart (legend + hours-above-WHO rows).
-  const tag = isIndoorId(id) ? ' ' + T('history.x.indoorTag', '(SUSPECTED INDOOR)') : '';
+  // name is shown in the chart (legend + hours-above-WHO rows). Offline
+  // tombstones (off:true from /api/live) get an (OFFLINE) tag the same way.
+  const isOffId = liveCatalog.some(s => s.id === id && s.off);
+  const tag = isIndoorId(id) ? ' ' + T('history.x.indoorTag', '(SUSPECTED INDOOR)')
+            : isOffId        ? ' ' + T('history.x.offlineTag', '(OFFLINE)')
+            : '';
   let base = id;
   if (id.startsWith('off-')){
     base = OFFLINE_HISTORY[id.slice(4)]?.name || id;
@@ -1228,7 +1242,8 @@ document.addEventListener('i18n:changed', () => {
       const r = await fetch(API_BASE + '/api/live', { cache: 'force-cache' });
       if (!r.ok) return;
       const d = await r.json();
-      const n = (d.stations || []).length;
+      // Exclude off:true tombstones so this count matches the homepage's.
+      const n = (d.stations || []).filter(s => !(s && s.off)).length;
       const el = document.getElementById('nav-status');
       if (el) el.textContent = localiseStatus(n, OFFLINE_FIXED);
     } catch (_) {}

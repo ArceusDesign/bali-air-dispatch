@@ -799,6 +799,9 @@ const INDOOR_IDS = new Set([
 ]);
 const isIndoor = (s) => INDOOR_IDS.has(typeof s === 'string' ? s : (s && s.id));
 let liveStations = [];
+let scTombstones = []; // server-driven OFFLINE tombstones (off:true) — dead /
+                       // indoor-retagged Smart Citizen units kept visible with
+                       // their archived record; never counted as live
 let allStations  = []; // live + offline
 const hazeLayer  = L.layerGroup().addTo(map);
 const liveLayer  = L.layerGroup().addTo(map);
@@ -869,7 +872,13 @@ async function loadLive(){
     const r = await fetch(API_BASE + '/api/live',{cache:'no-cache'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
-    liveStations = d.stations || [];
+    // Split at ingestion: off:true stations are OFFLINE tombstones (dead or
+    // indoor-retagged Smart Citizen units with an archived record). Keeping
+    // them out of liveStations means every live counter, median, "worst now"
+    // and ticker line stays honest without further special-casing.
+    const _all = d.stations || [];
+    scTombstones = _all.filter(s => s && s.off);
+    liveStations = _all.filter(s => !(s && s.off));
     renderAll(d.ts);
   }catch(e){
     console.warn('live fetch failed',e);
@@ -904,7 +913,15 @@ function renderAll(ts){
     if (!Number.isFinite(+off.lat) || !Number.isFinite(+off.lon)) return true;
     return !_liveForDedup.some(lv => _metresApart(off, lv) < 300);
   });
-  allStations = [...liveStations.map(s=>({...s,offline:false})), ...offlineFiltered];
+  // Server-driven tombstones join the offline family directly. They are
+  // curated server-side (≥5 archived days, 90-day window, live-sibling
+  // de-dup) and deliberately EXEMPT from the 300 m live-suppression above:
+  // each marks a distinct dead device whose record should stay visible.
+  const svrOffline = scTombstones.map(s => ({
+    ...s, pm25: null, offline: true,
+    last: s.offlineSince || (s.lastSeen ? String(s.lastSeen).slice(0, 10) : null)
+  }));
+  allStations = [...liveStations.map(s=>({...s,offline:false})), ...offlineFiltered, ...svrOffline];
 
   // --- markers ---
   skeletonLayer.clearLayers();   // remove placeholder pins
@@ -920,7 +937,7 @@ function renderAll(ts){
     let html, size;
     if(s.offline){
       size = 38;
-      html = `<div class="pin offline" data-sid="${s.id}"></div>`;
+      html = `<div class="pin offline" data-sid="${esc(s.id)}"></div>`;
     } else {
       const c = catFor(s.pm25);
       size = 42 + Math.min(16, Math.round((s.pm25||0)/6));
@@ -930,12 +947,12 @@ function renderAll(ts){
       // as if it were a current reading).
       if (s.stale) {
         size = 38;
-        html = `<div class="pin offline" data-sid="${s.id}"><span class="pm" style="font-size:9px;font-weight:600;letter-spacing:.06em">STALE</span></div>`;
+        html = `<div class="pin offline" data-sid="${esc(s.id)}"><span class="pm" style="font-size:9px;font-weight:600;letter-spacing:.06em">STALE</span></div>`;
       } else if (isIndoor(s)) {
         // Suspected indoor monitor: gray + faint, no AQI colour coding.
-        html = `<div class="pin indoor" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
+        html = `<div class="pin indoor" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${esc(s.id)}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
       } else {
-        html = `<div class="pin ${c.cls}${pulse}" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${s.id}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
+        html = `<div class="pin ${c.cls}${pulse}" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${esc(s.id)}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
       }
 
       // Draw a "haze cloud" around affected live stations. Radius grows with PM2.5,
@@ -989,7 +1006,7 @@ function renderAll(ts){
   // Counts that drive the ticker / HUD / nav status use this combined number
   // so it matches what the user can count on the map.
   const staleCount = liveStations.filter(s => s && s.stale).length;
-  const offlineLikeCount = offlineList.length + staleCount;
+  const offlineLikeCount = offlineList.length + svrOffline.length + staleCount;
   // §I Bulletin "Offline since Nov '25" box keeps the historical count
   // (the label is specifically about long-dark sensors, not stale ones).
   document.getElementById('b-off').textContent = offlineList.length;
@@ -1033,12 +1050,13 @@ function hasHistory(s){
   // until the archive is extended. Offline embedded historical sensors also qualify.
   if (!s) return false;
   if (s.id && s.id.startsWith && s.id.startsWith('nafas-')) return true;
+  if (s.id && s.id.startsWith && s.id.startsWith('sc-')) return true; // Smart Citizen — D1-archived (live + offline tombstones)
   if (s.offline && s.id && s.id.startsWith && s.id.startsWith('oaq-')) return true; // OFFLINE_HISTORY entries
   return false;
 }
 function historyCell(s){
   return hasHistory(s)
-    ? `<a href="#" class="hist-btn" data-hsid="${s.id}" title="Open historical record">History →</a>`
+    ? `<a href="#" class="hist-btn" data-hsid="${esc(s.id)}" title="Open historical record">History →</a>`
     : `<span class="hist-na">—</span>`;
 }
 
@@ -1050,7 +1068,7 @@ function renderRollTable(){
   tb.innerHTML = combined.map(s=>{
     if(s.offline){
       const dl = daysBetween(s.last, new Date());
-      return `<tr class="offline" data-sid="${s.id}">
+      return `<tr class="offline" data-sid="${esc(s.id)}">
         <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
         <td>${esc(s.source)}</td>
         <td class="r">—</td>
@@ -1064,7 +1082,7 @@ function renderRollTable(){
     // "Stale Nd" badge — so visitors don't read a months-old value as live.
     if (s.stale) {
       const ageDays = Math.round((s.staleAgeHours || 0) / 24);
-      return `<tr class="offline" data-sid="${s.id}">
+      return `<tr class="offline" data-sid="${esc(s.id)}">
         <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
         <td>${esc(s.source)}</td>
         <td class="r"><span class="pm-cell" style="color:var(--ink-whisper);font-style:italic">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
@@ -1076,7 +1094,7 @@ function renderRollTable(){
     if (isIndoor(s)) {
       // Suspected indoor: gray the whole row + a gray "Suspected indoor" badge in
       // place of the AQI category, so it's never read as clean outdoor air.
-      return `<tr class="indoor-row" data-sid="${s.id}">
+      return `<tr class="indoor-row" data-sid="${esc(s.id)}">
         <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
         <td>${esc(s.source)}</td>
         <td class="r"><span class="pm-cell">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
@@ -1085,7 +1103,7 @@ function renderRollTable(){
         <td class="r">${s.lastSeen?new Date(s.lastSeen).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA':'—'}</td>
       </tr>`;
     }
-    return `<tr data-sid="${s.id}">
+    return `<tr data-sid="${esc(s.id)}">
       <td><b>${esc((s.name||'').split(' (')[0])}</b>${s.pm25_estimated?' <em style="color:var(--ink-faint);font-size:11px">· est.</em>':''}</td>
       <td>${esc(s.source)}</td>
       <td class="r"><span class="pm-cell">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
@@ -1188,7 +1206,7 @@ async function renderArchive(){
       ${daily.length
         ? `<canvas id="spark-${cardId}"></canvas>`
         : `<div style="height:90px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px dashed var(--hairline);background:var(--paper-2)">${T('worst.archiveStarting','Archive starting · history populates over time')}</div>`}
-      <div class="arc-act" data-sid="${stn.id}">${T('worst.openRecord','Open the record →')}</div>
+      <div class="arc-act" data-sid="${esc(stn.id)}">${T('worst.openRecord','Open the record →')}</div>
     `;
     grid.appendChild(el);
     if (daily.length) drawSparkline('spark-'+cardId, daily);
