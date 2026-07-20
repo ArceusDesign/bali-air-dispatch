@@ -1321,6 +1321,7 @@ function panelLive(s){
               : s.source==='AQICN'?'https://aqicn.org/city/indonesia/bali/'
               : s.source==='Nafas'?'https://nafas.co.id'
               : s.source==='Smart Citizen'?('https://smartcitizen.me/kits/'+String(s.id||'').replace(/^sc-/,''))
+              : s.source==='AirGradient'?'https://map.airgradient.com/'
               : '#';
   return `
     <div class="side-hero">

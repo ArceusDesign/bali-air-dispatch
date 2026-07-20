@@ -560,6 +560,87 @@ function dedupSmartCitizen(scStations, existing) {
   );
 }
 
+// ── AirGradient — direct public world feed (keyless) ─────────────────────
+// AirGradient units in Bali normally reach us through OpenAQ (Kuwum, Tabanan),
+// but the AirGradient→OpenAQ registration of NEW locations can lag by weeks —
+// "Padang2 Uluwatu" (location 197980) was live on AirGradient for two weeks
+// while completely absent from OpenAQ's /locations. Pulling the public feed
+// directly removes that delay: any new Bali AirGradient unit appears as soon
+// as it publishes. No key, one request, world feed filtered to the Bali bbox.
+//
+// De-dup DEFERS to every existing source (300 m): Kuwum + Tabanan keep their
+// established OpenAQ identity (oq-*) so their D1 history stays continuous;
+// only genuinely new units (Padang2) surface with an ag-* id. Names and model
+// strings are attacker-controllable (anyone can name an AirGradient location
+// anything), so they pass through scClean() at this source boundary exactly
+// like Smart Citizen names.
+const AG_BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
+async function fetchAirGradient() {
+  const r = await fetch(
+    'https://api.airgradient.com/public/api/v1/world/locations/measures/current',
+    { headers: { Accept: 'application/json' }, cf: { cacheTtl: 300, cacheEverything: true } }
+  );
+  if (!r.ok) return [];
+  const list = await r.json();
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const d of list) {
+    const lat = +d?.latitude, lon = +d?.longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (lat < AG_BALI.latMin || lat > AG_BALI.latMax ||
+        lon < AG_BALI.lonMin || lon > AG_BALI.lonMax) continue;
+    if (d.offline === true) continue;           // feed marks dead units itself
+    // location id must be a clean integer — used as a D1 key + history param.
+    const devId = Number.parseInt(d.locationId, 10);
+    if (!Number.isFinite(devId) || String(devId) !== String(d.locationId)) continue;
+    // Explicit null/empty check BEFORE numeric coercion: the world feed always
+    // sends every key and uses null for missing data (verified: 2,528/2,528
+    // entries), and units whose PM module died while WiFi stayed up carry
+    // pm02:null with offline:false. `+null === 0` is finite, so without this
+    // guard a dead module would render — and archive — a phantom 0.0 "Good"
+    // reading: false clean-air record, the worst failure direction possible.
+    const agNum = (v) => (v == null || v === '' || !Number.isFinite(+v)) ? null : +(+v).toFixed(1);
+    const pm25 = agNum(d.pm02);
+    if (pm25 == null) continue;                 // must carry a real PM2.5 reading
+    // Staleness backstop (mirrors Smart Citizen): if the feed's own timestamp
+    // is >24 h old despite offline:false, don't surface it as live air.
+    const lastMs = d.timestamp ? Date.parse(d.timestamp) : NaN;
+    if (Number.isFinite(lastMs) && (Date.now() - lastMs) > 24 * 60 * 60 * 1000) continue;
+    const { cat, cls } = pm25Category(pm25);
+    out.push({
+      id: `ag-${devId}`,
+      name: scClean(d.publicLocationName || d.locationName) || `AirGradient #${devId}`,
+      source: 'AirGradient',
+      type: scClean('AirGradient ' + (d.model || 'monitor')),
+      lat, lon,
+      pm25,
+      pm10: agNum(d.pm10),
+      pm1:  agNum(d.pm01),
+      temperature: agNum(d.atmp),
+      humidity:    agNum(d.rhum),
+      aqi: null,
+      category: cat,
+      cls,
+      lastSeen: d.timestamp || null,
+    });
+  }
+  return out;
+}
+
+// Drop AirGradient pins within 300 m of an already-present DIFFERENT-source
+// station. Only ever removes AG pins — never an existing one — so established
+// identities (OpenAQ Kuwum/Tabanan) and their archived history win.
+function dedupAirGradient(agStations, existing) {
+  const DEDUP_M = 300;
+  return agStations.filter(a =>
+    !existing.some(o =>
+      o && o.source !== 'AirGradient' &&
+      Number.isFinite(o.lat) && Number.isFinite(o.lon) &&
+      metresBetween(a.lat, a.lon, o.lat, o.lon) < DEDUP_M
+    )
+  );
+}
+
 // Smart Citizen OFFLINE retention — grey "tombstone" pins for units that stop
 // being eligible live outdoor sensors, so months of archived readings never
 // silently vanish from the map/history the moment a device dies (Pangkung
@@ -918,6 +999,20 @@ export async function onRequest(context) {
       results.stations.push(...scKept.map(flagStale));
     }
   } catch (_) { /* Smart Citizen optional — never block the response */ }
+
+  // Fold in AirGradient (direct public feed — see fetchAirGradient). After the
+  // base sources + SC so the 300 m de-dup defers to every established pin;
+  // before the scraped-IQAir fold and tombstones, which both de-dup against
+  // the full list including AG. The 15-min worker archives AG stations via
+  // the universal pass, which also carries them into the D1 fast path.
+  try {
+    const ag = await fetchAirGradient();
+    const agKept = dedupAirGradient(ag, results.stations);
+    if (agKept.length) {
+      results.sources++;
+      results.stations.push(...agKept.map(flagStale));
+    }
+  } catch (_) { /* AirGradient optional — never block the response */ }
 
   // Fold in scraped IQAir stations (from D1; the upstream fetchers above do not
   // include them — the iqair-scrape worker is what populates iq_scrape_*).
