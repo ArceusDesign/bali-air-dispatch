@@ -208,11 +208,77 @@ function cleanSeries(list) {
   return [...byTs.values()].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
 }
 
+// Fallback for pages IQAir has migrated OFF server-streamed data (no
+// `streamController.enqueue` chunks — the reading is only in the rendered DOM
+// that Firecrawl serialized). Parses the current PM2.5 / AQI / reading time
+// straight out of the HTML. Returns the same shape as extractStation, minus
+// coordinates (not in the DOM — preserved from the existing catalog row by the
+// ingest COALESCE) and history (migrated pages expose only current + forecast).
+const MONTHS = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+function extractFromDom(html) {
+  // Station-page guard: only trust a reading from a real station page. A deleted
+  // station (404) or an error page can still render nearby-city / world-AQI
+  // widgets carrying a stray µg/m³ figure; ingesting that would resurrect a dead
+  // station with an unrelated number. A genuine station page's <title> is
+  // "<name> Air Quality Index (AQI)…"; a 404 page's is not. Require it.
+  if (!/<title>[^<]*Air Quality/i.test(html)) return null;
+
+  // Current PM2.5 tile: "Main pollutant:</p><p>PM2.5</p></div><p>7&nbsp;µg/m³</p>".
+  // Anchor to the tile, NOT the first µg/m³ on the page: a WHO-comparison blurb
+  // ("…guideline of 5 µg/m³…") elsewhere must never win. Primary anchor = the
+  // "Main pollutant" label just above the value; fallback = a value that is the
+  // ENTIRE content of its own <p> (">7&nbsp;µg/m³</p>"), which prose figures are
+  // not.
+  let conc = null;
+  const mc = html.match(/Main pollutant[\s\S]{0,220}?>([\d.]+)(?:&nbsp;|&#160;|\s)*µg\/m³<\/p>/i)
+          || html.match(/>([\d.]+)(?:&nbsp;|&#160;|\s)*µg\/m³<\/p>/);
+  if (mc) { const v = parseFloat(mc[1]); if (Number.isFinite(v) && v >= 0 && v < 2000) conc = v; }
+  // Current US AQI: "<p ...>39</p><span ...>US AQI".
+  let aqi = null;
+  const ma = html.match(/>(\d{1,4})<\/p>\s*<span[^>]*>\s*US AQI/i);
+  if (ma) { const v = parseInt(ma[1], 10); if (Number.isFinite(v) && v >= 0 && v <= 1000) aqi = v; }
+  // Name from the <title> ("... Air Quality Index").
+  let name = null;
+  const mn = html.match(/<title>([^<|]+?)\s+Air Quality/i);
+  if (mn) name = mn[1].trim();
+  // Reading time: "04:00, Jul 21 Local time" (WITA = UTC+8). Build an ISO ts;
+  // infer the year, rolling it back or forward if the date lands >2 days off
+  // now — the forward case covers the New-Year window when UTC is still Dec but
+  // WITA is already Jan (or vice-versa).
+  let ts = null;
+  const mt = html.match(/(\d{1,2}):(\d{2}),\s*([A-Za-z]{3})\s+(\d{1,2})\s+Local time/);
+  if (mt && MONTHS[mt[3]] != null) {
+    const now = Date.now();
+    const year = new Date(now).getUTCFullYear();
+    const at = (y) => Date.UTC(y, MONTHS[mt[3]], +mt[4], +mt[1], +mt[2]) - 8 * 3600 * 1000;
+    let ms = at(year);
+    if (ms - now > 2 * 86400 * 1000) ms = at(year - 1);
+    else if (now - ms > 2 * 86400 * 1000) ms = at(year + 1);
+    ts = new Date(ms).toISOString();
+  }
+  if (conc == null && aqi == null) return null;  // genuinely nothing on the page
+  // Synthesize one hourly point so the reading accrues into history and carries
+  // a timestamp; if the time didn't parse, leave history empty (liveness still
+  // works — the scrape succeeds and last_scrape_ts advances).
+  const hourly = (conc != null && ts) ? [{ ts, aqi, concentration: conc }] : [];
+  return {
+    name, lat: null, lon: null,
+    currentConcentration: conc, currentAqi: aqi,
+    mainPollutant: 'pm25', sourceType: null, sourceSubType: null, contributor: null,
+    hourly, daily: [], monthly: [],
+    counts: { hourly: hourly.length, daily: 0, monthly: 0 },
+    domFallback: true,
+  };
+}
+
 // Main entry. Returns null if the page had no decodable station payload.
 function extractStation(rawHtml) {
   if (!rawHtml || typeof rawHtml !== 'string') return null;
   const { arr, promiseMap } = buildArray(rawHtml);
-  if (!arr.length) return null;
+  // No SSR stream at all → IQAir migrated this page to client-side data; the
+  // reading is only in the rendered DOM. (Staggered rollout: as of 2026-07,
+  // lycee/villa-solaris/rock-n-love had flipped while others still streamed.)
+  if (!arr.length) return extractFromDom(rawHtml);
   const res = makeResolver(arr, promiseMap);
   let root;
   try { root = res(0); } catch { root = null; }
@@ -269,6 +335,19 @@ function extractStation(rawHtml) {
     currentAqi = hourly[hourly.length - 1].aqi;
   }
 
+  // Stream present but no reading recovered (partial migration / structure
+  // shift): fall back to the rendered DOM so the station stays live. Prefer a
+  // DOM current value only when the stream gave us nothing.
+  if (currentConc == null && !hourly.length) {
+    const dom = extractFromDom(rawHtml);
+    if (dom) {
+      dom.lat = lat != null ? lat : dom.lat;
+      dom.lon = lon != null ? lon : dom.lon;
+      dom.name = name || dom.name;
+      return dom;
+    }
+  }
+
   return {
     name, lat, lon,
     currentConcentration: currentConc,
@@ -279,4 +358,4 @@ function extractStation(rawHtml) {
   };
 }
 
-export { extractStation, buildArray, makeResolver, follow, findDetails };
+export { extractStation, extractFromDom, buildArray, makeResolver, follow, findDetails };

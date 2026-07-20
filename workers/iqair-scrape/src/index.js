@@ -75,10 +75,21 @@ async function ingestStation(db, slug, url, ex, nowSec) {
        latest_pm25, latest_aqi, latest_ts, last_scrape_ts, last_scrape_ok, first_seen, active)
     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,1,?12,1)
     ON CONFLICT(slug) DO UPDATE SET
-      iqair_url=excluded.iqair_url, name=excluded.name, lat=excluded.lat, lon=excluded.lon,
-      source_type=excluded.source_type, source_subtype=excluded.source_subtype,
-      contributor=excluded.contributor, latest_pm25=excluded.latest_pm25,
-      latest_aqi=excluded.latest_aqi, latest_ts=excluded.latest_ts,
+      iqair_url=excluded.iqair_url,
+      -- COALESCE the IDENTITY fields: the DOM fallback (for IQAir pages migrated
+      -- off SSR streaming) recovers the current reading but not coordinates or
+      -- provenance, so a plain excluded.* would null out lat/lon and blank the
+      -- map pin. Keep the last good identity when the new scrape lacks it; the
+      -- READING fields still update every scrape so the station stays live.
+      name=COALESCE(excluded.name, iq_scrape_stations.name),
+      lat=COALESCE(excluded.lat, iq_scrape_stations.lat),
+      lon=COALESCE(excluded.lon, iq_scrape_stations.lon),
+      source_type=COALESCE(excluded.source_type, iq_scrape_stations.source_type),
+      source_subtype=COALESCE(excluded.source_subtype, iq_scrape_stations.source_subtype),
+      contributor=COALESCE(excluded.contributor, iq_scrape_stations.contributor),
+      latest_pm25=excluded.latest_pm25,
+      latest_aqi=excluded.latest_aqi,
+      latest_ts=COALESCE(excluded.latest_ts, iq_scrape_stations.latest_ts),
       last_scrape_ts=excluded.last_scrape_ts, last_scrape_ok=1, active=1
   `).bind(
     slug, url, ex.name, ex.lat, ex.lon, ex.sourceType, ex.sourceSubType, ex.contributor,
