@@ -632,13 +632,22 @@ async function fetchAirGradient() {
 }
 
 // Drop AirGradient pins within 300 m of an already-present DIFFERENT-source
-// station. Only ever removes AG pins — never an existing one — so established
-// identities (OpenAQ Kuwum/Tabanan) and their archived history win.
+// station, so established identities and their archived history win — EXCEPT
+// against OpenAQ, which is exempt.
+//
+// Why OpenAQ is exempt: an OpenAQ neighbour is usually not a different sensor
+// at all, it IS this AirGradient unit relayed through OpenAQ (verified 0 m for
+// Kuwum and Tabanan). Deferring there would discard the direct feed and keep
+// only the ~hourly re-aggregated copy — the worse of two records of the same
+// hardware, and the AG station would never be archived at all. So both are
+// admitted here and both get archived (oq-* history stays continuous under its
+// own id; ag-* builds a clean raw 15-min record), and the DISPLAY choice is
+// made later, on the fast path only, by dropOpenAQNearAirGradient().
 function dedupAirGradient(agStations, existing) {
   const DEDUP_M = 300;
   return agStations.filter(a =>
     !existing.some(o =>
-      o && o.source !== 'AirGradient' &&
+      o && o.source !== 'AirGradient' && o.source !== 'OpenAQ' &&
       Number.isFinite(o.lat) && Number.isFinite(o.lon) &&
       metresBetween(a.lat, a.lon, o.lat, o.lon) < DEDUP_M
     )
@@ -736,11 +745,63 @@ function dropAirlyNearNafas(stations) {
   const DEDUP_M = 300;
   const freshNafas = stations.filter(s =>
     s && s.source === 'Nafas' && !s.stale &&
+    Number.isFinite(s.pm25) &&   // a blank Nafas pin must not hide a live Airly reading
     Number.isFinite(s.lat) && Number.isFinite(s.lon));
   if (!freshNafas.length) return stations;  // no live Nafas → keep Airly (failover)
   return stations.filter(s => {
     if (!s || s.source !== 'Airly' || !Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return true;
     return !freshNafas.some(n => metresBetween(s.lat, s.lon, n.lat, n.lon) < DEDUP_M);
+  });
+}
+
+// OpenAQ ↔ AirGradient de-dup (display only) — prefer the DIRECT feed.
+// Two Bali AirGradient units reach us twice: once straight from AirGradient's
+// public feed (ag-*), once relayed through OpenAQ (oq-*). Verified same
+// physical hardware, 0 m apart: ag-195872 == oq-6403967 (Kuwum) and
+// ag-196524 == oq-6413387 (Tabanan). The relayed copy is materially worse:
+// OpenAQ republishes ~hourly aggregates (our archive shows those stations'
+// values moving only every ~1.3–1.4 h despite 15-min polling) while the direct
+// feed is instantaneous and timestamped to the minute — a live spot-check had
+// Tabanan at 10.3 via OpenAQ against 6.5 raw via AirGradient at the same moment.
+// So: drop any OpenAQ station within 300 m of a FRESH AirGradient station. If
+// the AirGradient feed goes quiet, its pin ages out of the fast path (or flags
+// stale) and the OpenAQ pin returns on its own — automatic failover to the
+// redundant relay, exactly like dropAirlyNearNafas.
+//
+// Applied ONLY to the served fast path. The archive worker reads the slow path
+// (?fresh=1) and keeps snapshotting BOTH, so oq-* history stays continuous and
+// untouched under its own id while ag-* builds a clean raw 15-min record.
+// Verified relay pairs: OpenAQ id → the AirGradient id that is the SAME physical
+// unit (both confirmed 0 m apart, carrying identical names). Deliberately an
+// explicit pairing rather than pure geometry: AirGradient is a consumer product
+// on a worldwide public feed, and an unrelated new unit parked a couple of
+// hundred metres from an OpenAQ-only station (Umadawa has open ground that
+// close) would otherwise silently delete a genuine, distinct sensor from the map
+// AND from the history picker. Suppression is only ever safe for hardware we
+// have actually confirmed is the same device. A third pair is a one-line edit.
+const AG_OQ_TWINS = new Map([
+  ['oq-6403967', 'ag-195872'],  // Kuwum, Bali
+  ['oq-6413387', 'ag-196524'],  // Tabanan
+]);
+function dropOpenAQNearAirGradient(stations) {
+  const DEDUP_M = 300;
+  // A suppressing twin must carry an actual reading: fastPathFromD1 has no
+  // pm25 IS NOT NULL filter, so a null-reading AG snapshot would otherwise
+  // hide a live OpenAQ value behind a blank pin.
+  const freshAG = new Map();
+  for (const s of stations) {
+    if (s && s.source === 'AirGradient' && !s.stale && !s.off &&
+        Number.isFinite(s.pm25) &&
+        Number.isFinite(s.lat) && Number.isFinite(s.lon)) freshAG.set(s.id, s);
+  }
+  if (!freshAG.size) return stations;  // no live AirGradient → keep OpenAQ (failover)
+  return stations.filter(s => {
+    if (!s || s.source !== 'OpenAQ') return true;
+    const twin = freshAG.get(AG_OQ_TWINS.get(s.id));
+    if (!twin) return true;              // unpaired, or twin absent/stale/blank → keep (failover)
+    if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return true;
+    // Sanity check: if a "pair" has drifted apart, the pairing is stale — keep both.
+    return !(metresBetween(s.lat, s.lon, twin.lat, twin.lon) < DEDUP_M);
   });
 }
 
@@ -950,6 +1011,10 @@ export async function onRequest(context) {
         } catch (_) { /* scraped optional; serve base fast path */ }
         // Collapse co-located Airly (Nafas-sponsored) onto its live Nafas twin.
         fast.stations = dropAirlyNearNafas(fast.stations);
+        // Collapse OpenAQ-relayed AirGradient units onto their direct feed
+        // (fresher, 15-min, un-aggregated). Failover: if AirGradient goes
+        // quiet, the OpenAQ pin comes back on its own.
+        fast.stations = dropOpenAQNearAirGradient(fast.stations);
         // Fold in Smart Citizen OFFLINE tombstones (off:true) — dead or
         // indoor-retagged units keep a grey pin + reachable history. Added
         // after the live folds so live pins act as the de-dup anchors.

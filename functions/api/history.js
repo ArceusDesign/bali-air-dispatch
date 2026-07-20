@@ -315,7 +315,14 @@ export async function onRequest(context) {
       SELECT
         s.station_id, s.source, s.name, s.lat, s.lon, s.type,
         s.first_seen, s.last_seen,
-        (SELECT COUNT(*) FROM station_daily WHERE station_id = s.station_id) AS daily_n
+        (SELECT COUNT(*) FROM station_daily WHERE station_id = s.station_id) AS daily_n,
+        -- Newest day this station actually produced DATA. Distinct from
+        -- s.last_seen, which the archive worker advances every tick for any
+        -- station present in /api/live — including a frozen sensor whose
+        -- snapshot is deliberately skipped. So last_seen says "still listed",
+        -- last_date says "still measuring", and only the latter can tell a
+        -- live-but-hidden station from one whose readings have stopped.
+        (SELECT MAX(date) FROM station_daily WHERE station_id = s.station_id) AS last_date
       FROM stations s
       WHERE s.station_id NOT IN (${hidePlaceholders})
       -- Scraped IQAir stations (iqs-*) are listed from iq_scrape_* via

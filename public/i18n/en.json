@@ -247,8 +247,8 @@
   "bx.lab.median": "Median PM2.5",
   "bx.note.median": "network-wide median, per cubic metre",
   "bx.lab.worst": "Worst on the island",
-  "bx.lab.off": "Offline since Nov '25",
-  "bx.note.off": "sensors gone dark, not yet restored",
+  "bx.lab.off": "Not reporting",
+  "bx.note.off": "silenced, stale, or gone dark",
   "loading.syncing": "Syncing…",
   "loading.standby": "Stand by — connecting to network…",
   "loading.register": "Loading the register…",
@@ -388,5 +388,15 @@
   "articles.x.metaReadingVal": "~41 minutes total",
   "articles.x.indexCount": "Seven entries · ordered by chapter",
   "disp.6.x.pNext": "Next →",
-  "disp.6.x.pNextT": "Dispatch VII"
+  "disp.6.x.pNextT": "Dispatch VII",
+  "history.x.grp.relayed": "Relayed duplicate",
+  "history.x.tag.relayed": "relayed duplicate",
+  "history.x.relayTag": "(VIA {src})",
+  "bx.note.liveN": "reporting now across {n} networks",
+  "home.kicker.d7": "§ VI — The Data Review",
+  "home.h.d7": "Ninety days of data — <em>on the island's garbage fires.</em>",
+  "home.d7.body": "Two thousand sensor-days across seven networks, read end to end. The record keeps house hours — a spike at nine in the morning, a second climb after dark, everywhere on the island at once. That is the schedule of household waste fires, not of any harvest. And this dry season is running dirtier than last year's.",
+  "home.d7.cta": "Read the data review <span class=\"arrow\">→</span>",
+  "home.d7.meta": "Dispatch VII",
+  "home.d7.stat": "of days since June exceeded the WHO 24-hour guideline at the one sensor with a two-year record — up from 92% in the same window last year."
 }

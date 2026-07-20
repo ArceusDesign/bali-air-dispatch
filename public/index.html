@@ -575,10 +575,10 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   <div class="kicker" data-i18n="home.kicker.bulletin">§ I — The Daily Bulletin</div>
   <h2 class="section-h" data-i18n-html="home.h.bulletin">Today, <em>in four numbers.</em></h2>
   <div class="bulletin-grid">
-    <div class="bx"><div class="lab" data-i18n="bx.lab.live">Live sensors</div><div class="val" id="b-live">—</div><div class="note" data-i18n="bx.note.live">active across four platforms</div></div>
+    <div class="bx"><div class="lab" data-i18n="bx.lab.live">Live sensors</div><div class="val" id="b-live">—</div><div class="note" id="b-live-note">reporting now</div></div>
     <div class="bx"><div class="lab" data-i18n="bx.lab.median">Median PM2.5</div><div class="val" id="b-med">—<em>µg</em></div><div class="note" data-i18n="bx.note.median">network-wide median, per cubic metre</div></div>
     <div class="bx"><div class="lab" data-i18n="bx.lab.worst">Worst on the island</div><div class="val" id="b-worst">—</div><div class="note" id="b-worst-name">—</div></div>
-    <div class="bx"><div class="lab" data-i18n="bx.lab.off">Offline since Nov '25</div><div class="val" id="b-off">—</div><div class="note" data-i18n="bx.note.off">sensors gone dark, not yet restored</div></div>
+    <div class="bx"><div class="lab" data-i18n="bx.lab.off">Not reporting</div><div class="val" id="b-off">—</div><div class="note" data-i18n="bx.note.off">silenced, stale, or gone dark</div></div>
   </div>
 </section>
 
@@ -648,6 +648,23 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   </a>
 </section>
 
+<!-- DISPATCH VII · DATA REVIEW CALLOUT -->
+<section class="front-page wrap">
+  <a href="/dispatches/7" class="solutions-callout">
+    <div class="solutions-callout-left">
+      <div class="kicker" data-i18n="home.kicker.d7">§ VI — The Data Review</div>
+      <h2 class="solutions-h" data-i18n-html="home.h.d7">Ninety days of data — <em>on the island's garbage fires.</em></h2>
+      <p class="solutions-p" data-i18n-html="home.d7.body">Two thousand sensor-days across seven networks, read end to end. The record keeps house hours — a spike at nine in the morning, a second climb after dark, everywhere on the island at once. That is the schedule of household waste fires, not of any harvest. And this dry season is running dirtier than last year's.</p>
+      <div class="solutions-cta" data-i18n-html="home.d7.cta">Read the data review <span class="arrow">→</span></div>
+    </div>
+    <div class="solutions-callout-right">
+      <div class="solutions-meta" data-i18n="home.d7.meta">Dispatch VII</div>
+      <div class="solutions-stat">100<em>%</em></div>
+      <div class="solutions-stat-lab" data-i18n="home.d7.stat">of days since June exceeded the WHO 24-hour guideline at the one sensor with a two-year record — up from 92% in the same window last year.</div>
+    </div>
+  </a>
+</section>
+
 <style>
 .brief-callout{display:grid;grid-template-columns:1.4fr 1fr;gap:36px;border:1px solid var(--rule);background:var(--paper);padding:32px 36px;text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
 .brief-callout:hover{transform:translateY(-2px);box-shadow:0 4px 0 var(--paper-3),0 6px 0 var(--rule)}
@@ -711,6 +728,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       <a href="/dispatches/4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
       <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
       <a href="/dispatches/6" data-i18n="foot.disp.6">VI — The fix, in order of impact.</a>
+      <a href="/dispatches/7" data-i18n="foot.disp.7">VII — Ninety days of data.</a>
     </div>
     <div class="foot-col">
       <h4 data-i18n="foot.h.contact">Contact</h4>
@@ -993,45 +1011,62 @@ function renderAll(ts){
   });
 
   // --- bulletin + HUD + nav ---
-  const pms = liveStations.map(s=>s.pm25).filter(v=>v!=null).sort((a,b)=>a-b);
+  // Every headline count is derived from FRESH stations only — a stale station
+  // is one the upstream API still lists but whose reading is >24h old, and it
+  // renders on the map as a dashed "STALE" pin on the Offline layer. Counting
+  // those as live overstated the network (17 vs the 14 coloured pins actually
+  // visible) and let months-old cached values move the median. Both boxes and
+  // the HUD now agree with each other AND with the two map layers.
+  const freshStations = liveStations.filter(s => s && !s.stale);
+  const pms = freshStations.map(s=>s.pm25).filter(v=>v!=null).sort((a,b)=>a-b);
   const median = pms.length ? (pms.length%2 ? pms[(pms.length-1)/2] : (pms[pms.length/2-1]+pms[pms.length/2])/2) : null;
-  const overWho = liveStations.filter(s=>s.pm25!=null && s.pm25>15).length;
+  const overWho = freshStations.filter(s=>s.pm25!=null && s.pm25>15).length;
 
-  document.getElementById('b-live').textContent = liveStations.length;
+  document.getElementById('b-live').textContent = freshStations.length;
   document.getElementById('b-med').innerHTML = median!=null ? median.toFixed(1)+'<em>µg</em>' : '—';
   document.getElementById('b-worst').textContent = worst.pm25>0 ? worst.pm25.toFixed(1) : '—';
   document.getElementById('b-worst-name').textContent = worst.pm25>0 ? (worst.name||'').split(' (')[0] : '—';
-  // "Offline-looking on the map" = hardcoded long-dark sensors + currently
-  // stale live sensors (API still lists them but station_till is > 24h old).
-  // Counts that drive the ticker / HUD / nav status use this combined number
-  // so it matches what the user can count on the map.
+  // "Not reporting" = everything on the Offline layer: hardcoded long-dark
+  // sensors + server-side offline tombstones + currently stale live sensors.
   const staleCount = liveStations.filter(s => s && s.stale).length;
-  const offlineLikeCount = offlineList.length + svrOffline.length + staleCount;
-  // §I Bulletin "Offline since Nov '25" box keeps the historical count
-  // (the label is specifically about long-dark sensors, not stale ones).
-  document.getElementById('b-off').textContent = offlineList.length;
+  // Count the offline set that actually RENDERS (offlineFiltered, not
+  // offlineList): a hardcoded dark sensor sitting within 300 m of a live one is
+  // suppressed as a pin, so counting it here made the headline overshoot the
+  // number of dashed pins a visitor can actually count on the map.
+  const offlineLikeCount = offlineFiltered.length + svrOffline.length + staleCount;
+  document.getElementById('b-off').textContent = offlineLikeCount;
+  // The live-sensors note names the networks actually reporting right now
+  // (the old copy hardcoded "four platforms"; there are more now, and the
+  // number moves as feeds come and go).
+  const netCount = new Set(freshStations.map(s => s.source)).size;
+  const noteLive = document.getElementById('b-live-note');
+  if (noteLive) {
+    noteLive.textContent = ((window.I18N&&window.I18N.t)
+      ? window.I18N.t('bx.note.liveN','reporting now across {n} networks')
+      : 'reporting now across {n} networks').replace('{n}', netCount);
+  }
 
-  document.getElementById('hud-live').textContent = liveStations.length;
+  document.getElementById('hud-live').textContent = freshStations.length;
   document.getElementById('hud-off').textContent = offlineLikeCount;
   document.getElementById('hud-worst').textContent = worst.pm25>0 ? worst.pm25.toFixed(1) : '—';
 
-  document.getElementById('nav-status').textContent = 'LIVE · '+liveStations.length+' SENSORS · '+offlineLikeCount+' OFFLINE';
+  document.getElementById('nav-status').textContent = 'LIVE · '+freshStations.length+' SENSORS · '+offlineLikeCount+' OFFLINE';
   const syncLabel = ((window.I18N&&window.I18N.t)?window.I18N.t('home.synced','Synced'):'Synced')+' '+new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA';
   document.getElementById('mt-ts').textContent = syncLabel;
   const tb=document.getElementById('mt-ts2'); if(tb) tb.textContent=new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA';
 
-  renderBulletinTicker(worst, median, overWho, offlineLikeCount);
+  renderBulletinTicker(worst, median, overWho, offlineLikeCount, freshStations.length);
   renderRollTable();
   renderArchive();
 }
 
-function renderBulletinTicker(worst,median,overWho,offN){
+function renderBulletinTicker(worst,median,overWho,offN,liveN){
   // i18n-aware string lookup with English fallback baked in.
   const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
   const parts = [];
   if(worst.pm25>0) parts.push(`<span>${t('ticker.worstNow','Worst now')} · <b>${worst.pm25.toFixed(1)} µg/m³</b> ${t('ticker.at','at')} <b>${esc((worst.name||'').split(' (')[0])}</b></span>`);
   if(median!=null) parts.push(`<span>${t('ticker.netMedian','Network median')} · <b>${median.toFixed(1)} µg/m³</b></span>`);
-  parts.push(`<span><b>${overWho}</b> ${t('ticker.aboveWhoMid','of')} ${liveStations.length} ${t('ticker.aboveWhoTail','stations above WHO 24h (15 µg/m³)')}</span>`);
+  parts.push(`<span><b>${overWho}</b> ${t('ticker.aboveWhoMid','of')} ${liveN != null ? liveN : liveStations.length} ${t('ticker.aboveWhoTail','stations above WHO 24h (15 µg/m³)')}</span>`);
   parts.push(`<span><b>${offN}</b> ${t('ticker.offline','sensors offline · historical data preserved below')}</span>`);
   parts.push(`<span>${t('ticker.tagline','Air quality watch — citizen-maintained · anonymous · public interest')}</span>`);
   // repeat for seamless scroll

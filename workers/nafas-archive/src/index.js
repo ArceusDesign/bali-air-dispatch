@@ -155,7 +155,16 @@ async function fetchUnifiedLive(originBase) {
   // from D1, the worker writes that snapshot's stale values back into D1,
   // and live readings freeze. ?fresh=1 forces /api/live to call upstream
   // sources directly. Also disable the fetch's cf cache for the same reason.
-  const url = (originBase || 'https://baliair.pages.dev').replace(/\/$/,'') + '/api/live?fresh=1';
+  // The per-tick cache-buster is load-bearing, not belt-and-braces. /api/live
+  // responds with `s-maxage=900, stale-while-revalidate=86400`, so the edge can
+  // keep handing this worker a STALE copy for up to 24 h while it revalidates in
+  // the background — `cf.cacheTtl: 0` does not prevent that. Observed 2026-07-20:
+  // a newly-added source was serving on the origin for 20+ minutes while the
+  // worker kept archiving a pre-deploy payload that omitted it. Archiving a
+  // cached aggregate would also silently freeze readings, which is exactly the
+  // failure ?fresh=1 exists to prevent. A unique query key forces a real miss.
+  const url = (originBase || 'https://baliair.pages.dev').replace(/\/$/,'')
+            + '/api/live?fresh=1&_cb=' + Date.now();
   const r = await fetch(url, {
     headers: { Accept:'application/json' },
     cf: { cacheTtl: 0, cacheEverything: false }

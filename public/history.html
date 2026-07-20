@@ -321,6 +321,7 @@ body::before{
       <a href="/dispatches/4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
       <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
       <a href="/dispatches/6" data-i18n="foot.disp.6">VI — The fix, in order of impact.</a>
+      <a href="/dispatches/7" data-i18n="foot.disp.7">VII — Ninety days of data.</a>
     </div>
     <div class="foot-col">
       <h4 data-i18n="foot.h.contact">Contact</h4>
@@ -365,6 +366,12 @@ let archiveCatalog = [];     // from /api/history `stations` field (legacy: nafa
 let universalCatalog = [];   // from /api/history `universal` field (all D1-archived stations + daily_n)
 let archivedIds = new Set(); // station_ids with daily_n > 0 (chartable today)
 let selectedIds = new Set(); // currently checked station ids
+let relayedSources = new Map(); // station_id → source, for stations still being
+                                // archived but hidden from the map because a
+                                // co-located better feed of the SAME hardware is
+                                // displayed instead. Populated by buildStationList();
+                                // read by nameFor() to tag them "(VIA <SOURCE>)",
+                                // since a relay usually carries the identical name.
 let currentRange = '30d';
 let chartInstance = null;
 // Suspected-indoor monitors (consistently far below nearby outdoor sensors):
@@ -486,6 +493,13 @@ function isStale(stn){
 }
 
 /* ---------- station list (sidebar) ---------- */
+// Metres between two lat/lon points (equirectangular — ample at these scales).
+function metresApart(aLat, aLon, bLat, bLon){
+  const dLat = (aLat - bLat) * 111320;
+  const dLon = (aLon - bLon) * 111320 * Math.cos(aLat * Math.PI / 180);
+  return Math.hypot(dLat, dLon);
+}
+
 function buildStationList(){
   const tgt = document.getElementById('stationList');
   if (!tgt) return;
@@ -523,6 +537,42 @@ function buildStationList(){
   const recentOffline = liveCatalog.filter(s => s.off && !isForcedSilenced(s))
     .map(s => ({ ...s, offline: true, archived: true }));
 
+  // Relayed duplicates — stations STILL being archived every tick, but hidden
+  // from the map because a co-located, better feed of the same hardware is
+  // displayed in their place (an AirGradient unit shown direct, its slower
+  // OpenAQ relay suppressed; a Nafas-sponsored Airly beside its Nafas twin).
+  // Without this group their record is archived but unreachable from the UI,
+  // because every other group is built from the live feed they were dropped from.
+  //
+  // Identified structurally, not by a hardcoded list, so it self-maintains:
+  //   • in the D1 catalog with daily history, but absent from /api/live
+  //   • STILL PRODUCING DATA — its newest daily row is today or yesterday.
+  //     This is the test that separates a hidden twin from a sensor that went
+  //     quiet, and it must use last_date, not last_seen: the worker advances
+  //     last_seen every tick for anything /api/live lists, including frozen
+  //     sensors whose snapshots it deliberately skips. Using last_seen labelled
+  //     the frozen Nafas Ubud station — 50 m from the live Kopernik sensor — a
+  //     "relayed duplicate", which it is not. Silent sensors belong in
+  //     Silenced / Recently offline instead.
+  //   • within 300 m of a station that IS displayed — i.e. the same site
+  relayedSources = new Map();
+  const _liveIds = new Set(liveCatalog.map(s => s.id));
+  const _liveGeo = liveCatalog.filter(s => !s.off && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  const _witaDay = (back) => new Date(Date.now() + 8*3600*1000 - back*86400000).toISOString().slice(0, 10);
+  const _fresh = new Set([_witaDay(0), _witaDay(1)]);
+  const relayedDupes = (universalCatalog || []).filter(u => {
+    if (!u || !u.station_id || _liveIds.has(u.station_id)) return false;
+    if (!(+u.daily_n > 0)) return false;
+    if (isForcedSilenced(u) || isIndoorId(u.station_id)) return false;
+    if (!_fresh.has(String(u.last_date || ''))) return false;
+    if (!Number.isFinite(+u.lat) || !Number.isFinite(+u.lon)) return false;
+    return _liveGeo.some(s => metresApart(+u.lat, +u.lon, +s.lat, +s.lon) < 300);
+  }).map(u => {
+    relayedSources.set(u.station_id, u.source || '');
+    return { id: u.station_id, name: u.name || u.station_id, source: u.source || '',
+             pm25: null, lastSeen: null, archived: true, relayed: true };
+  });
+
   // Resolve the forced-silenced stations from every catalog, deduped by id.
   const forcedSilenced = [];
   const _seenSil = new Set();
@@ -550,7 +600,7 @@ function buildStationList(){
   ];
 
   // Record every selectable monitor that has coordinates (for the region filter).
-  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...indoorMons, ...recentOffline, ...silenced]
+  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...indoorMons, ...relayedDupes, ...recentOffline, ...silenced]
     .map(s => { const c = coordOf(s.id); return c ? { id: s.id, name: s.name, lat: c.lat, lon: c.lon } : null; })
     .filter(Boolean);
 
@@ -563,7 +613,8 @@ function buildStationList(){
                  : (chartable ? '—' : 'no data');
     const cls = chartable ? '' : 'no-data';
     let subtitle = s.source || '';
-    if (s.offline) subtitle += ' · ' + (s.off ? T('history.x.tag.offline','offline') : T('history.x.tag.silenced','silenced'));
+    if (s.relayed) subtitle += ' · ' + T('history.x.tag.relayed','relayed duplicate');
+    else if (s.offline) subtitle += ' · ' + (s.off ? T('history.x.tag.offline','offline') : T('history.x.tag.silenced','silenced'));
     else if (opts.staleHours) subtitle += ` · ${T('history.x.tag.stale','stale')} ${Math.round(opts.staleHours)}h`;
     // Defense-in-depth: escape s.id when interpolating into HTML attributes.
     // IDs originate from external providers (IQAir, AQICN, PurpleAir, etc.)
@@ -606,6 +657,10 @@ function buildStationList(){
   if (indoorMons.length){
     html += groupHeader(T('history.x.grp.indoor','Suspected indoor'));
     indoorMons.forEach(s => { html += renderRow(s, idx); idx++; });
+  }
+  if (relayedDupes.length){
+    html += groupHeader(T('history.x.grp.relayed','Relayed duplicate'));
+    relayedDupes.forEach(s => { html += renderRow(s, idx, { forceArchived: true }); idx++; });
   }
   if (recentOffline.length){
     html += groupHeader(T('history.x.grp.recentOffline','Recently offline'));
@@ -986,8 +1041,14 @@ function nameFor(id){
   // name is shown in the chart (legend + hours-above-WHO rows). Offline
   // tombstones (off:true from /api/live) get an (OFFLINE) tag the same way.
   const isOffId = liveCatalog.some(s => s.id === id && s.off);
+  // A relayed duplicate usually carries the IDENTICAL name to the feed shown in
+  // its place (both Kuwum units are "Kuwum, Bali"), so name the relay explicitly
+  // or the chart legend shows two indistinguishable entries.
+  const relaySrc = relayedSources.get(id);
   const tag = isIndoorId(id) ? ' ' + T('history.x.indoorTag', '(SUSPECTED INDOOR)')
             : isOffId        ? ' ' + T('history.x.offlineTag', '(OFFLINE)')
+            : relaySrc       ? ' ' + T('history.x.relayTag', '(VIA {src})')
+                                       .replace('{src}', String(relaySrc).toUpperCase())
             : '';
   let base = id;
   if (id.startsWith('off-')){
