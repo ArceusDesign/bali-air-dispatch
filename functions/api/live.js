@@ -33,6 +33,60 @@ function pm25Category(pm) {
   if (pm <= 250.4) return { cat: 'Very Unhealthy', cls: 'vunh' };
   return { cat: 'Hazardous', cls: 'haz' };
 }
+// US-EPA humidity correction for Plantower-based low-cost sensors, applied to
+// the two networks on this map that use them raw: AirGradient and PurpleAir.
+//
+// Why: a Plantower module sizes particles optically, so humid air makes water
+// -swollen particles read as more mass than is really there. Uncorrected, Bali's
+// 55–70% RH inflates readings by roughly a third to a half. AirGradient applies
+// exactly this formula to produce the `pm02Compensated` / `pm02_corrected` field
+// shown on their own dashboard — but that field is only exposed on the device's
+// LAN API or the token-gated cloud API, never on the anonymous public feed we
+// read. The algorithm is published, and we already ingest both inputs, so we
+// compute it ourselves rather than display values we know run high.
+//
+// Bands and coefficients transcribed from AirGradient's published calibration
+// algorithms (US EPA 2021 correction for PurpleAir/Plantower). Negative results
+// are clamped to 0 per the same guidance.
+//
+// Caveat, deliberate: AirGradient's official corrected value is a batch-level
+// per-device calibration PLUS this EPA formula. The batch factor is unpublished
+// and device-specific, so ours is the EPA part only — the dominant term, but not
+// bit-identical to their dashboard. The raw value is retained alongside
+// (pm25_raw) so this is always reversible and auditable.
+function epaCorrectPm25(raw, rh) {
+  // Explicit null/empty check BEFORE coercion. Number(null) and Number('') are
+  // both 0 — finite — so a bare isFinite test does NOT enforce "need both
+  // inputs". Without this: a dead humidity channel silently corrects at RH=0%,
+  // the maximum-inflation case (raw 12.0 at a true 65% RH would publish 12.0
+  // instead of 6.4, flagged as corrected); and a null raw reading returns ~0.6,
+  // publishing and archiving a phantom "Good" value for a sensor reporting no
+  // PM2.5 at all. Same coercion trap already fixed in agNum() and scPickSensor().
+  // Reject by TYPE first, then coerce. `Number()` maps null, '', [] and false
+  // all to a finite 0, so neither a null check nor isFinite alone enforces
+  // "need both inputs" — only accepting numbers/numeric strings does.
+  const num = (v) => {
+    if (v == null || v === '') return NaN;
+    if (typeof v !== 'number' && typeof v !== 'string') return NaN;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : NaN;
+  };
+  const a = num(raw), h = num(rh);
+  if (Number.isNaN(a) || Number.isNaN(h)) return null;  // need BOTH inputs
+  let v;
+  if (a < 30)        v = 0.524 * a - 0.0862 * h + 5.75;
+  else if (a < 50) { const f = a / 20 - 1.5;
+                     v = (0.786 * f + 0.524 * (1 - f)) * a - 0.0862 * h + 5.75; }
+  else if (a < 210)  v = 0.786 * a - 0.0862 * h + 5.75;
+  else if (a < 260) { const f = a / 50 - 4.2;
+                      v = (0.69 * f + 0.786 * (1 - f)) * a
+                        - 0.0862 * h * (1 - f)
+                        + 2.966 * f + 5.75 * (1 - f)
+                        + 8.84e-4 * a * a * f; }
+  else               v = 2.966 + 0.69 * a + 8.84e-4 * a * a;
+  return +Math.max(v, 0).toFixed(1);
+}
+
 function isRecent(isoStr) {
   if (!isoStr) return false;
   return (Date.now() - new Date(isoStr).getTime()) < 6 * 60 * 60 * 1000;
@@ -90,7 +144,7 @@ async function fastPathFromD1(db) {
   const rows = await db.prepare(`
     SELECT s.station_id, s.source, s.name, s.lat, s.lon, s.type,
            sn.pm25, sn.pm10, sn.pm1, sn.aqi, sn.temperature, sn.humidity,
-           sn.station_till, sn.ts
+           sn.station_till, sn.ts, sn.pm25_raw
     FROM stations s
     JOIN station_snapshots sn ON sn.station_id = s.station_id
     WHERE sn.ts = (
@@ -120,6 +174,11 @@ async function fastPathFromD1(db) {
       lat: r.lat,
       lon: r.lon,
       pm25,
+      // Carry the correction audit fields on the FAST path too — it's the path
+      // most visitors hit, so without these any "corrected" marker in the UI
+      // would flicker depending on which path served the request.
+      pm25_raw: r.pm25_raw != null ? +(+r.pm25_raw).toFixed(1) : null,
+      pm25_corrected: r.pm25_raw != null,
       pm10: r.pm10 != null ? +(+r.pm10).toFixed(1) : null,
       pm1:  r.pm1  != null ? +(+r.pm1).toFixed(1)  : null,
       aqi: r.aqi != null ? +r.aqi : null,
@@ -214,14 +273,29 @@ async function scrapedIQAirFromD1(db, existing = []) {
 async function fetchPurpleAir(env) {
   // Whole-Bali bbox (north -8.0 → south -8.92, west 114.4 → east 115.78)
   const r = await fetch(
-    'https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,last_seen&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78',
+    'https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,pm2.5_cf_1,humidity,last_seen&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78',
     { headers: { 'X-API-Key': env.PURPLEAIR_API_KEY } }
   );
   const data = await r.json();
   if (!data?.data) return [];
   const f = data.fields;
   return data.data.map(row => {
-    const pm = row[f.indexOf('pm2.5')];
+    // PurpleAir is Plantower-based like AirGradient, so it carries the same
+    // humidity over-read. `humidity` was added to the field list for exactly
+    // this — correct when it's present, fall back to raw when it isn't (a
+    // sensor with a dead RH channel still reports, just uncorrected).
+    // Correction INPUT is cf_1, not atm. The EPA regression was fitted on
+    // PurpleAir CF=1 data; the `pm2.5` (ATM) field applies its own high-range
+    // scaling, so feeding ATM under-corrects above ~25 µg/m³ — precisely the
+    // burn events this site exists to document. Measured on both Bali sensors:
+    // identical to ATM at current levels, so this is a no-op day to day and
+    // only bites when it matters. Falls back to ATM if cf_1 is unavailable.
+    const atm = row[f.indexOf('pm2.5')];
+    const cf1 = f.indexOf('pm2.5_cf_1') >= 0 ? row[f.indexOf('pm2.5_cf_1')] : null;
+    const raw = cf1 != null ? cf1 : atm;
+    const rh = f.indexOf('humidity') >= 0 ? row[f.indexOf('humidity')] : null;
+    const corrected = epaCorrectPm25(raw, rh);
+    const pm = corrected != null ? corrected : (raw != null ? +raw.toFixed(1) : null);
     const { cat, cls } = pm25Category(pm);
     return {
       id: `pa-${row[0]}`,
@@ -230,7 +304,16 @@ async function fetchPurpleAir(env) {
       type: 'Community sensor',
       lat: row[f.indexOf('latitude')],
       lon: row[f.indexOf('longitude')],
-      pm25: pm != null ? +pm.toFixed(1) : null,
+      pm25: pm,
+      // pm25_raw stores the exact value fed into the correction, so the
+      // invariant epaCorrectPm25(pm25_raw, humidity) === pm25 holds for every
+      // archived row and the correction stays reproducible from stored fields.
+      pm25_raw: raw != null ? +raw.toFixed(1) : null,
+      pm25_corrected: corrected != null,
+      // Same coercion trap: +null === 0 is finite, which would archive a real
+      // "0% relative humidity in Bali" into the humidity column — and worse,
+      // make the row look like it HAS valid RH to any later re-correction pass.
+      humidity: (rh == null || rh === '' || !Number.isFinite(+rh)) ? null : +(+rh).toFixed(1),
       aqi: null,
       category: cat,
       cls,
@@ -604,8 +687,14 @@ async function fetchAirGradient() {
     // guard a dead module would render — and archive — a phantom 0.0 "Good"
     // reading: false clean-air record, the worst failure direction possible.
     const agNum = (v) => (v == null || v === '' || !Number.isFinite(+v)) ? null : +(+v).toFixed(1);
-    const pm25 = agNum(d.pm02);
-    if (pm25 == null) continue;                 // must carry a real PM2.5 reading
+    const pm25Raw = agNum(d.pm02);
+    if (pm25Raw == null) continue;              // must carry a real PM2.5 reading
+    // Publish the humidity-corrected value (see epaCorrectPm25) — the public
+    // feed only exposes raw pm02, and raw runs high in Bali's humidity. Keep
+    // the raw figure alongside so the correction stays auditable/reversible.
+    const rhum = agNum(d.rhum);
+    const pm25Corrected = epaCorrectPm25(pm25Raw, rhum);
+    const pm25 = pm25Corrected != null ? pm25Corrected : pm25Raw;
     // Staleness backstop (mirrors Smart Citizen): if the feed's own timestamp
     // is >24 h old despite offline:false, don't surface it as live air.
     const lastMs = d.timestamp ? Date.parse(d.timestamp) : NaN;
@@ -618,10 +707,12 @@ async function fetchAirGradient() {
       type: scClean('AirGradient ' + (d.model || 'monitor')),
       lat, lon,
       pm25,
+      pm25_raw: pm25Raw,
+      pm25_corrected: pm25Corrected != null,
       pm10: agNum(d.pm10),
       pm1:  agNum(d.pm01),
       temperature: agNum(d.atmp),
-      humidity:    agNum(d.rhum),
+      humidity:    rhum,
       aqi: null,
       category: cat,
       cls,
@@ -782,6 +873,10 @@ function dropAirlyNearNafas(stations) {
 const AG_OQ_TWINS = new Map([
   ['oq-6403967', 'ag-195872'],  // Kuwum, Bali
   ['oq-6413387', 'ag-196524'],  // Tabanan
+  ['oq-6404859', 'ag-195778'],  // Umadawa — AirGradient unit entered the public
+                                // feed later than the other two, so it briefly
+                                // double-pinned against its OpenAQ relay (both
+                                // at 0 m). Verified same device, same name.
 ]);
 function dropOpenAQNearAirGradient(stations) {
   const DEDUP_M = 300;

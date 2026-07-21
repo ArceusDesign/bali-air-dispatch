@@ -24,13 +24,22 @@ CREATE TABLE IF NOT EXISTS stations (
 CREATE TABLE IF NOT EXISTS station_snapshots (
   station_id   TEXT NOT NULL,
   ts           INTEGER NOT NULL,   -- unix sec UTC at fetch time
-  pm25         REAL,
+  pm25         REAL,               -- the value we PUBLISH (see pm25_raw)
   pm10         REAL,
   pm1          REAL,
   aqi          INTEGER,
   temperature  REAL,
   humidity     REAL,
   station_till TEXT,               -- upstream "till"/"lastSeen" if available
+  -- Uncorrected sensor figure, for the Plantower-based networks (AirGradient,
+  -- PurpleAir) whose readings live.js humidity-corrects via the published US-EPA
+  -- formula before publishing them as pm25. NULL for every other source, and for
+  -- PurpleAir rows predating 2026-07-21 (humidity wasn't requested from their API
+  -- until then, so that history can't be retroactively corrected). Keeping the
+  -- raw figure makes the correction auditable and reversible — nothing the sensor
+  -- actually reported is lost. Added 2026-07-21 via:
+  --   ALTER TABLE station_snapshots ADD COLUMN pm25_raw REAL;
+  pm25_raw     REAL,
   PRIMARY KEY (station_id, ts)
 );
 CREATE INDEX IF NOT EXISTS idx_ssnap_id_ts ON station_snapshots (station_id, ts DESC);

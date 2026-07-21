@@ -218,10 +218,14 @@ async function snapshotUniversal(db, live, nowSec) {
       type   = excluded.type,
       last_seen = excluded.last_seen
   `);
+  // pm25 is the value we PUBLISH; pm25_raw preserves the uncorrected sensor
+  // figure for the Plantower-based networks (AirGradient, PurpleAir) whose
+  // readings we humidity-correct in live.js. Storing both keeps the correction
+  // auditable and reversible — nothing the sensor actually reported is lost.
   const stmtSnap = db.prepare(`
     INSERT OR IGNORE INTO station_snapshots
-      (station_id, ts, pm25, pm10, pm1, aqi, temperature, humidity, station_till)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+      (station_id, ts, pm25, pm10, pm1, aqi, temperature, humidity, station_till, pm25_raw)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
   `);
 
   const stationBatch = [];
@@ -255,7 +259,8 @@ async function snapshotUniversal(db, live, nowSec) {
       toNumberOrNull(s.pm25), toNumberOrNull(s.pm10), toNumberOrNull(s.pm1),
       toIntOrNull(s.aqi),
       toNumberOrNull(s.temperature), toNumberOrNull(s.humidity),
-      s.lastSeen || null
+      s.lastSeen || null,
+      toNumberOrNull(s.pm25_raw)
     ));
   }
   if (stationBatch.length) await db.batch(stationBatch);
