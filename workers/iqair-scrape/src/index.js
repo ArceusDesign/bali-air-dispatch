@@ -103,9 +103,12 @@ async function ingestStation(db, slug, url, ex, nowSec) {
      ON CONFLICT(slug, ts) DO UPDATE SET pm25=excluded.pm25, aqi=excluded.aqi`);
   for (const p of ex.hourly) stmts.push(hourlyStmt.bind(slug, p.ts, p.concentration, p.aqi));
 
+  // IQAir-supplied daily rows are AUTHORITATIVE: src=NULL marks them so the
+  // hourly rollup below never overwrites them. If IQAir ever resumes supplying a
+  // day we had rolled up ourselves, this path wins and clears the marker.
   const dailyStmt = db.prepare(
-    `INSERT INTO iq_scrape_daily (slug, date, pm25, aqi) VALUES (?1,?2,?3,?4)
-     ON CONFLICT(slug, date) DO UPDATE SET pm25=excluded.pm25, aqi=excluded.aqi`);
+    `INSERT INTO iq_scrape_daily (slug, date, pm25, aqi, src) VALUES (?1,?2,?3,?4,NULL)
+     ON CONFLICT(slug, date) DO UPDATE SET pm25=excluded.pm25, aqi=excluded.aqi, src=NULL`);
   for (const p of ex.daily) stmts.push(dailyStmt.bind(slug, p.ts, p.concentration, p.aqi));
 
   const monthlyStmt = db.prepare(
@@ -114,7 +117,73 @@ async function ingestStation(db, slug, url, ex, nowSec) {
   for (const p of ex.monthly) stmts.push(monthlyStmt.bind(slug, p.ts, p.concentration, p.aqi));
 
   if (stmts.length) await db.batch(stmts);
+
+  // Keep the DAILY series alive for stations IQAir has migrated to client-side
+  // rendering. Those pages no longer ship pre-computed daily aggregates (ex.daily
+  // is empty), so without this a migrated station's 90d/All chart would freeze on
+  // the migration date even though its hourly readings keep flowing. It's the
+  // same physical sensor and the same slug — so we simply aggregate OUR hourly
+  // points into the same table and the record continues unbroken.
+  //
+  // Scope is deliberately narrow: only when IQAir supplied no daily this scrape,
+  // and only the last 3 WITA days. Grouping is by WITA day (+8h) to match how the
+  // site reads a "daily mean", labelled with the same ISO-UTC-midnight key the
+  // existing rows use.
+  //
+  // `WHERE src='rollup'` on the conflict clause is the safety rail: a computed
+  // mean is only ever a mean of the hours WE happened to sample, so it must
+  // never replace an IQAir full-day figure. Verified against villa-solaris,
+  // whose Jul 18 authoritative 13.3 would otherwise have been overwritten by a
+  // 12.8 derived from just 9 sampled hours. So: insert where no row exists
+  // (gap-fill), refine our own rows as later hours arrive, never touch IQAir's.
+  let rolledDaily = 0;
+  if (!ex.daily.length) {
+    try {
+      // Window = WHOLE WITA days only: the current day plus the two before it.
+      // A rolling wall-clock window (nowSec - 3*86400) is subtly wrong here: its
+      // oldest day is a shrinking partial slice, and because our own rows ARE
+      // updatable, each run would rewrite that already-settled day with fewer
+      // and fewer samples until it froze at roughly the day's last hour —
+      // ~2.2x high on evening-peaked burn data, i.e. biased exactly the wrong
+      // way. Day-aligning the cutoff keeps every non-current day complete.
+      // Comparing `ts` directly (not unixepoch(ts)) also keeps the query
+      // sargable on idx_iq_hourly_slug_ts — this worker has been CPU-killed
+      // before, so a growing full-scan per station per scrape is not affordable.
+      const witaDayStart = Math.floor((nowSec + 28800) / 86400) * 86400 - 28800;
+      const cutoffIso = new Date((witaDayStart - 2 * 86400) * 1000).toISOString();
+      const r = await db.prepare(`
+        INSERT INTO iq_scrape_daily (slug, date, pm25, aqi, src, n)
+        SELECT ?1,
+               date(datetime(unixepoch(ts) + 28800, 'unixepoch')) || 'T00:00:00.000Z' AS d,
+               ROUND(AVG(pm25), 1),
+               CAST(ROUND(AVG(aqi)) AS INTEGER),
+               'rollup',
+               COUNT(*)
+        FROM iq_scrape_hourly
+        WHERE slug = ?1 AND pm25 IS NOT NULL AND ts >= ?2
+        GROUP BY d
+        ON CONFLICT(slug, date) DO UPDATE SET
+          pm25 = excluded.pm25,
+          -- never let a NULL-aqi sample window blank an aqi we already have
+          aqi  = COALESCE(excluded.aqi, iq_scrape_daily.aqi),
+          n    = excluded.n
+        WHERE iq_scrape_daily.src = 'rollup'
+          -- structural guard: only ever replace a rollup row with one built
+          -- from at least as many samples, so no future windowing mistake can
+          -- degrade a settled day. COALESCE covers rows written before n existed.
+          AND excluded.n >= COALESCE(iq_scrape_daily.n, 0)
+      `).bind(slug, cutoffIso).run();
+      rolledDaily = (r && r.meta && r.meta.changes) || 0;
+    } catch (_) {
+      // Best-effort — never fail the scrape. -1 distinguishes "rollup errored"
+      // from "nothing to roll up" in the run log, so a persistent failure can't
+      // hide behind an otherwise-ok run (this worker has stalled silently before).
+      rolledDaily = -1;
+    }
+  }
+
   return { hourly: ex.hourly.length, daily: ex.daily.length, monthly: ex.monthly.length,
+           rolledDaily,
            pm25: ex.currentConcentration, name: ex.name, lat: ex.lat, lon: ex.lon };
 }
 

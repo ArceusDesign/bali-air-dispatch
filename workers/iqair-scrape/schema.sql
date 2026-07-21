@@ -40,9 +40,24 @@ CREATE TABLE IF NOT EXISTS iq_scrape_hourly (
 -- Daily averages (30d window per scrape).
 CREATE TABLE IF NOT EXISTS iq_scrape_daily (
   slug          TEXT NOT NULL,
-  date          TEXT NOT NULL,             -- ISO UTC midnight (period start)
+  -- Day LABEL in ISO-UTC-midnight shape (not a UTC period start): IQAir-supplied
+  -- rows use its own daily key, and rollup rows below aggregate the WITA day and
+  -- reuse the same shape so both land on one PK per station-day.
+  date          TEXT NOT NULL,
   pm25          REAL,                      -- µg/m³, daily average
   aqi           INTEGER,
+  -- Provenance. NULL = supplied by IQAir (authoritative full-day aggregate).
+  -- 'rollup'  = computed by us from iq_scrape_hourly, for stations IQAir has
+  -- migrated to client-side rendering (those pages ship no daily series). The
+  -- rollup's ON CONFLICT is gated on src='rollup' so a partial-sample mean can
+  -- never overwrite an IQAir figure. Added 2026-07-21 via:
+  --   ALTER TABLE iq_scrape_daily ADD COLUMN src TEXT;
+  src           TEXT,
+  -- Hourly samples behind a rollup row (NULL for IQAir rows). Makes a partial
+  -- day self-describing, and backs the "never replace a rollup row with a
+  -- smaller sample" guard. Added 2026-07-21 via:
+  --   ALTER TABLE iq_scrape_daily ADD COLUMN n INTEGER;
+  n             INTEGER,
   PRIMARY KEY (slug, date)
 );
 
