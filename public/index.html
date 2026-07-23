@@ -1096,6 +1096,7 @@ function historyCell(s){
 }
 
 function renderRollTable(){
+  const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
   const tb = document.getElementById('rollBody');
   const live = [...liveStations].map(s=>({...s,offline:false})).sort((a,b)=>(b.pm25??-1)-(a.pm25??-1));
   const off  = allStations.filter(s=>s.offline);
@@ -1139,7 +1140,7 @@ function renderRollTable(){
       </tr>`;
     }
     return `<tr data-sid="${esc(s.id)}">
-      <td><b>${esc((s.name||'').split(' (')[0])}</b>${s.pm25_estimated?' <em style="color:var(--ink-faint);font-size:11px">· est.</em>':''}</td>
+      <td><b>${esc((s.name||'').split(' (')[0])}</b>${s.pm25_estimated?' <em style="color:var(--ink-faint);font-size:11px">· est.</em>':''}${s.pm25_corrected?' <em style="color:var(--ink-faint);font-size:11px" title="'+esc(t('roll.correctedTip','US-EPA humidity-corrected — see appendix'))+'">'+esc(t('roll.corrected','· corr.'))+'</em>':''}</td>
       <td>${esc(s.source)}</td>
       <td class="r"><span class="pm-cell">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
       <td><span class="badge ${c.cls}">${c.label}</span></td>
@@ -1368,7 +1369,7 @@ function panelLive(s){
     <div class="side-big">
       <div>
         <div class="side-big-val ${c.cls}">${s.pm25!=null?s.pm25.toFixed(1):'—'}</div>
-        <div class="side-unit">µg/m³ · PM2.5${s.pm25_estimated?' (est.)':''}</div>
+        <div class="side-unit">µg/m³ · PM2.5${s.pm25_estimated?' (est.)':''}${s.pm25_corrected?' '+t('panel.corrected','· corrected'):''}</div>
       </div>
       <div>
         <div class="side-cat" style="color:var(--aqi-${c.cls})">${c.label}</div>
