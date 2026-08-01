@@ -348,7 +348,10 @@ async function routeStations(db, url) {
     return csvResponse(rows, [
       'station_id', 'name', 'source', 'latitude', 'longitude', 'type',
       'first_date', 'last_date', 'days_of_data', 'suspected_indoor',
-      'pm25_corrected', 'interval_source',
+      // Must track the property name emitted by shape() above — when this said
+      // 'pm25_corrected' after the field was renamed, the CSV carried a header
+      // that was blank on every row, which reads as "false" to anyone loading it.
+      'pm25_correction_applied_since', 'interval_source',
     ], 'baliair-stations.csv', 900);
   }
   return json({ version: VERSION, count: rows.length, licence: LICENCE, stations: rows }, { maxAge: 900 });

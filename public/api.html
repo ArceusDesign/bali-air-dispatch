@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The API — Bali Air Dispatch</title>
+<meta name="description" content="Public, key-free, read-only API onto the Bali air-quality archive: stations, latest readings and the raw/hourly/daily time series, in JSON or CSV.">
+<meta name="referrer" content="no-referrer">
+<link rel="preload" as="style" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --paper:#f3ece0; --paper-dark:#eae1d1; --paper-3:#dcd2be;
+  --ink:#14110d; --ink-soft:#34302a; --ink-faint:#6a635a;
+  --rule:#2b2620; --hairline:#c0b9a8;
+  --crimson:#8b1a1a; --ochre:#a7742e; --forest:#355e3b;
+  --good:#2f6b3a; --mod:#a7742e; --usg:#b9571f; --unh:#8b1a1a; --vunh:#5a1111;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:"Source Serif 4",Georgia,serif;font-optical-sizing:auto;font-size:16px;line-height:1.55;padding:0 0 80px 0}
+.wrap{max-width:1320px;margin:0 auto;padding:0 32px}
+@media(max-width:720px){.wrap{padding:0 18px}}
+
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.35;
+}
+
+/* masthead */
+.masthead{border-bottom:3px double var(--rule);padding:22px 0 18px 0}
+.masthead-top{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:10px;border-bottom:1px solid var(--hairline)}
+.masthead-top .r{text-align:right}
+.nameplate{text-align:center;padding:22px 0 14px 0}
+.nameplate h1{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(52px,8.6vw,132px);line-height:.92;letter-spacing:-.015em}
+.nameplate .sub{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(14px,1.6vw,18px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em}
+.folio{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);padding-top:10px;border-top:1px solid var(--hairline)}
+.folio .c{text-align:center;letter-spacing:.22em}
+.folio .r{text-align:right}
+
+/* nav */
+.navbar{border-bottom:1px solid var(--rule);padding:12px 0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;display:flex;justify-content:center;gap:32px;flex-wrap:wrap}
+.navbar a{color:var(--ink);text-decoration:none}
+.navbar a:hover{color:var(--crimson)}
+.navbar a.current{color:var(--crimson);border-bottom:2px solid var(--crimson);padding-bottom:2px}
+
+/* hero */
+.hero{padding:44px 0 28px 0;border-bottom:1px solid var(--rule)}
+.hero .kicker{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--crimson);margin-bottom:12px}
+.hero h1{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144;font-size:clamp(40px,5.6vw,72px);line-height:.98;letter-spacing:-.02em;color:var(--ink)}
+.hero .deck{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(18px,2vw,22px);line-height:1.42;color:var(--ink-soft);margin-top:18px;max-width:860px}
+
+/* chapter */
+.chapter{padding:46px 0 22px 0;border-top:3px double var(--rule);margin-top:12px}
+.chapter-head{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:baseline;border-bottom:1px solid var(--rule);padding-bottom:14px;margin-bottom:26px}
+.chapter-no{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--crimson);border:1px solid var(--crimson);padding:6px 12px}
+.chapter-title{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144,"SOFT" 10;font-size:clamp(28px,3.6vw,46px);line-height:1;letter-spacing:-.015em}
+.chapter-meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);text-align:right}
+@media(max-width:720px){.chapter-head{grid-template-columns:1fr;gap:10px}.chapter-meta{text-align:left}}
+.chapter-lede{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(17px,1.9vw,21px);line-height:1.42;color:var(--ink-soft);max-width:860px;margin-bottom:22px}
+.chapter-body{display:grid;grid-template-columns:1.35fr 1fr;gap:38px}
+.chapter-body p{margin-bottom:16px}
+.chapter-body p strong{font-weight:700;color:var(--ink)}
+@media(max-width:900px){.chapter-body{grid-template-columns:1fr}}
+
+/* data table */
+.data-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin:14px 0}
+.data-table th,.data-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--hairline);vertical-align:top}
+.data-table th{font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:500;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid var(--rule)}
+.data-table td.big{font-family:"Fraunces",serif;font-weight:700;font-size:18px}
+.badge{display:inline-block;padding:3px 9px;border:1px solid currentColor;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase}
+.b-good{color:var(--good)}
+.b-mod{color:var(--ochre)}
+.b-usg{color:var(--usg)}
+.b-unh{color:var(--crimson)}
+.b-vunh{color:var(--vunh)}
+
+/* glossary */
+.gloss-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
+@media(max-width:720px){.gloss-grid{grid-template-columns:1fr}}
+.gloss{border-top:2px solid var(--rule);padding-top:14px}
+.gloss dt{font-family:"Fraunces",serif;font-weight:700;font-size:18px;margin-bottom:6px}
+.gloss dd{font-size:14px;color:var(--ink-soft);line-height:1.5}
+
+/* footer */
+.foot{padding:34px 0 60px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.65;color:var(--ink-soft);text-transform:none;letter-spacing:.02em;border-top:3px double var(--rule);margin-top:50px}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1.6fr 1fr;gap:36px;margin-bottom:30px}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:22px}}
+.foot-col h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
+.foot-col a{display:block;color:var(--ink);text-decoration:none;padding:3px 0;border-bottom:none;letter-spacing:.02em}
+.foot-col a:hover{color:var(--crimson)}
+.foot-strip{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;text-align:center}
+.foot-rights,.foot-sources{margin-top:14px;font-size:11px;line-height:1.55;color:var(--ink-faint);max-width:920px;margin-left:auto;margin-right:auto;text-align:center;letter-spacing:.02em}
+.foot-rights strong,.foot-sources strong{color:var(--ink-soft);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px;margin-right:6px}
+</style>
+<style>
+/* WhatsApp community button — green box (matches Dispatch VI / --forest accent) */
+.navbar a.wa-btn,.foot-col a.wa-btn{display:inline-flex;align-items:center;gap:7px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--forest);border:1px solid var(--forest);background:rgba(53,94,59,0.08);padding:6px 13px;border-radius:3px;text-decoration:none;line-height:1.2;transition:background .15s,color .15s,border-color .15s}
+.navbar a.wa-btn::before,.foot-col a.wa-btn::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--forest);flex:none}
+.navbar a.wa-btn:hover,.foot-col a.wa-btn:hover{background:var(--forest);color:var(--paper);border-color:var(--forest)}
+.navbar a.wa-btn:hover::before,.foot-col a.wa-btn:hover::before{background:var(--paper)}
+.foot-col a.wa-btn{margin-top:12px}
+.navbar-second{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:9px;flex-wrap:wrap}
+</style>
+<style>
+/* ── API page: code, endpoint blocks, notes ─────────────────────────────────
+   Code never breaks the layout: every block scrolls on its own x-axis rather
+   than widening the page. Mobile is the case that matters — a long curl line
+   must not push the whole document sideways. */
+.code{background:var(--paper-dark);border:1px solid var(--hairline);border-left:3px solid var(--rule);padding:14px 16px;margin:14px 0;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.code code{display:block;white-space:pre;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;line-height:1.7;color:var(--ink);tab-size:2}
+@media(max-width:720px){.code{padding:12px 13px}.code code{font-size:11.5px;line-height:1.65}}
+.code-label{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin:18px 0 -6px 0;display:block}
+code.k{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.9em;background:var(--paper-3);padding:1px 5px;border-radius:2px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+.data-table code.k{background:transparent;padding:0;font-size:12px}
+.data-table td.f{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;white-space:nowrap;color:var(--ink)}
+.data-table td.u{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;color:var(--ink-soft);white-space:nowrap}
+
+/* Wide tables get their own scroller so the page body never scrolls sideways */
+/* A grid/flex item defaults to min-width:auto, i.e. it refuses to shrink below
+   its content. Without min-width:0 the 560px-min table inside .tscroll pushes
+   its grid column wider than the viewport and the whole PAGE scrolls sideways
+   instead of just the table. */
+.chapter-body>div{min-width:0}
+.tscroll{max-width:100%;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* Long unbreakable tokens in prose — e.g. the union source_table names —
+   must wrap rather than widen the page. */
+.chapter-body p code,.chapter-body li code{overflow-wrap:anywhere}
+.tscroll .data-table{min-width:560px}
+
+/* endpoint block */
+.ep{border-top:2px solid var(--rule);padding-top:18px;margin-top:34px}
+.ep:first-of-type{margin-top:8px}
+.ep h3{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:15px;letter-spacing:.02em;font-weight:600;color:var(--ink);word-break:break-word}
+.ep h3 .verb{color:var(--crimson);margin-right:10px;font-size:11px;letter-spacing:.2em;border:1px solid var(--crimson);padding:3px 7px;vertical-align:2px}
+.ep .ep-desc{font-size:15px;color:var(--ink-soft);margin:12px 0 4px 0;max-width:860px;line-height:1.55}
+
+.subh{font-family:"Fraunces",serif;font-weight:700;font-size:22px;margin:32px 0 12px}
+.note{margin:22px 0;padding:18px 20px;border:1px solid var(--rule);background:var(--paper-dark)}
+.note.warn{border-color:var(--crimson)}
+.note .label{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);display:block;margin-bottom:7px}
+.note.warn .label{color:var(--crimson)}
+.note p{font-size:14.5px;line-height:1.6;color:var(--ink-soft);margin-bottom:10px}
+.note p:last-child{margin-bottom:0}
+.note a,.prose a{color:var(--crimson);text-decoration:none;border-bottom:1px dotted var(--crimson)}
+.prose{max-width:900px}
+.prose p{margin-bottom:16px}
+.prose p strong{font-weight:700;color:var(--ink)}
+
+/* try-it panel */
+.tryit{border:1px solid var(--rule);background:var(--paper-dark);padding:20px 22px;margin:20px 0}
+.tryit .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.tryit button{appearance:none;background:var(--ink);color:var(--paper);border:1px solid var(--ink);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;padding:9px 16px;cursor:pointer;transition:background .12s,color .12s}
+.tryit button:hover{background:var(--crimson);border-color:var(--crimson)}
+.tryit button[disabled]{opacity:.5;cursor:default}
+.tryit .hint{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;color:var(--ink-faint)}
+.tryit .code{margin-top:14px;max-height:340px;overflow:auto}
+</style>
+</head>
+<body>
+
+  <!-- MASTHEAD -->
+  <header class="masthead wrap">
+    <div class="masthead-top">
+      <div data-i18n="api.x.mastTop">Public interface</div>
+      <a href="/" style="color:inherit;text-decoration:none" data-i18n-attr="aria-label:nav.live" aria-label="Live Monitor">Bali Air Dispatch</a>
+      <div class="r" data-i18n="mast.tagline">Anonymous, non-commercial</div>
+    </div>
+    <div class="nameplate">
+      <h1 data-i18n="api.mast.title">The API</h1>
+      <div class="sub" data-i18n="api.mast.sub">The whole archive, open to anyone who asks for it. No key, no account, no conditions beyond attribution.</div>
+    </div>
+    <div class="folio">
+      <div data-i18n="api.x.folioL">Edition XVII · Interface</div>
+      <div class="c" id="mt-date">—</div>
+      <div class="r" id="nav-status">API V1 · LIVE</div>
+    </div>
+  </header>
+
+  <!-- NAV (universal · keep in sync across all pages) -->
+  <nav class="navbar">
+    <a href="/" data-i18n="nav.live">Live Monitor</a>
+    <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+    <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+    <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
+    <a href="/history" data-i18n="nav.history">History</a>
+    <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="nav.community">Join the WhatsApp community</a>
+    <div id="lang-switcher"></div>
+  </nav>
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="kicker" data-i18n="api.x.heroKicker">Public API · Version 1 · No key required</div>
+    <h1 data-i18n-html="api.x.heroH">Take the data. <em>All of it.</em></h1>
+    <p class="deck" data-i18n="api.x.heroDeck">Every number on this site comes out of one read-only interface, and that interface is open. Point a browser, a shell, a notebook or a spreadsheet at it and you have the same archive we do — every station, every reading, back to the beginning of the record. This page is the whole manual.</p>
+  </section>
+
+  <!-- CHAPTER A — START HERE -->
+  <section class="chapter" id="start">
+    <div class="chapter-head">
+      <div class="chapter-no">A</div>
+      <div class="chapter-title" data-i18n="api.A.title">Start here</div>
+      <div class="chapter-meta" data-i18n="api.x.metaA">No key · GET only · CORS open</div>
+    </div>
+    <p class="chapter-lede" data-i18n="api.A.lede">One base URL, four routes, two formats. If you can make an HTTP request, you already have access.</p>
+
+    <div class="chapter-body">
+      <div>
+        <p data-i18n="api.x.aP1">This is a read-only interface onto an aggregated archive of Bali air-quality measurements — PM2.5 and its companion values — collected from public sensor networks since 2025. It exists so that nobody has to scrape this site. The archive runs to roughly 140,000 rows in total, which means a patient client can hold all of it locally in a few minutes.</p>
+        <p data-i18n="api.x.aP2">Eight networks are aggregated here: Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen and Airly. Each row names the network it came from, so a result can always be traced back to its origin and checked against that network's own feed.</p>
+      </div>
+      <div>
+        <p data-i18n-html="api.x.aP3">Every route is <strong>GET only</strong> and returns permissive CORS headers, so browser code may call it directly from any origin. Responses are edge-cached for between five and sixty minutes depending on how fast the underlying data moves; one served out of that cache carries <code class="k">X-Cache: HIT</code>. There is no key, no account and no rate limit beyond fair use — the row caps below are the only enforcement.</p>
+        <p data-i18n-html="api.x.aP4"><strong>What this is not.</strong> Low-cost sensors are not reference-grade instruments. Values are published as they were recorded, without warranty of accuracy or fitness for any purpose. Chapter E is the part to read before you average anything.</p>
+      </div>
+    </div>
+
+    <h3 class="subh" data-i18n="api.x.quickH">The one line that gets you started</h3>
+    <p class="prose" data-i18n="api.x.quickP">Paste this into a terminal. It returns the most recent reading held for every station in the archive.</p>
+    <pre class="code"><code>curl -s "https://baliair.pages.dev/api/v1/latest"</code></pre>
+    <p class="prose" data-i18n-html="api.x.quickNote">The base URL is <code class="k">https://baliair.pages.dev/api/v1</code>. Requesting it with no path returns a machine-readable index of everything documented on this page — routes, parameters, intervals, caveats and licence — which is the version to trust if this page and the interface ever disagree.</p>
+
+    <h3 class="subh" data-i18n="api.x.startH">Four calls worth knowing</h3>
+    <div class="tscroll">
+    <table class="data-table">
+      <thead><tr><th data-i18n="api.x.thCall">Call</th><th data-i18n="api.x.thGives">What it returns</th></tr></thead>
+      <tbody>
+        <tr><td class="f">GET /api/v1</td><td data-i18n="api.x.call1">Index. Version, routes, parameters, interval definitions, caveats and licence.</td></tr>
+        <tr><td class="f">GET /api/v1/stations</td><td data-i18n="api.x.call2">The catalogue. Every station, with coordinates, network, date coverage and provenance flags.</td></tr>
+        <tr><td class="f">GET /api/v1/latest</td><td data-i18n="api.x.call3">A snapshot. The most recent reading held for each station, all networks at once.</td></tr>
+        <tr><td class="f">GET /api/v1/measurements</td><td data-i18n="api.x.call4">The time series. Raw, hourly or daily; one station or all of them; JSON or CSV; paged.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="tryit">
+      <div class="row">
+        <button type="button" id="try-btn" data-i18n="api.x.tryBtn">Run GET /api/v1</button>
+        <span class="hint" id="try-hint" data-i18n="api.x.tryHint">Same-origin request · nothing leaves this page</span>
+      </div>
+      <pre class="code" id="try-out"><code data-i18n="api.x.tryIdle">Nothing requested yet.</code></pre>
+    </div>
+  </section>
+
+  <!-- CHAPTER B — THE ENDPOINTS -->
+  <section class="chapter" id="endpoints">
+    <div class="chapter-head">
+      <div class="chapter-no">B</div>
+      <div class="chapter-title" data-i18n="api.B.title">The endpoints</div>
+      <div class="chapter-meta" data-i18n="api.x.metaB">Four routes · JSON or CSV</div>
+    </div>
+    <p class="chapter-lede" data-i18n="api.B.lede">Each route, its parameters, a URL you can open right now, and the shape that comes back.</p>
+
+    <!-- B.1 index -->
+    <div class="ep">
+      <h3><span class="verb">GET</span>/api/v1</h3>
+      <p class="ep-desc" data-i18n="api.x.ep1desc">The index. Returns the version, the route list with their parameters, the interval definitions, the semantic notes reproduced in Chapter E, and the licence. It takes no parameters and does not touch the archive, so it answers even if the database is briefly unreachable.</p>
+      <span class="code-label" data-i18n="api.x.lblExample">Example</span>
+      <pre class="code"><code>https://baliair.pages.dev/api/v1</code></pre>
+      <span class="code-label" data-i18n="api.x.lblResponse">Response · trimmed</span>
+      <pre class="code"><code>{
+  "name": "Bali Air Dispatch API",
+  "version": "1.0.0",
+  "description": "Read-only access to an aggregated archive of Bali air-quality …",
+  "endpoints": {
+    "stations": {
+      "path": "/api/v1/stations",
+      "description": "Every station in the archive, with coordinates, source network …",
+      "params": { "source": "filter by network", "format": "json|csv" }
+    },
+    "latest": { … }, "measurements": { … }
+  },
+  "intervals": {
+    "raw": "15-minute snapshots as fetched. Not available for iqs-* …",
+    "hourly": "Hourly means. Native for nafas-* and iqs-*; bucketed …",
+    "daily": "Daily means, with min/max/sample count where available."
+  },
+  "notes": {
+    "timezone": …, "samples": …, "units": …, "corrected": …,
+    "suspected_indoor": …, "gaps": …, "staleness": …
+  },
+  "licence": { "archive": …, "attribution": …, "upstream": …, "no_warranty": … },
+  "documentation": "https://baliair.pages.dev/api"
+}</code></pre>
+    </div>
+
+    <!-- B.2 stations -->
+    <div class="ep">
+      <h3><span class="verb">GET</span>/api/v1/stations</h3>
+      <p class="ep-desc" data-i18n-html="api.x.ep2desc">Every station in the archive. This is the catalogue you join everything else against: it is where <code class="k">station_id</code> values come from, and where you learn which stations are flagged indoor, from which date their network's readings are humidity-corrected, and how many days of record each one holds. Duplicate and placeholder catalogue rows that the site does not publish are excluded here and from every bulk scan.</p>
+      <div class="tscroll">
+      <table class="data-table">
+        <thead><tr><th data-i18n="api.x.thParam">Parameter</th><th data-i18n="api.x.thMeaning">Meaning</th><th data-i18n="api.x.thDefault">Default</th></tr></thead>
+        <tbody>
+          <tr><td class="f">source</td><td data-i18n-html="api.x.pSource">Return only stations from one network. Matched case-insensitively against the <code class="k">source</code> field — for example <code class="k">nafas</code>, <code class="k">purpleair</code>, <code class="k">iqair</code>, <code class="k">aqicn</code>, <code class="k">openaq</code>, <code class="k">airgradient</code>, <code class="k">smart citizen</code>, <code class="k">airly</code>.</td><td class="u" data-i18n="api.x.dAll">all</td></tr>
+          <tr><td class="f">format</td><td data-i18n-html="api.x.pFormat">Response format: <code class="k">json</code> or <code class="k">csv</code>.</td><td class="u">json</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <span class="code-label" data-i18n="api.x.lblExample">Example</span>
+      <pre class="code"><code>https://baliair.pages.dev/api/v1/stations?source=purpleair</code></pre>
+      <span class="code-label" data-i18n="api.x.lblResponse">Response · trimmed</span>
+      <pre class="code"><code>{
+  "version": "1.0.0",
+  "count": 2,
+  "licence": { … },
+  "stations": [
+    {
+      "station_id": "pa-46949",
+      "name": "Klungkung by Lumi Clinic",
+      "source": "PurpleAir",
+      "latitude": -8.533623,
+      "longitude": 115.39973,
+      "type": "Community sensor",
+      "first_seen": "2026-04-26T11:00:53.000Z",
+      "last_seen": "2026-08-01T20:15:11.000Z",
+      "first_date": "2026-04-26",
+      "last_date": "2026-08-02",
+      "days_of_data": 94,
+      "suspected_indoor": false,
+      "pm25_correction_applied_since": "2026-07-21",
+      "interval_source": "universal"
+    }
+    // … one further PurpleAir station elided
+  ]
+}</code></pre>
+      <div class="note">
+        <span class="label" data-i18n="api.x.corrSinceLabel">Read this field carefully</span>
+        <p data-i18n-html="api.x.corrSinceP"><code class="k">pm25_correction_applied_since</code> is a <em>network policy date</em>, not a claim about any particular row. It says: from this date onward, readings from this station's network are humidity-corrected before publication. It is <code class="k">null</code> for networks we never correct. Rows archived <em>before</em> that date are uncorrected even for a corrected network — the per-row truth is <code class="k">pm25_corrected</code> on a <code class="k">/latest</code> or <code class="k">interval=raw</code> row, which is true exactly when <code class="k">pm25_raw</code> is present.</p>
+      </div>
+    </div>
+
+    <!-- B.3 latest -->
+    <div class="ep">
+      <h3><span class="verb">GET</span>/api/v1/latest</h3>
+      <p class="ep-desc" data-i18n-html="api.x.ep3desc">The most recent reading <em>held</em> for every station — one row per station, all networks in a single call. This is what the live map on the front page is built from. Stations that have never reported a usable value are absent rather than present-and-empty. Every row carries <code class="k">age_hours</code> and <code class="k">stale</code>, because "latest" is not the same thing as "now".</p>
+      <div class="tscroll">
+      <table class="data-table">
+        <thead><tr><th data-i18n="api.x.thParam">Parameter</th><th data-i18n="api.x.thMeaning">Meaning</th><th data-i18n="api.x.thDefault">Default</th></tr></thead>
+        <tbody>
+          <tr><td class="f">source</td><td data-i18n-html="api.x.pSource2">Return only readings from one network, matched case-insensitively against the <code class="k">source</code> field.</td><td class="u" data-i18n="api.x.dAll">all</td></tr>
+          <tr><td class="f">format</td><td data-i18n-html="api.x.pFormat">Response format: <code class="k">json</code> or <code class="k">csv</code>.</td><td class="u">json</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <span class="code-label" data-i18n="api.x.lblExample">Example</span>
+      <pre class="code"><code>https://baliair.pages.dev/api/v1/latest?source=purpleair</code></pre>
+      <span class="code-label" data-i18n="api.x.lblResponse">Response · trimmed</span>
+      <pre class="code"><code>{
+  "version": "1.0.0",
+  "generated_at": "2026-08-01T20:28:48.267Z",
+  "count": 2,
+  "licence": { … },
+  "readings": [
+    {
+      "station_id": "pa-46949",
+      "name": "Klungkung by Lumi Clinic",
+      "source": "PurpleAir",
+      "latitude": -8.533623,
+      "longitude": 115.39973,
+      "observed_at": "2026-08-01T20:15:11.000Z",
+      "age_hours": 0.2,
+      "stale": false,
+      "upstream_timestamp": "2026-08-01T20:14:10.000Z",
+      "pm25": 36.6,
+      "pm25_raw": 47.8,
+      "pm10": null,
+      "pm1": null,
+      "aqi": null,
+      "temperature": null,
+      "humidity": 62,
+      "suspected_indoor": false,
+      "pm25_corrected": true
+    }
+    // … one further PurpleAir station elided
+  ]
+}</code></pre>
+      <div class="note warn">
+        <span class="label" data-i18n="api.x.staleLabel">"Latest" means latest held, not latest measured</span>
+        <p data-i18n-html="api.x.staleP1">This route returns the newest reading the archive <em>holds</em> for each station. For a sensor that went dark, that reading can be weeks or months old, and it is returned anyway — a station's last known value is legitimately useful. It is simply not current conditions.</p>
+        <p data-i18n-html="api.x.staleP2"><code class="k">age_hours</code> is how old the reading is, in hours, at the moment the response was generated. <code class="k">stale</code> is <code class="k">true</code> when that exceeds 24 hours. A real row from this route, captured while writing this page:</p>
+        <pre class="code"><code>{
+  "station_id": "aq-A416893",
+  "name": "Denpasar Lumintang",
+  "source": "AQICN",
+  "observed_at": "2026-06-03T08:45:39.000Z",
+  "age_hours": 1427.7,
+  "stale": true,
+  "pm25": 168,
+  "pm25_corrected": false,
+  …
+}</code></pre>
+        <p data-i18n-html="api.x.staleP3">That is a fifty-nine-day-old figure of 168 µg/m³. Average it into an island-wide "right now" number and you have published a fiction. Filter on <code class="k">stale</code>, or set your own threshold from <code class="k">age_hours</code>, before you treat any of these rows as live.</p>
+      </div>
+    </div>
+
+    <!-- B.4 measurements -->
+    <div class="ep">
+      <h3><span class="verb">GET</span>/api/v1/measurements</h3>
+      <p class="ep-desc" data-i18n="api.x.ep4desc">The time series, and the route you will spend your time in. Name a station or omit it to scan every station at once; choose raw, hourly or daily; bound it by date; take it as JSON or CSV; page through it with a cursor.</p>
+      <div class="tscroll">
+      <table class="data-table">
+        <thead><tr><th data-i18n="api.x.thParam">Parameter</th><th data-i18n="api.x.thMeaning">Meaning</th><th data-i18n="api.x.thDefault">Default</th></tr></thead>
+        <tbody>
+          <tr><td class="f">station</td><td data-i18n-html="api.x.pStation">A <code class="k">station_id</code> taken from <code class="k">/stations</code>. Omit it entirely to pull every station in one paged scan.</td><td class="u" data-i18n="api.x.dAllStations">all stations</td></tr>
+          <tr><td class="f">interval</td><td data-i18n-html="api.x.pInterval">One of <code class="k">raw</code>, <code class="k">hourly</code>, <code class="k">daily</code>. See Chapter C for what each one actually contains. <code class="k">hourly</code> without a <code class="k">station</code> additionally requires a bounded window — see below.</td><td class="u">daily</td></tr>
+          <tr><td class="f">from</td><td data-i18n-html="api.x.pFrom">Start of the window, inclusive. Accepts <code class="k">YYYY-MM-DD</code>, a full ISO-8601 instant, or unix seconds. A bare date is read as UTC midnight.</td><td class="u" data-i18n="api.x.dStart">start of record</td></tr>
+          <tr><td class="f">to</td><td data-i18n-html="api.x.pTo">End of the window, inclusive. Same three formats as <code class="k">from</code>. A bare <code class="k">YYYY-MM-DD</code> is extended to 23:59:59 of that day, so <code class="k">to</code> covers the whole named day at <em>every</em> interval — <code class="k">to=2026-07-30</code> with <code class="k">interval=raw</code> returns that day's last snapshot, not nothing. The <code class="k">query</code> block echoes the instant actually used.</td><td class="u" data-i18n="api.x.dNow">now</td></tr>
+          <tr><td class="f">limit</td><td data-i18n="api.x.pLimit">Rows per page. Anything above the maximum is silently clamped to it; anything unparseable falls back to the default.</td><td class="u">1000 · max 10000</td></tr>
+          <tr><td class="f">cursor</td><td data-i18n-html="api.x.pCursor">The <code class="k">next_cursor</code> value from the previous response, passed back unmodified. Keyset pagination, so page one thousand costs what page one costs, and rows are never skipped or repeated when new data lands mid-pull.</td><td class="u" data-i18n="api.x.dFirst">first page</td></tr>
+          <tr><td class="f">format</td><td data-i18n-html="api.x.pFormat">Response format: <code class="k">json</code> or <code class="k">csv</code>.</td><td class="u">json</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <span class="code-label" data-i18n="api.x.lblExample">Example</span>
+      <pre class="code"><code>https://baliair.pages.dev/api/v1/measurements?station=pa-46949&amp;interval=hourly&amp;from=2026-07-30&amp;limit=2</code></pre>
+      <span class="code-label" data-i18n="api.x.lblResponse">Response · trimmed</span>
+      <pre class="code"><code>{
+  "version": "1.0.0",
+  "query": {
+    "station": "pa-46949",
+    "interval": "hourly",
+    "from": "2026-07-30T00:00:00.000Z",
+    "to": null,
+    "limit": 2
+  },
+  "source_table": "station_snapshots (hourly buckets)",
+  "date_basis": "UTC instant",
+  "count": 2,
+  "next_cursor": "1785373200",
+  "licence": { … },
+  "measurements": [
+    {
+      "station_id": "pa-46949",
+      "source": "PurpleAir",
+      "suspected_indoor": false,
+      "observed_at": "2026-07-30T00:00:00.000Z",
+      "pm25": 47.42,
+      "pm25_min": 15.1,
+      "pm25_max": 67.3,
+      "aqi_max": null,
+      "samples": 4
+    },
+    {
+      "station_id": "pa-46949",
+      "source": "PurpleAir",
+      "suspected_indoor": false,
+      "observed_at": "2026-07-30T01:00:00.000Z",
+      "pm25": 60.95,
+      "pm25_min": 17.4,
+      "pm25_max": 115.9,
+      "aqi_max": null,
+      "samples": 4
+    }
+  ]
+}</code></pre>
+      <p class="prose" data-i18n-html="api.x.ep4note1"><strong>Paging.</strong> A <code class="k">next_cursor</code> appears only when the page filled to the limit — when it comes back <code class="k">null</code>, you have reached the end. Naming a station gives a one-part cursor; omitting it gives a two-part cursor, because a bulk scan sorts by station and then by time. Treat the token as opaque and hand it back exactly as received.</p>
+      <p class="prose" data-i18n-html="api.x.ep4note2"><strong>Bulk scans.</strong> Omitting <code class="k">station</code> scans every station in the archive, across all three storage families — the universal store, the Nafas tables and the scraped IQAir tables are unioned, so a bulk <code class="k">daily</code> or <code class="k">hourly</code> pull returns each station's real series rather than a shallow rollup. Duplicate and placeholder catalogue rows are excluded so a bulk aggregate cannot double-count. A station you name explicitly is always served in full, whether or not it is one the site publishes.</p>
+      <p class="prose" data-i18n-html="api.x.ep4note3"><strong>Bulk raw is the one asymmetry.</strong> <code class="k">interval=raw</code> reads the sub-hourly snapshot store, which is the only place sub-hourly data exists. Scraped IQAir stations therefore never appear in a raw pull — they have no raw series at any level, named or not.</p>
+      <div class="note warn">
+        <span class="label" data-i18n="api.x.windowLabel">One bounded request</span>
+        <p data-i18n-html="api.x.windowP"><code class="k">interval=hourly</code> <em>without</em> a <code class="k">station</code> has to aggregate before it can page, so <code class="k">limit</code> bounds the response but not the work. That combination therefore requires both <code class="k">from</code> and <code class="k">to</code>, spanning at most <strong>31 days</strong>. Omit either and you get <code class="k">window_required</code>; exceed the span and you get <code class="k">window_too_large</code>. Both are HTTP 400. Name a single station and neither limit applies; <code class="k">raw</code> and <code class="k">daily</code> bulk scans are unbounded.</p>
+      </div>
+    </div>
+
+    <!-- FORMATS -->
+    <h3 class="subh" data-i18n="api.x.fmtH">JSON or CSV</h3>
+    <div class="prose">
+      <p data-i18n-html="api.x.fmtP1">Add <code class="k">format=csv</code> to any route and the same rows arrive flattened into columns, with a <code class="k">Content-Disposition</code> filename attached so a browser saves rather than displays them. CSV is a first-class citizen here because it is what people actually load into pandas, R and Excel.</p>
+      <p data-i18n-html="api.x.fmtP2"><strong>Paging a CSV.</strong> The continuation token cannot live in the body of a CSV, so it lives in the response headers instead: <code class="k">X-Next-Cursor</code> carries the next cursor when one exists, and <code class="k">X-Row-Count</code> carries the number of data rows. You can therefore page a bulk download without parsing a byte of the file. The header value is already URL-encoded — pass it straight back.</p>
+      <p data-i18n-html="api.x.fmtP3"><strong>Where CSV and JSON differ.</strong> The columns track the JSON fields with three exceptions. <code class="k">first_seen</code> and <code class="k">last_seen</code> are omitted from the <code class="k">/stations</code> CSV; <code class="k">upstream_timestamp</code> is omitted from the <code class="k">/latest</code> and raw-measurement CSVs. And the <code class="k">/stations</code> CSV still carries a column headed <code class="k">pm25_corrected</code> that is <strong>empty on every row</strong> — a leftover of the rename to <code class="k">pm25_correction_applied_since</code>, which the CSV does not yet emit. Do not read that blank as <code class="k">false</code>: take the correction status from the JSON form of <code class="k">/stations</code>, or per row from <code class="k">pm25_corrected</code> on <code class="k">/latest</code> and <code class="k">interval=raw</code>. Everything else is column-for-field identical.</p>
+      <p data-i18n-html="api.x.fmtP4"><strong>One CSV quirk worth knowing.</strong> Spreadsheets execute a cell that begins with <code class="k">=</code>, <code class="k">+</code>, <code class="k">-</code> or <code class="k">@</code>, and station names arrive from external feeds, so any such value is prefixed with an apostrophe to render it inert. In practice this affects southern latitudes, which appear as <code class="k">'-8.533623</code>. Strip a leading apostrophe before parsing coordinates numerically.</p>
+    </div>
+    <span class="code-label" data-i18n="api.x.lblExample">Example</span>
+    <pre class="code"><code>$ curl -s "https://baliair.pages.dev/api/v1/measurements\
+?station=iqs-bali-umalas-villa-fusion&amp;interval=daily&amp;from=2026-07-01&amp;to=2026-07-05&amp;format=csv"
+
+station_id,source,date,pm25,pm25_min,pm25_max,aqi_max,samples,suspected_indoor
+iqs-bali-umalas-villa-fusion,IQAir,2026-07-01,34,,,97,,false
+iqs-bali-umalas-villa-fusion,IQAir,2026-07-02,32.8,,,95,,false
+iqs-bali-umalas-villa-fusion,IQAir,2026-07-03,38.3,,,108,,false
+iqs-bali-umalas-villa-fusion,IQAir,2026-07-04,38.5,,,108,,false
+iqs-bali-umalas-villa-fusion,IQAir,2026-07-05,28.1,,,86,,false</code></pre>
+
+    <!-- RESPONSE HEADERS -->
+    <h3 class="subh" data-i18n="api.x.hdrH">Response headers worth reading</h3>
+    <p class="prose" data-i18n-html="api.x.hdrP">Four headers carry information the body does not. Note that only <code class="k">X-Next-Cursor</code> and <code class="k">X-Row-Count</code> are listed in <code class="k">Access-Control-Expose-Headers</code>, so those two are the ones browser JavaScript can actually read cross-origin; <code class="k">X-Cache</code> is visible to curl and to servers, not to <code class="k">fetch()</code>.</p>
+    <div class="tscroll">
+    <table class="data-table">
+      <thead><tr><th data-i18n="api.x.thHeader">Header</th><th data-i18n="api.x.thMeaning2">Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="f">X-Next-Cursor</td><td data-i18n-html="api.x.hX1">On a CSV <code class="k">/measurements</code> response, the continuation token — the CSV equivalent of <code class="k">next_cursor</code>. Absent when there is no further page. Already URL-encoded; pass it straight back. Not set on JSON responses, which carry <code class="k">next_cursor</code> in the body instead.</td></tr>
+        <tr><td class="f">X-Row-Count</td><td data-i18n-html="api.x.hX2">On a CSV <code class="k">/measurements</code> response, the number of data rows written, so you can detect a full page without parsing the file.</td></tr>
+        <tr><td class="f">X-Cache</td><td data-i18n-html="api.x.hX3"><code class="k">HIT</code> when the response came out of the edge cache rather than the database. The request that actually ran the query carries no <code class="k">X-Cache</code> header at all, so treat "absent" as the miss case.</td></tr>
+        <tr><td class="f">Content-Disposition</td><td data-i18n-html="api.x.hX4">On CSV responses only: <code class="k">attachment</code> with a generated filename, so a browser saves the file rather than rendering it.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <!-- ERRORS -->
+    <h3 class="subh" data-i18n="api.x.errH">When something is wrong</h3>
+    <p class="prose" data-i18n-html="api.x.errP">Errors come back as JSON with a stable machine-readable <code class="k">error</code> code and a human sentence in <code class="k">message</code>. Branch on the code, show the message. Some errors carry extra keys — a bad interval for a scraped IQAir station also returns <code class="k">available_intervals</code>, and an unknown route returns the list of routes that do exist.</p>
+    <pre class="code"><code>{
+  "error": "no_raw_for_source",
+  "message": "IQAir publishes hourly, so scraped IQAir stations (iqs-*) have no raw sub-hourly series. Use interval=hourly or interval=daily.",
+  "station": "iqs-bali-umalas-villa-fusion",
+  "available_intervals": ["hourly", "daily"]
+}</code></pre>
+    <div class="tscroll">
+    <table class="data-table">
+      <thead><tr><th data-i18n="api.x.thCode">Code</th><th data-i18n="api.x.thStatus">HTTP</th><th data-i18n="api.x.thWhen">What caused it</th></tr></thead>
+      <tbody>
+        <tr><td class="f">bad_interval</td><td class="u">400</td><td data-i18n-html="api.x.errBadInterval"><code class="k">interval</code> was not one of raw, hourly, daily.</td></tr>
+        <tr><td class="f">bad_station</td><td class="u">400</td><td data-i18n-html="api.x.errBadStation"><code class="k">station</code> is not a well-formed station_id. Take the value from <code class="k">/stations</code> rather than constructing it.</td></tr>
+        <tr><td class="f">bad_from</td><td class="u">400</td><td data-i18n-html="api.x.errBadFrom"><code class="k">from</code> could not be read as a date, an ISO-8601 instant, or unix seconds.</td></tr>
+        <tr><td class="f">bad_to</td><td class="u">400</td><td data-i18n-html="api.x.errBadTo"><code class="k">to</code> could not be read as a date, an ISO-8601 instant, or unix seconds.</td></tr>
+        <tr><td class="f">bad_range</td><td class="u">400</td><td data-i18n-html="api.x.errBadRange"><code class="k">to</code> is earlier than <code class="k">from</code>.</td></tr>
+        <tr><td class="f">bad_cursor</td><td class="u">400</td><td data-i18n-html="api.x.errBadCursor">The cursor has the wrong number of components, an empty component, or an invalid station component. A single-station scan expects a one-part cursor and a bulk scan a two-part one, so a token cannot be moved between the two. Pass back <code class="k">next_cursor</code> unmodified.</td></tr>
+        <tr><td class="f">window_required</td><td class="u">400</td><td data-i18n-html="api.x.errWindowRequired"><code class="k">interval=hourly</code> was requested without a <code class="k">station</code> and without both <code class="k">from</code> and <code class="k">to</code>. Bound the window to at most 31 days, or name one station.</td></tr>
+        <tr><td class="f">window_too_large</td><td class="u">400</td><td data-i18n-html="api.x.errWindowTooLarge"><code class="k">interval=hourly</code> without a <code class="k">station</code>, over a window longer than 31 days. Split the pull into 31-day requests, or name one station.</td></tr>
+        <tr><td class="f">no_raw_for_source</td><td class="u">400</td><td data-i18n-html="api.x.errNoRaw">You asked for <code class="k">interval=raw</code> on a scraped IQAir station. IQAir publishes hourly, so no sub-hourly series exists. Use hourly or daily.</td></tr>
+        <tr><td class="f">not_found</td><td class="u">404</td><td data-i18n="api.x.errNotFound">Unknown route. The response lists the routes that do exist.</td></tr>
+        <tr><td class="f">method_not_allowed</td><td class="u">405</td><td data-i18n="api.x.errMethod">Anything other than GET, HEAD or a CORS preflight. The interface is read-only.</td></tr>
+        <tr><td class="f">archive_unavailable</td><td class="u">503</td><td data-i18n="api.x.errUnavailable">The archive is temporarily unreachable. Retry shortly; the index route keeps answering meanwhile.</td></tr>
+        <tr><td class="f">internal_error</td><td class="u">500</td><td data-i18n="api.x.errInternal">Something failed on our side. No internal detail is echoed back — if it persists, tell us.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- CHAPTER C — INTERVALS -->
+  <section class="chapter" id="intervals">
+    <div class="chapter-head">
+      <div class="chapter-no">C</div>
+      <div class="chapter-title" data-i18n="api.C.title">The three intervals</div>
+      <div class="chapter-meta" data-i18n="api.x.metaC">Raw · Hourly · Daily</div>
+    </div>
+    <p class="chapter-lede" data-i18n="api.C.lede">The archive is assembled from networks that publish at different cadences. The interval you choose decides which underlying store answers — and the answer says so, in every response.</p>
+
+    <div class="tscroll">
+    <table class="data-table">
+      <thead><tr><th data-i18n="api.x.thInterval">Interval</th><th data-i18n="api.x.thReturns">What you get</th><th data-i18n="api.x.thTimeField">Time field</th></tr></thead>
+      <tbody>
+        <tr><td class="f">raw</td><td data-i18n-html="api.x.intRaw">Fifteen-minute snapshots exactly as they were fetched, with every companion value the sensor supplied — PM10, PM1, AQI, temperature, humidity, and the upstream timestamp. This is the unaggregated record. <strong>Not available for scraped IQAir stations.</strong></td><td class="u">observed_at</td></tr>
+        <tr><td class="f">hourly</td><td data-i18n-html="api.x.intHourly">Hourly means. Native for Nafas and scraped IQAir stations, which publish hourly upstream; bucketed here from the raw snapshots for every other network. Only the bucketed-here case carries the hour's minimum, maximum and sample count — the native ones return <code class="k">null</code> for all three, because upstream gives one number per hour, not a distribution.</td><td class="u">observed_at</td></tr>
+        <tr><td class="f">daily</td><td data-i18n-html="api.x.intDaily">Daily means, with minimum, maximum and sample count where the underlying store holds them. The default, and the right choice for trend work. The <code class="k">date</code> is a <strong>WITA calendar day</strong>, not a UTC one — see Chapter E.</td><td class="u">date</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="note warn">
+      <span class="label" data-i18n="api.x.iqsLabel">The one real limitation</span>
+      <p data-i18n-html="api.x.iqsP1">IQAir publishes its city pages hourly, so the stations we scrape from it — every <code class="k">station_id</code> beginning <code class="k">iqs-</code> — have no sub-hourly series to hand you. Asking for <code class="k">interval=raw</code> on one of them returns HTTP 400 with the code <code class="k">no_raw_for_source</code> and the intervals that will work. This is not a gap we can fill by trying harder; the data does not exist at that resolution upstream.</p>
+      <p data-i18n-html="api.x.iqsP2">Everything else about those stations behaves normally, and they carry some of the longest records in the archive — the Umalas station reaches back to November 2024. Use <code class="k">interval=hourly</code> or <code class="k">interval=daily</code> and they behave like any other station.</p>
+    </div>
+
+    <div class="prose">
+      <p data-i18n-html="api.x.cP1"><strong>Knowing which store answered.</strong> Every <code class="k">/measurements</code> response carries <code class="k">source_table</code>, naming the store the rows came out of. Naming a station gives you a single store — <code class="k">station_daily</code>, <code class="k">station_snapshots</code>, <code class="k">station_snapshots (hourly buckets)</code>, <code class="k">nafas_daily</code>, <code class="k">nafas_hourly</code>, <code class="k">iq_scrape_daily</code> or <code class="k">iq_scrape_hourly</code>. A bulk scan unions several, and says so in the same field: <code class="k">station_daily + nafas_daily + iq_scrape_daily</code> for bulk daily, and <code class="k">station_snapshots (hourly buckets) + nafas_hourly + iq_scrape_hourly</code> for bulk hourly. Bulk raw is the single-store case, <code class="k">station_snapshots</code>. You never have to know this to use the interface — the row shape is identical either way — but it means any result you publish can be traced back to specific tables.</p>
+      <p data-i18n-html="api.x.cP2"><strong>Where min, max and samples are null.</strong> Networks that publish pre-aggregated hourly or daily figures give us one number per bucket, not a distribution, so <code class="k">pm25_min</code>, <code class="k">pm25_max</code> and <code class="k">samples</code> come back <code class="k">null</code> for those rows: <code class="k">pm25_min</code> and <code class="k">pm25_max</code> are null on every Nafas and scraped-IQAir row, and <code class="k">samples</code> is null on every Nafas row and on scraped-IQAir hourly rows, though scraped-IQAir <em>daily</em> rows do carry a count where the scrape recorded one. Where the bucket was computed here from raw snapshots, all three are populated. A null is an honest absence, never a zero; and a populated <code class="k">samples</code> of 1 is not the same thing as a null — see Chapter E.</p>
+      <p data-i18n-html="api.x.cP3"><strong>Which basis the dates are on.</strong> Every <code class="k">/measurements</code> response also carries <code class="k">date_basis</code>, which is <code class="k">"WITA (UTC+8) calendar day"</code> when the rows are daily and <code class="k">"UTC instant"</code> when they are hourly or raw. It is there so a script never has to infer the boundary from the interval it asked for.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER D — FIELD REFERENCE -->
+  <section class="chapter" id="fields">
+    <div class="chapter-head">
+      <div class="chapter-no">D</div>
+      <div class="chapter-title" data-i18n="api.D.title">Field reference</div>
+      <div class="chapter-meta" data-i18n="api.x.metaD">Every field · Every unit</div>
+    </div>
+    <p class="chapter-lede" data-i18n="api.D.lede">What each field means, and what it is measured in. Units are constant across the whole interface: PM in micrograms per cubic metre, temperature in Celsius, humidity in percent. Every instant is UTC; daily dates are the one exception, and they are WITA.</p>
+
+    <h3 class="subh" data-i18n="api.x.fldEnvH">The envelope</h3>
+    <div class="tscroll">
+    <table class="data-table">
+      <thead><tr><th data-i18n="api.x.thField">Field</th><th data-i18n="api.x.thMeaning2">Meaning</th><th data-i18n="api.x.thType">Type</th></tr></thead>
+      <tbody>
+        <tr><td class="f">version</td><td data-i18n="api.x.fVersion">Interface version. Present on every successful response.</td><td class="u">string</td></tr>
+        <tr><td class="f">count</td><td data-i18n="api.x.fCount">Number of rows in this response — this page, not the whole result set.</td><td class="u">integer</td></tr>
+        <tr><td class="f">generated_at</td><td data-i18n-html="api.x.fGeneratedAt">When this snapshot was assembled. <code class="k">/latest</code> only.</td><td class="u">ISO-8601 Z</td></tr>
+        <tr><td class="f">query</td><td data-i18n-html="api.x.fQuery">Your request as the interface understood it, with dates normalised. Check this first when a result surprises you. <code class="k">/measurements</code> only.</td><td class="u">object</td></tr>
+        <tr><td class="f">source_table</td><td data-i18n-html="api.x.fSourceTable">Which underlying store answered, or which stores were unioned on a bulk scan. <code class="k">/measurements</code> only.</td><td class="u">string</td></tr>
+        <tr><td class="f">date_basis</td><td data-i18n-html="api.x.fDateBasis">Which calendar the row keys are on: <code class="k">"WITA (UTC+8) calendar day"</code> for <code class="k">interval=daily</code>, <code class="k">"UTC instant"</code> for hourly and raw. <code class="k">/measurements</code> only.</td><td class="u">string</td></tr>
+        <tr><td class="f">next_cursor</td><td data-i18n-html="api.x.fNextCursor">Opaque continuation token, or <code class="k">null</code> when this is the last page. <code class="k">/measurements</code> JSON only — the CSV form puts it in <code class="k">X-Next-Cursor</code>.</td><td class="u">string · null</td></tr>
+        <tr><td class="f">licence</td><td data-i18n="api.x.fLicence">The four licence statements, repeated on every response so a saved file always carries its own terms.</td><td class="u">object</td></tr>
+        <tr><td class="f">error</td><td data-i18n-html="api.x.fError">Machine-readable failure code. Present only on errors, alongside <code class="k">message</code>.</td><td class="u">string</td></tr>
+        <tr><td class="f">message</td><td data-i18n-html="api.x.fMessage">A human sentence explaining the failure. Present only on errors. Show it; branch on <code class="k">error</code>.</td><td class="u">string</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3 class="subh" data-i18n="api.x.fldStationH">Station fields · /stations</h3>
+    <div class="tscroll">
+    <table class="data-table">
+      <thead><tr><th data-i18n="api.x.thField">Field</th><th data-i18n="api.x.thMeaning2">Meaning</th><th data-i18n="api.x.thType">Type</th></tr></thead>
+      <tbody>
+        <tr><td class="f">station_id</td><td data-i18n="api.x.fStationId">Stable identifier, prefixed by network. Use it verbatim; do not construct it. Some contain spaces.</td><td class="u">string</td></tr>
+        <tr><td class="f">name</td><td data-i18n="api.x.fName">Station name as the originating network publishes it.</td><td class="u">string</td></tr>
+        <tr><td class="f">source</td><td data-i18n="api.x.fSource">The network the reading came from — Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen or Airly.</td><td class="u">string</td></tr>
+        <tr><td class="f">latitude</td><td data-i18n="api.x.fLat">Decimal degrees, WGS 84. Negative in Bali.</td><td class="u">number</td></tr>
+        <tr><td class="f">longitude</td><td data-i18n="api.x.fLon">Decimal degrees, WGS 84.</td><td class="u">number</td></tr>
+        <tr><td class="f">type</td><td data-i18n="api.x.fType">Free-text device or ownership description from the network — government station, community sensor, and so on. Not a controlled vocabulary.</td><td class="u">string · null</td></tr>
+        <tr><td class="f">first_seen</td><td data-i18n="api.x.fFirstSeen">When this archive first collected from the station. JSON only.</td><td class="u">ISO-8601 Z</td></tr>
+        <tr><td class="f">last_seen</td><td data-i18n="api.x.fLastSeen">When this archive last collected from the station. JSON only.</td><td class="u">ISO-8601 Z</td></tr>
+        <tr><td class="f">first_date</td><td data-i18n-html="api.x.fFirstDate">Earliest day in the station's daily series. Can predate <code class="k">first_seen</code> where history was backfilled.</td><td class="u">YYYY-MM-DD</td></tr>
+        <tr><td class="f">last_date</td><td data-i18n="api.x.fLastDate">Most recent day in the station's daily series.</td><td class="u">YYYY-MM-DD</td></tr>
+        <tr><td class="f">days_of_data</td><td data-i18n="api.x.fDays">Count of days present in the daily series. Zero means no daily rollup exists yet, not that the station is silent.</td><td class="u">integer</td></tr>
+        <tr><td class="f">suspected_indoor</td><td data-i18n="api.x.fIndoor">True where the sensor appears to be measuring a room rather than ambient air. Read Chapter E before averaging anything.</td><td class="u">boolean</td></tr>
+        <tr><td class="f">pm25_correction_applied_since</td><td data-i18n-html="api.x.fCorrectionSince">The date from which this station's network has its PM2.5 humidity-corrected before publication, or <code class="k">null</code> for a network we never correct. A statement about network policy, not about any individual row: readings archived before this date are uncorrected even here. For per-row truth use <code class="k">pm25_corrected</code> on a <code class="k">/latest</code> or <code class="k">interval=raw</code> row.</td><td class="u">YYYY-MM-DD · null</td></tr>
+        <tr><td class="f">interval_source</td><td data-i18n-html="api.x.fIntervalSource">Which storage family serves this station: <code class="k">universal</code>, <code class="k">nafas</code> or <code class="k">iqair_scrape</code>. The last of these has no raw interval.</td><td class="u">string</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3 class="subh" data-i18n="api.x.fldReadingH">Reading fields · /latest and interval=raw</h3>
+    <div class="tscroll">
+    <table class="data-table">
+      <thead><tr><th data-i18n="api.x.thField">Field</th><th data-i18n="api.x.thMeaning2">Meaning</th><th data-i18n="api.x.thType">Type</th></tr></thead>
+      <tbody>
+        <tr><td class="f">observed_at</td><td data-i18n="api.x.fObservedAt">When this archive recorded the reading. This is the field to sort and join on.</td><td class="u">ISO-8601 Z</td></tr>
+        <tr><td class="f">source</td><td data-i18n-html="api.x.fSourceRow">The network the reading originated from. Carried on every <code class="k">/latest</code> row and every <code class="k">/measurements</code> row at every interval, so attribution never needs a join back to <code class="k">/stations</code>. This is the name to credit.</td><td class="u">string · null</td></tr>
+        <tr><td class="f">age_hours</td><td data-i18n-html="api.x.fAgeHours">How old the reading was, in hours to one decimal, at the moment the response was generated. <code class="k">/latest</code> only.</td><td class="u">number · null</td></tr>
+        <tr><td class="f">stale</td><td data-i18n-html="api.x.fStale"><code class="k">true</code> when <code class="k">age_hours</code> exceeds 24, and also when the station has no usable timestamp at all. <code class="k">/latest</code> only. Read it before treating a row as current conditions.</td><td class="u">boolean</td></tr>
+        <tr><td class="f">upstream_timestamp</td><td data-i18n-html="api.x.fUpstream">The timestamp the originating network attached to the same reading, where it gave one. Usually a minute or two before <code class="k">observed_at</code>. JSON only.</td><td class="u">ISO-8601 Z · null</td></tr>
+        <tr><td class="f">pm25</td><td data-i18n="api.x.fPm25">Fine particulate matter, 2.5 micrometres and below. The published value — humidity-corrected for AirGradient and PurpleAir, as-supplied for everyone else.</td><td class="u">µg/m³ · null</td></tr>
+        <tr><td class="f">pm25_raw</td><td data-i18n-html="api.x.fPm25Raw">The uncorrected sensor figure, stored alongside every corrected reading so the correction is auditable and reversible. <code class="k">null</code> where no correction was applied — which includes every row archived before the correction began, on corrected networks too.</td><td class="u">µg/m³ · null</td></tr>
+        <tr><td class="f">pm10</td><td data-i18n="api.x.fPm10">Particulate matter, 10 micrometres and below. Null on networks that do not publish it.</td><td class="u">µg/m³ · null</td></tr>
+        <tr><td class="f">pm1</td><td data-i18n="api.x.fPm1">Particulate matter, 1 micrometre and below. Null on networks that do not publish it.</td><td class="u">µg/m³ · null</td></tr>
+        <tr><td class="f">aqi</td><td data-i18n="api.x.fAqi">Air Quality Index as the originating network reported it. Networks differ in which scale they use, so do not compare AQI across sources — compare PM2.5.</td><td class="u">integer · null</td></tr>
+        <tr><td class="f">temperature</td><td data-i18n="api.x.fTemp">Air temperature at the sensor.</td><td class="u">°C · null</td></tr>
+        <tr><td class="f">humidity</td><td data-i18n="api.x.fHum">Relative humidity at the sensor. This is the input to the correction described in Chapter E.</td><td class="u">% · null</td></tr>
+        <tr><td class="f">suspected_indoor</td><td data-i18n="api.x.fIndoor2">True where the sensor appears to be measuring a room rather than ambient air. Carried on every row so a filter never needs a join.</td><td class="u">boolean</td></tr>
+        <tr><td class="f">pm25_corrected</td><td data-i18n-html="api.x.fCorrected2">True where <em>this reading</em> was humidity-corrected — which is exactly the rows carrying a <code class="k">pm25_raw</code>. A per-row fact, not a network-wide one: most archived PurpleAir and AirGradient rows predate the correction and are <code class="k">false</code>. Present on <code class="k">/latest</code> and on <code class="k">interval=raw</code> rows; aggregate rows do not carry it, because a bucket can straddle the changeover.</td><td class="u">boolean</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3 class="subh" data-i18n="api.x.fldAggH">Aggregate fields · interval=hourly and interval=daily</h3>
+    <div class="tscroll">
+    <table class="data-table">
+      <thead><tr><th data-i18n="api.x.thField">Field</th><th data-i18n="api.x.thMeaning2">Meaning</th><th data-i18n="api.x.thType">Type</th></tr></thead>
+      <tbody>
+        <tr><td class="f">date</td><td data-i18n-html="api.x.fDate">The day the bucket covers, as a <strong>WITA (UTC+8) calendar day</strong> — the local day, not the UTC one. Daily rows only. The response repeats this in <code class="k">date_basis</code>.</td><td class="u">YYYY-MM-DD</td></tr>
+        <tr><td class="f">observed_at</td><td data-i18n="api.x.fObservedAtH">Start of the hour the bucket covers, in UTC. Hourly rows only.</td><td class="u">ISO-8601 Z</td></tr>
+        <tr><td class="f">source</td><td data-i18n-html="api.x.fSourceRow2">The network the bucket's readings came from. Carried on every aggregate row; this is the name to credit.</td><td class="u">string · null</td></tr>
+        <tr><td class="f">pm25</td><td data-i18n="api.x.fPm25Mean">Mean PM2.5 across the bucket.</td><td class="u">µg/m³ · null</td></tr>
+        <tr><td class="f">pm25_min</td><td data-i18n="api.x.fPm25Min">Lowest PM2.5 seen in the bucket. Null where the store holds no distribution.</td><td class="u">µg/m³ · null</td></tr>
+        <tr><td class="f">pm25_max</td><td data-i18n="api.x.fPm25Max">Highest PM2.5 seen in the bucket. This is where short pollution events show up that a mean hides.</td><td class="u">µg/m³ · null</td></tr>
+        <tr><td class="f">aqi_max</td><td data-i18n="api.x.fAqiMax">Highest AQI seen in the bucket, on the originating network's scale.</td><td class="u">integer · null</td></tr>
+        <tr><td class="f">samples</td><td data-i18n-html="api.x.fSamples">How many observations went into the mean. A low count is a thin average — weight it accordingly. <code class="k">1</code> is common on older backfilled daily rows, where the mean, the minimum and the maximum are all the same single reading. <code class="k">null</code> where the store holds no count at all, which is not the same as a count of zero.</td><td class="u">integer · null</td></tr>
+        <tr><td class="f">suspected_indoor</td><td data-i18n="api.x.fIndoor3">True where the sensor appears to be measuring a room rather than ambient air.</td><td class="u">boolean</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- CHAPTER E — READING THE DATA HONESTLY -->
+  <section class="chapter" id="caveats">
+    <div class="chapter-head">
+      <div class="chapter-no">E</div>
+      <div class="chapter-title" data-i18n="api.E.title">Reading the data honestly</div>
+      <div class="chapter-meta" data-i18n="api.x.metaE">Read before averaging</div>
+    </div>
+    <p class="chapter-lede" data-i18n="api.E.lede">Seven things about this archive that will change your numbers. None of them are hidden, but all of them are easy to miss — and the first three are the ones that most often end up inside a published figure that is simply wrong.</p>
+
+    <div class="note warn">
+      <span class="label" data-i18n="api.x.caveat1Label">1 · Some of these sensors are indoors</span>
+      <p data-i18n-html="api.x.caveat1P1">A monitor sitting in a clinic waiting room or a purified bedroom measures that room, not the island's air, and it will read far cleaner than the street outside. Those stations carry <code class="k">suspected_indoor: true</code> on the station record <em>and</em> on every single measurement row, so a filter never needs a join.</p>
+      <p data-i18n-html="api.x.caveat1P2">This site excludes them from every island-wide statistic it publishes. <strong>If you are averaging across stations, you should too.</strong> They are published rather than deleted because a suspected classification should be yours to disagree with — but an ambient analysis that silently includes them will understate Bali's air quality problem, and it will do so invisibly.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="label" data-i18n="api.x.caveat2Label">2 · /latest is the newest reading held, not the newest reading taken</span>
+      <p data-i18n-html="api.x.caveat2P1">There is no freshness filter on <code class="k">/latest</code>. Every station the archive holds a usable value for gets a row, including sensors that stopped reporting months ago, and their last known value is returned as-is. Read literally as "conditions now", that route will hand you readings that are weeks old alongside readings that are minutes old, in the same array, indistinguishable by value.</p>
+      <p data-i18n-html="api.x.caveat2P2">Which is why every row carries <code class="k">age_hours</code> and <code class="k">stale</code>. <code class="k">stale</code> is <code class="k">true</code> past 24 hours; a large minority of the stations in a typical response are over it, and the oldest run to well past a thousand hours. <strong>Filter on <code class="k">stale</code>, or set your own threshold from <code class="k">age_hours</code>, before you average anything from this route.</strong> For a defensible current-conditions figure, prefer a bounded <code class="k">/measurements</code> window over <code class="k">/latest</code> altogether.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="label" data-i18n="api.x.caveat3Label">3 · A daily row can be one reading wearing a mean's clothes</span>
+      <p data-i18n-html="api.x.caveat3P1"><code class="k">samples</code> is how many observations went into an aggregate. On older backfilled daily rows it is frequently <code class="k">1</code> — and a large share of the daily series is in that state. Where the row was backfilled from a single snapshot, the minimum, the maximum and the mean are then all the same number:</p>
+      <pre class="code"><code>{ "station_id": "pa-46949", "source": "PurpleAir", "date": "2026-07-28",
+  "pm25": 12.6, "pm25_min": 12.6, "pm25_max": 12.6, "samples": 1 }</code></pre>
+      <p data-i18n-html="api.x.caveat3P2">That is not a daily average of Bali's air; it is one instant, presented in the shape of a daily average. Where the row was backfilled from an upstream daily summary instead, <code class="k">samples</code> is still <code class="k">1</code> while the min and max do differ — the count means one record ingested, not one sensor reading. Either way, <strong>check <code class="k">samples</code> before you plot a daily series</strong>, and where precision matters prefer <code class="k">interval=raw</code> or <code class="k">interval=hourly</code>, which are computed from the snapshots themselves. A <code class="k">null</code> is a different case again: that store holds no count, so you cannot tell how thin the row is.</p>
+    </div>
+
+    <div class="prose">
+      <p data-i18n-html="api.x.caveat4"><strong>Instants are UTC. Daily dates are WITA.</strong> This is the one place the interface is deliberately not uniform, and it will bite an analysis that assumes otherwise. Every <em>instant</em> — <code class="k">observed_at</code>, <code class="k">first_seen</code>, <code class="k">last_seen</code>, <code class="k">generated_at</code>, and the normalised <code class="k">from</code> and <code class="k">to</code> in the <code class="k">query</code> block — is ISO-8601 UTC with a trailing <code class="k">Z</code>. But a daily <code class="k">date</code> is a <strong>WITA calendar day</strong>, WITA being UTC+8 all year with no daylight saving. Daily buckets are aggregated on the local day because that is the meaningful one for a Bali reader: household waste burning has a sharp morning peak and a second climb after dark, and a UTC day would cut that evening in half. Every <code class="k">/measurements</code> response states which basis applies in <code class="k">date_basis</code>, so you never have to guess. Convert instants to WITA before analysing time of day, and do not silently re-bucket the daily series onto UTC.</p>
+
+      <p data-i18n-html="api.x.caveat5"><strong>Two networks are corrected, the rest are not, and only from a date.</strong> Low-cost optical sensors size particles with a laser, so in humid air water-swollen particles scatter more light and the sensor over-reads. AirGradient and PurpleAir publish that uncorrected figure on the open feeds we read, so we apply the standard US-EPA 2021 humidity correction before publication; every other network — Nafas, IQAir, AQICN, OpenAQ, Smart Citizen, Airly — is passed through exactly as supplied. The correction began on a specific date, which <code class="k">/stations</code> reports per network as <code class="k">pm25_correction_applied_since</code>, and it was not applied retroactively. The great majority of archived PurpleAir and AirGradient rows therefore predate it and carry <code class="k">pm25_corrected: false</code> with a <code class="k">null</code> <code class="k">pm25_raw</code> — so a series that crosses that date is not corrected uniformly along its length. Nothing is lost either way: <code class="k">pm25_raw</code> carries the original figure on every corrected reading, so you can reverse or re-derive the correction yourself. The formula and its behaviour at the bottom of its range are set out in the <a href="/appendix#methodology">methodology chapter of the appendix</a>.</p>
+
+      <p data-i18n-html="api.x.caveat6"><strong>Gaps are real.</strong> A sensor that went silent has no rows for that period — not a repeated last value, not a zero, not an interpolation. If your chart has a hole in it, that hole is the truth: nobody was measuring. This matters for Bali specifically, because several of the longest-running stations in the record went dark and stayed dark. Do not fill forward without saying so, and never treat a missing row as a clean-air row.</p>
+
+      <p data-i18n-html="api.x.caveat7"><strong>These are not reference instruments.</strong> Low-cost sensors drift, disagree with each other, and are affected by humidity and by their own siting. Values are published as recorded, without warranty of accuracy or fitness for any purpose. They are good enough to establish patterns, trends and magnitudes, and they are what exists — Bali has almost no regulatory monitoring. Treat them as evidence of what the air is doing, not as calibrated measurement, and say so in whatever you publish.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER F — RECIPES -->
+  <section class="chapter" id="recipes">
+    <div class="chapter-head">
+      <div class="chapter-no">F</div>
+      <div class="chapter-title" data-i18n="api.F.title">Recipes</div>
+      <div class="chapter-meta" data-i18n="api.x.metaF">Copy · Paste · Run</div>
+    </div>
+    <p class="chapter-lede" data-i18n="api.F.lede">Four things people actually want to do on the first afternoon. Each one runs as written.</p>
+
+    <h3 class="subh" data-i18n="api.x.r1H">1 · One station, daily, straight to a CSV file</h3>
+    <p class="prose" data-i18n="api.x.r1P">The whole daily record for the Klungkung sensor, saved where a spreadsheet can open it.</p>
+    <pre class="code"><code>curl -s -o klungkung-daily.csv \
+  "https://baliair.pages.dev/api/v1/measurements?station=pa-46949&amp;interval=daily&amp;format=csv"</code></pre>
+
+    <h3 class="subh" data-i18n="api.x.r2H">2 · Load the daily series into pandas</h3>
+    <p class="prose" data-i18n-html="api.x.r2P">Pandas reads the CSV straight off the URL. The one line that normalises <code class="k">suspected_indoor</code> is worth keeping: it makes the filter correct whether pandas parsed the column as a boolean or left it as text.</p>
+    <pre class="code"><code>import pandas as pd
+
+url = ("https://baliair.pages.dev/api/v1/measurements"
+       "?interval=daily&amp;from=2026-01-01&amp;format=csv&amp;limit=10000")
+
+df = pd.read_csv(url, parse_dates=["date"])
+df["suspected_indoor"] = df["suspected_indoor"].astype(str).str.lower() == "true"
+
+ambient = df[~df["suspected_indoor"]]
+print(ambient.groupby("date")["pm25"].median().tail(10))</code></pre>
+    <p class="prose" data-i18n-html="api.x.r2Note"><code class="k">limit=10000</code> is the ceiling for a single page. If <code class="k">X-Row-Count</code> comes back equal to your limit there is more behind it — page it with recipe 3. Two things to add before you publish anything off this frame: <code class="k">date</code> here is a WITA calendar day, not a UTC one, and the CSV also carries a <code class="k">samples</code> column worth filtering on — <code class="k">ambient[ambient["samples"] &gt; 1]</code> drops the single-observation daily rows described in Chapter E.</p>
+
+    <h3 class="subh" data-i18n="api.x.r3H">3 · Page the entire raw archive</h3>
+    <p class="prose" data-i18n-html="api.x.r3P">Roughly 140,000 rows, in pages of ten thousand. The cursor arrives in the <code class="k">X-Next-Cursor</code> header already URL-encoded, so it goes straight back into the query string; when the header stops appearing, you are done.</p>
+    <pre class="code"><code>#!/bin/sh
+base="https://baliair.pages.dev/api/v1/measurements?interval=raw&amp;limit=10000&amp;format=csv"
+cursor=""
+first=1
+
+while : ; do
+  url="$base"
+  [ -n "$cursor" ] &amp;&amp; url="$base&amp;cursor=$cursor"
+
+  curl -s -D headers.txt "$url" > page.csv
+
+  if [ "$first" = 1 ]; then cp page.csv archive.csv; first=0
+  else tail -n +2 page.csv >> archive.csv; fi
+
+  cursor=$(awk 'tolower($1)=="x-next-cursor:"{print $2}' headers.txt | tr -d '\r')
+  [ -z "$cursor" ] &amp;&amp; break
+done
+
+wc -l archive.csv</code></pre>
+
+    <h3 class="subh" data-i18n="api.x.r4H">4 · Build the indoor exclusion list</h3>
+    <p class="prose" data-i18n-html="api.x.r4P">Every measurement row carries its own <code class="k">suspected_indoor</code> flag, so most of the time you filter in place. When you need the list itself — to document what you excluded, or to filter a dataset you joined from elsewhere — take it from the catalogue.</p>
+    <pre class="code"><code>import pandas as pd
+
+st = pd.read_csv("https://baliair.pages.dev/api/v1/stations?format=csv")
+st["suspected_indoor"] = st["suspected_indoor"].astype(str).str.lower() == "true"
+
+indoor = sorted(st.loc[st["suspected_indoor"], "station_id"])
+print(len(indoor), "excluded:", indoor)
+
+ambient_stations = st.loc[~st["suspected_indoor"], ["station_id", "name", "source"]]</code></pre>
+  </section>
+
+  <!-- CHAPTER G — LICENCE -->
+  <section class="chapter" id="licence">
+    <div class="chapter-head">
+      <div class="chapter-no">G</div>
+      <div class="chapter-title" data-i18n="api.G.title">Licence, attribution, and what you build</div>
+      <div class="chapter-meta" data-i18n="api.x.metaG">Free to use · Please credit</div>
+    </div>
+    <p class="chapter-lede" data-i18n="api.G.lede">Use it, redistribute it, build on it, sell nothing back to us. Credit the networks that did the measuring.</p>
+
+    <div class="gloss-grid">
+      <dl class="gloss"><dt data-i18n="api.x.licArchiveT">The archive</dt><dd data-i18n="api.x.licArchive">Published for public-interest research. Free to use, redistribute and build on, with attribution. There is no separate commercial licence to buy and no permission to request — this exists to be used.</dd></dl>
+      <dl class="gloss"><dt data-i18n="api.x.licAttrT">Attribution</dt><dd data-i18n-html="api.x.licAttr">Credit both this archive — Bali Air Dispatch, baliair.pages.dev — and the originating network named in each row's <code class="k">source</code> field. The networks did the measuring; we only kept the record.</dd></dl>
+      <dl class="gloss"><dt data-i18n="api.x.licUpstreamT">Upstream terms</dt><dd data-i18n="api.x.licUpstream">Readings originate from independent networks — Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen and Airly — and remain subject to their own terms. This project aggregates and preserves; it does not own the underlying measurements.</dd></dl>
+      <dl class="gloss"><dt data-i18n="api.x.licWarrantyT">No warranty</dt><dd data-i18n="api.x.licWarranty">Low-cost sensors are not reference-grade instruments. Values are provided as recorded, without warranty of accuracy or fitness for any purpose. Every response repeats these four statements, so a saved file always carries its own terms.</dd></dl>
+    </div>
+
+    <div class="note">
+      <span class="label" data-i18n="api.x.buildLabel">Tell us what you build</span>
+      <p data-i18n="api.x.buildP1">If you make something with this — a study, a chart, a bot, a school project, a better map than ours — we would genuinely like to know. Not for credit; because knowing what the data is used for tells us what to collect next, and because someone else in the community is probably trying to do the same thing.</p>
+      <p data-i18n-html="api.x.buildP2">The <a href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer">WhatsApp community</a> is the fastest way to reach the people using this data, and the address in the footer works for anything longer. Bug reports on the interface itself are especially welcome: if a field is wrong, a cursor misbehaves or this page contradicts what the API actually does, that is a defect and we will fix it.</p>
+      <p data-i18n-html="api.x.buildP3">If you would rather add to the record than read it, the gaps on the map are simply places nobody has installed a sensor yet — <a href="/setup-monitor">the setup guide is here</a>.</p>
+    </div>
+  </section>
+
+  <!-- UNIVERSAL FOOTER · keep in sync across all pages -->
+  <footer class="foot">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.pages">Pages</h4>
+        <a href="/" data-i18n="nav.live">Live Monitor</a>
+        <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+        <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+        <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
+        <a href="/history" data-i18n="nav.history">History</a>
+        <a href="/appendix" data-i18n="foot.appendix">Appendix &amp; Methodology</a>
+        <a href="/api" data-i18n="foot.api">The API</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.dispatches">Dispatches</h4>
+        <a href="/dispatches/1" data-i18n="foot.disp.1">I — The daily guideline, exceeded.</a>
+        <a href="/dispatches/2" data-i18n="foot.disp.2">II — One government sensor.</a>
+        <a href="/dispatches/3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
+        <a href="/dispatches/4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
+        <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
+        <a href="/dispatches/6" data-i18n="foot.disp.6">VI — The fix, in order of impact.</a>
+        <a href="/dispatches/7" data-i18n="foot.disp.7">VII — Ninety days of data.</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.contact">Contact</h4>
+        <span class="email" tabindex="0" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;color:var(--ink);user-select:all;-webkit-user-select:all;cursor:text;border-bottom:1px dotted var(--hairline);padding:1px 4px;display:inline-block">baliair@protonmail.com</span>
+        <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="foot.community">Join the WhatsApp community</a>
+      </div>
+    </div>
+    <div class="foot-strip" data-i18n="foot.strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+    <div class="foot-rights"><strong data-i18n="foot.rights.label">Rights.</strong><span data-i18n="foot.rights.body"> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</span></div>
+    <div class="foot-sources"><strong data-i18n="foot.sources.label">Sources.</strong><span data-i18n="foot.sources.body"> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo</span></div>
+  </footer>
+
+</div>
+<script>
+// Dynamic WITA date for masthead folio
+(function(){
+  function update(){
+    const d = new Date();
+    const fmt = d.toLocaleDateString('en-GB',{
+      weekday:'long', day:'numeric', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    }).toUpperCase();
+    const el = document.getElementById('mt-date');
+    if (el) el.textContent = fmt;
+  }
+  update();
+  setInterval(update, 60*1000);
+})();
+</script>
+<script>
+// Live "try it" panel. Same-origin only (CSP: connect-src 'self'), so the demo
+// is the API documenting itself rather than a third-party playground.
+(function(){
+  const btn = document.getElementById('try-btn');
+  const out = document.getElementById('try-out');
+  if (!btn || !out) return;
+
+  const say = (key, fallback) => {
+    const code = document.createElement('code');
+    code.textContent = (window.I18N ? window.I18N.t(key, fallback) : fallback);
+    out.replaceChildren(code);
+  };
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    say('api.x.tryLoading', 'Requesting /api/v1 …');
+    try {
+      const r = await fetch('/api/v1', { headers:{ 'Accept':'application/json' } });
+      let body = await r.text();
+      // Pretty-print when it parses; otherwise show the first few KB verbatim
+      // rather than pasting an unbounded error page into the document.
+      try { body = JSON.stringify(JSON.parse(body), null, 2); }
+      catch (_) { body = body.slice(0, 4000); }
+      const code = document.createElement('code');
+      code.textContent = 'GET /api/v1 → HTTP ' + r.status + '\n\n' + body;
+      out.replaceChildren(code);
+    } catch (e) {
+      say('api.x.tryFail', 'The request failed. The interface may be briefly unreachable — try the curl command above.');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+<script>
+// Folio status line, filled from the interface this page documents.
+(function(){
+  const el = document.getElementById('nav-status');
+  if (!el) return;
+  fetch('/api/v1/latest', { headers:{ 'Accept':'application/json' } })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (!d || !Array.isArray(d.readings)) return;
+      el.textContent = 'API V1 · LIVE · ' + d.readings.length + ' STATIONS REPORTING';
+    })
+    .catch(() => {});
+})();
+</script>
+<script src="/js/i18n.js" defer></script>
+</body>
+</html>
