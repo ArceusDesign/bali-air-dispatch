@@ -955,7 +955,18 @@ function renderAll(ts){
 
   // Exclude stale stations from "worst now" — their pm25 is a frozen cached value,
   // not a current reading. A station flagged stale has not reported in >24h.
-  const worst = liveStations.filter(s=>!s.stale).reduce((a,b)=>((b.pm25??-1)>(a.pm25??-1)?b:a),{pm25:-1});
+  // AMBIENT set = fresh AND outdoor. Every figure that makes a claim about the
+  // island's air — worst-now, network median, the WHO exceedance ratio, the
+  // Worst-3 cards — is computed from this, never from the raw live list.
+  // A suspected-indoor sensor measures a room, not the air outside: they read
+  // near zero (Tonja 1.1, Jimbaran 0.8 at time of writing) and were dragging
+  // the island-wide median down by ~6.5 µg/m³, i.e. reporting the air as
+  // cleaner than it is — the one direction of error this site must not make.
+  // They are still counted as LIVE SENSORS below, because they are real pins a
+  // visitor can count on the map; they just don't get a vote on ambient air.
+  const isAmbient = (s) => s && !s.stale && !isIndoor(s);
+  const ambientStations = liveStations.filter(isAmbient);
+  const worst = ambientStations.reduce((a,b)=>((b.pm25??-1)>(a.pm25??-1)?b:a),{pm25:-1});
 
   allStations.forEach(s=>{
     if(s.lat==null||s.lon==null) return;
@@ -1025,9 +1036,10 @@ function renderAll(ts){
   // visible) and let months-old cached values move the median. Both boxes and
   // the HUD now agree with each other AND with the two map layers.
   const freshStations = liveStations.filter(s => s && !s.stale);
-  const pms = freshStations.map(s=>s.pm25).filter(v=>v!=null).sort((a,b)=>a-b);
+  // Median / WHO ratio describe ambient air → ambientStations, not freshStations.
+  const pms = ambientStations.map(s=>s.pm25).filter(v=>v!=null).sort((a,b)=>a-b);
   const median = pms.length ? (pms.length%2 ? pms[(pms.length-1)/2] : (pms[pms.length/2-1]+pms[pms.length/2])/2) : null;
-  const overWho = freshStations.filter(s=>s.pm25!=null && s.pm25>15).length;
+  const overWho = ambientStations.filter(s=>s.pm25!=null && s.pm25>15).length;
 
   document.getElementById('b-live').textContent = freshStations.length;
   document.getElementById('b-med').innerHTML = median!=null ? median.toFixed(1)+'<em>µg</em>' : '—';
@@ -1062,7 +1074,9 @@ function renderAll(ts){
   document.getElementById('mt-ts').textContent = syncLabel;
   const tb=document.getElementById('mt-ts2'); if(tb) tb.textContent=new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA';
 
-  renderBulletinTicker(worst, median, overWho, offlineLikeCount, freshStations.length);
+  // "N of M stations above WHO" — M must be the ambient denominator that
+  // produced N, not the live-sensor count, or the ratio misreads.
+  renderBulletinTicker(worst, median, overWho, offlineLikeCount, ambientStations.length);
   renderRollTable();
   renderArchive();
 }
@@ -1190,8 +1204,10 @@ async function renderArchive(){
   // Top 3 by current PM2.5 (descending). Skip null/zero readings AND stale
   // stations (their pm25 is the last cached value from when they went dark,
   // not a current measurement — would unfairly dominate the Worst-3 list).
+  // Suspected-indoor sensors are excluded too: this section claims "where the
+  // air is most consistently bad", which is a statement about ambient air.
   const ranked = [...liveStations]
-    .filter(s => Number.isFinite(+s.pm25) && +s.pm25 > 0 && !s.stale)
+    .filter(s => Number.isFinite(+s.pm25) && +s.pm25 > 0 && !s.stale && !isIndoor(s))
     .sort((a,b) => (+b.pm25) - (+a.pm25))
     .slice(0, 3);
 
