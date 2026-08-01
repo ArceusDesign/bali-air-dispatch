@@ -814,6 +814,13 @@ const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c => (
 const INDOOR_IDS = new Set([
   'nafas-ba19b143-3580-4a60-a3ce-135a5e5936dd',  // Pemogan (Nafas)
   'pa-36601',                                     // Jimbaran by Lumi Clinic (PurpleAir)
+  // Tonja (Nafas) — reported normal ambient air for months (55.9 µg/m³ on 1 Jul,
+  // and the island's worst single day at 164.6 on 10 Jun), then resumed on
+  // 27 Jul reading a flat 0.0 every day since. A true zero for days on end in
+  // burn season is not outdoor Bali air. An AirGradient unit ("Tonja - Nafas")
+  // appeared at the identical coordinates on that same date, so the site was
+  // evidently reworked and this unit ended up inside.
+  'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',   // Tonja (Nafas)
 ]);
 const isIndoor = (s) => INDOOR_IDS.has(typeof s === 'string' ? s : (s && s.id));
 let liveStations = [];

@@ -309,6 +309,14 @@ export async function onRequest(context) {
     const HIDDEN_STATION_IDS = [
       'iq-Seminyak town', 'iq-Dajan Tangluk', 'iq-Banjar',
       'iq-Subagan', 'iq-Munduk', 'iq-Jimbaran',
+      // "Tonja - Nafas" — an AirGradient unit that appeared on 27 Jul at the
+      // EXACT coordinates of the long-running Nafas Tonja station. The map
+      // already collapses it (dedupAirGradient drops an AG pin within 300 m of
+      // another source), but the history picker lists straight from this
+      // catalog, so it surfaced there as a near-empty duplicate of a station we
+      // have months of record for. Hidden from the listing only — its archived
+      // rows are untouched and still reachable by id.
+      'ag-77247',
     ];
     const hidePlaceholders = HIDDEN_STATION_IDS.map((_, i) => '?' + (i + 1)).join(',');
     const universal = await db.prepare(`
