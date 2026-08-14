@@ -623,5 +623,22 @@
   "api.x.caveat3P1": "<code class=\"k\">samples</code> is how many observations went into an aggregate. On older backfilled daily rows it is frequently <code class=\"k\">1</code> — and a large share of the daily series is in that state. Where the row was backfilled from a single snapshot, the minimum, the maximum and the mean are then all the same number:",
   "api.x.caveat3P2": "That is not a daily average of Bali's air; it is one instant, presented in the shape of a daily average. Where the row was backfilled from an upstream daily summary instead, <code class=\"k\">samples</code> is still <code class=\"k\">1</code> while the min and max do differ — the count means one record ingested, not one sensor reading. Either way, <strong>check <code class=\"k\">samples</code> before you plot a daily series</strong>, and where precision matters prefer <code class=\"k\">interval=raw</code> or <code class=\"k\">interval=hourly</code>, which are computed from the snapshots themselves. A <code class=\"k\">null</code> is a different case again: that store holds no count, so you cannot tell how thin the row is.",
   "api.x.caveat6": "<strong>Gaps are real.</strong> A sensor that went silent has no rows for that period — not a repeated last value, not a zero, not an interpolation. If your chart has a hole in it, that hole is the truth: nobody was measuring. This matters for Bali specifically, because several of the longest-running stations in the record went dark and stayed dark. Do not fill forward without saying so, and never treat a missing row as a clean-air row.",
-  "api.x.caveat7": "<strong>These are not reference instruments.</strong> Low-cost sensors drift, disagree with each other, and are affected by humidity and by their own siting. Values are published as recorded, without warranty of accuracy or fitness for any purpose. They are good enough to establish patterns, trends and magnitudes, and they are what exists — Bali has almost no regulatory monitoring. Treat them as evidence of what the air is doing, not as calibrated measurement, and say so in whatever you publish."
+  "api.x.caveat7": "<strong>These are not reference instruments.</strong> Low-cost sensors drift, disagree with each other, and are affected by humidity and by their own siting. Values are published as recorded, without warranty of accuracy or fitness for any purpose. They are good enough to establish patterns, trends and magnitudes, and they are what exists — Bali has almost no regulatory monitoring. Treat them as evidence of what the air is doing, not as calibrated measurement, and say so in whatever you publish.",
+  "home.layer.reports": "Reports",
+  "home.x.legReports": "<span class=\"sw\" style=\"background:var(--crimson);border-radius:50%\"></span>Small dot = community burning report, fading over 30 days",
+  "report.tag": "Community report",
+  "report.category.burning": "Burning",
+  "report.approxLocation": "location shown to ~250 m, not exact",
+  "report.justNow": "just now",
+  "report.hoursAgo": "hours ago",
+  "report.dayAgo": "day ago",
+  "report.daysAgo": "days ago",
+  "report.about": "About this report",
+  "report.aboutBody": "Submitted by a resident via WhatsApp or Telegram and reviewed by a human moderator before publication. This is a citizen observation, not a sensor reading, and plays no part in any air-quality statistic on this site.",
+  "report.source": "Source",
+  "report.whatWasSeen": "What was seen",
+  "report.whatWasSeenAll": "What was seen here",
+  "report.reportsHere": "reports at this location",
+  "report.aiNote": "Descriptions above are generated automatically from the photo and are not verified.",
+  "report.mostRecent": "Most recent"
 }

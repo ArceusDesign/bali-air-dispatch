@@ -310,6 +310,132 @@ async function rollupDaily(db, nowSec) {
   }
 }
 
+// ── Community burning reports (Making Sense Bali) ──────────────────────────
+// Archives the same reports the map shows, because the upstream feed is a
+// rolling publication, not an archive: it has no historical endpoint and
+// removes reports when a resident revokes consent. See
+// schema-v6-community-reports.sql for the full rationale.
+//
+// Reads OUR OWN /api/reports rather than upstream directly, deliberately: that
+// endpoint already applies the burning filter, the test/junk content heuristic
+// and — critically — the ~275 m coordinate snapping. Duplicating those rules
+// here would let them drift, and a drift in the snapping rule specifically
+// would mean archiving building-level coordinates we have committed never to
+// store. One implementation, one place. (No cache-buster needed: unlike
+// /api/live there is no D1 round-trip to loop through, so a ≤10 min cached
+// copy is harmless at a 15 min cadence.)
+//
+// Liveness is judged against the upstream index, NOT against /api/reports:
+// /api/reports only returns the last 30 days, so a still-published older
+// report is absent from it and would otherwise be mistaken for a revocation.
+const MSB_INDEX = 'https://mdg-bali.github.io/makingsensebali/data/reports/index.json';
+const REPORTS_TIMEOUT_MS = 10000;
+
+async function reportsArchive(db, originBase, nowSec) {
+  const out = { upserts: 0, revoked: 0, note: null };
+
+  // 1 — content to archive (already filtered + snapped by our own endpoint).
+  // Timeouts throughout: this pass runs AHEAD of the IQAir watchdog, so a hung
+  // third-party connection must never stall the rest of the tick.
+  const url = (originBase || 'https://baliair.pages.dev').replace(/\/$/, '') + '/api/reports';
+  const r = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(REPORTS_TIMEOUT_MS),
+  });
+  if (!r.ok) throw new Error('reports HTTP ' + r.status);
+  const payload = await r.json();
+  const reports = Array.isArray(payload && payload.reports) ? payload.reports : [];
+
+  if (reports.length) {
+    const stmt = db.prepare(`
+      INSERT INTO community_reports
+        (report_id, category, lat, lon, locality, date_added,
+         description, ai_description, has_photo, first_seen, last_seen, revoked_at)
+      VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, ?7, ?8, ?9, ?9, NULL)
+      ON CONFLICT(report_id) DO UPDATE SET
+        lat            = excluded.lat,
+        lon            = excluded.lon,
+        locality       = excluded.locality,
+        ai_description = excluded.ai_description,
+        has_photo      = excluded.has_photo,
+        last_seen      = excluded.last_seen,
+        -- Seen again ⇒ published again. Clears a previous revocation.
+        revoked_at     = NULL
+    `);
+    // `description` is bound to NULL, never written: /api/reports deliberately
+    // does not return the resident's free text (it carries street names, named
+    // businesses and self-identifying phrasing — see that file's header), and
+    // we do not collect what we have decided not to publish. The column is kept
+    // so the schema stays additive and the choice stays reversible.
+    const batch = [];
+    for (const rep of reports) {
+      if (!rep || !rep.id || rep.lat == null || rep.lon == null || !rep.date_added) continue;
+      batch.push(stmt.bind(
+        rep.id, 'burning', rep.lat, rep.lon, rep.locality || null, rep.date_added,
+        rep.ai_description || null,
+        rep.has_photo ? 1 : 0, nowSec
+      ));
+    }
+    if (batch.length) {
+      await db.batch(batch);
+      out.upserts = batch.length;
+    }
+  }
+
+  // 2 — revocation sweep, diffed in JS so there is no unbounded IN(...) clause
+  // and no write at all on the overwhelmingly common no-change tick.
+  const ir = await fetch(MSB_INDEX, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(REPORTS_TIMEOUT_MS),
+  });
+  if (!ir.ok) { out.note = 'index_fetch_failed_skipped_sweep'; return out; }
+  const idx = await ir.json();
+  const profiles = Array.isArray(idx && idx.profiles) ? idx.profiles : [];
+  // GUARD: an empty/garbled index must never be read as "everything was
+  // revoked" — that would erase every description we hold in one tick.
+  if (!profiles.length) { out.note = 'index_empty_skipped_sweep'; return out; }
+  const published = new Set(profiles.map((p) => String(p).replace(/\.json$/, '')));
+
+  const held = await db.prepare(
+    `SELECT report_id FROM community_reports WHERE revoked_at IS NULL`
+  ).all();
+  const heldIds = (held.results || []).map((x) => x.report_id);
+  const gone = heldIds.filter((id) => !published.has(id));
+  if (!gone.length) return out;
+
+  // GUARD: a partial upstream index (truncated deploy, CDN hiccup) would look
+  // like a mass revocation. Real consent withdrawals are one-offs; anything
+  // resembling a bulk disappearance is far more likely to be an upstream fault,
+  // so log it and wait for the next tick rather than destroying text.
+  //
+  // The bound is max(2, 25% of held) and applies at EVERY size. An earlier
+  // version gated this on `heldIds.length >= 10`, which ratchets itself off:
+  // repeated bad ticks shrink the live set each time, and once it falls under
+  // 10 the guard goes inert and the next bad tick erases everything. Scaling
+  // the allowance instead means a genuine bulk withdrawal still completes, just
+  // spread over several 15-minute ticks — which costs nothing, because the
+  // alternative is unrecoverable: revocation NULLs text, and a report older
+  // than 30 days never reappears in /api/reports to be restored.
+  const allowed = Math.max(2, Math.floor(heldIds.length * 0.25));
+  if (gone.length > allowed) {
+    out.note = `mass_revocation_suspected_skipped (${gone.length} gone > ${allowed} allowed of ${heldIds.length} held)`;
+    return out;
+  }
+
+  const rstmt = db.prepare(`
+    UPDATE community_reports
+       SET revoked_at = ?1, description = NULL, ai_description = NULL
+     WHERE report_id = ?2 AND revoked_at IS NULL
+  `);
+  await db.batch(gone.map((id) => rstmt.bind(nowSec, id)));
+  out.revoked = gone.length;
+  // Count only — report ids are written into archive_runs.error, which is
+  // outside the consent machinery and never cleaned up. The count is what an
+  // operator needs; the ids are recoverable from the table itself.
+  out.note = `revoked ${gone.length}`;
+  return out;
+}
+
 async function archiveOnce(env) {
   const t0 = Date.now();
   const nowSec = Math.floor(t0 / 1000);
@@ -402,6 +528,23 @@ async function archiveOnce(env) {
     errMsg = e.message || String(e);
   }
 
+  // ── Community reports archive ─────────────────────────────────────────
+  // Placed AFTER the sensor passes (they are the priority) but BEFORE the
+  // watchdog, which can block for tens of seconds when it fires. This pass is
+  // two small fetches and usually zero writes, and the data is irreplaceable
+  // (upstream deletes on consent withdrawal and keeps no history), so it
+  // should not sit behind the slowest thing in the tick. Fully isolated:
+  // any failure here is recorded and never touches the sensor archive.
+  let reportsNote = null;
+  try {
+    const rep = await reportsArchive(db, env.LIVE_ORIGIN, nowSec);
+    reportsNote = `reports: ${rep.upserts} upserted, ${rep.revoked} revoked`
+                + (rep.note ? ` (${rep.note})` : '');
+  } catch (e) {
+    reportsNote = 'reports_archive_failed: ' + (e.message || String(e));
+    console.warn(reportsNote);
+  }
+
   // ── IQAir-scrape watchdog ─────────────────────────────────────────────
   // The iqair-scrape worker's SCHEDULED invocations get killed platform-side
   // ("Exceeded CPU Limit" before writing anything) while its HTTP/binding
@@ -451,7 +594,7 @@ async function archiveOnce(env) {
     // archive_runs schema only knows about Nafas counters; encode universal
     // counts into the higher columns via simple addition for visibility.
     // Combine errors: Nafas-specific failure + universal-pass warning.
-    const combinedErr = [errMsg, universalWarning, watchdogNote].filter(Boolean).join(' | ') || null;
+    const combinedErr = [errMsg, universalWarning, reportsNote, watchdogNote].filter(Boolean).join(' | ') || null;
     await db.prepare(`
       INSERT OR REPLACE INTO archive_runs
         (ts, stations_seen, snapshots_written, hourly_upserts, daily_upserts, duration_ms, ok, error)
@@ -472,7 +615,8 @@ async function archiveOnce(env) {
     nafasStations: stationsSeen, nafasSnapshots: snapshots,
     universalStations, universalSnapshots: universalSnaps,
     universalDailyRows,
-    hourly, daily, duration, error: errMsg
+    hourly, daily, duration, error: errMsg,
+    reports: reportsNote
   };
 }
 

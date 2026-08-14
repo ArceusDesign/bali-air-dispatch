@@ -1236,5 +1236,22 @@
   "api.x.caveat3P1": "<code class=\"k\">samples</code> adalah berapa banyak pengamatan yang masuk ke dalam sebuah agregat. Pada baris harian lama hasil pengisian mundur, nilainya sering <code class=\"k\">1</code> — dan sebagian besar deret harian berada dalam keadaan itu. Bila barisnya diisi mundur dari satu cuplikan tunggal, minimum, maksimum, dan rata-ratanya lalu menjadi angka yang sama persis:",
   "api.x.caveat3P2": "Itu bukan rata-rata harian udara Bali; itu satu saat, disajikan dalam bentuk rata-rata harian. Bila barisnya diisi mundur dari rangkuman harian sumber, <code class=\"k\">samples</code> tetap <code class=\"k\">1</code> sementara min dan maksnya berbeda — jumlah itu berarti satu catatan yang dimasukkan, bukan satu pembacaan sensor. Bagaimanapun juga, <strong>periksa <code class=\"k\">samples</code> sebelum Anda memplot deret harian</strong>, dan bila presisi penting, lebih baik pakai <code class=\"k\">interval=raw</code> atau <code class=\"k\">interval=hourly</code>, yang dihitung dari cuplikannya sendiri. <code class=\"k\">null</code> adalah kasus yang lain lagi: penyimpanan itu tidak memuat jumlah sama sekali, jadi Anda tidak bisa tahu seberapa tipis barisnya.",
   "api.x.caveat6": "<strong>Celah data itu nyata.</strong> Sensor yang berhenti bersuara tidak punya baris untuk periode itu — bukan nilai terakhir yang diulang, bukan nol, bukan interpolasi. Jika grafik Anda berlubang, lubang itulah kebenarannya: tidak ada yang mengukur. Ini penting khusus untuk Bali, karena beberapa stasiun terlama dalam rekaman mati dan tetap mati. Jangan mengisi maju tanpa mengatakannya, dan jangan pernah memperlakukan baris yang hilang sebagai baris udara bersih.",
-  "api.x.caveat7": "<strong>Ini bukan instrumen rujukan.</strong> Sensor berbiaya rendah mengalami penyimpangan, saling berbeda, dan dipengaruhi kelembapan serta penempatannya sendiri. Nilai diterbitkan sebagaimana terekam, tanpa jaminan akurasi atau kesesuaian untuk tujuan apa pun. Ia cukup baik untuk memastikan pola, tren, dan besaran, dan inilah yang ada — Bali nyaris tidak punya pemantauan resmi. Perlakukan sebagai bukti tentang apa yang sedang terjadi pada udara, bukan sebagai pengukuran terkalibrasi, dan sebutkan hal itu dalam apa pun yang Anda terbitkan."
+  "api.x.caveat7": "<strong>Ini bukan instrumen rujukan.</strong> Sensor berbiaya rendah mengalami penyimpangan, saling berbeda, dan dipengaruhi kelembapan serta penempatannya sendiri. Nilai diterbitkan sebagaimana terekam, tanpa jaminan akurasi atau kesesuaian untuk tujuan apa pun. Ia cukup baik untuk memastikan pola, tren, dan besaran, dan inilah yang ada — Bali nyaris tidak punya pemantauan resmi. Perlakukan sebagai bukti tentang apa yang sedang terjadi pada udara, bukan sebagai pengukuran terkalibrasi, dan sebutkan hal itu dalam apa pun yang Anda terbitkan.",
+  "home.layer.reports": "Laporan",
+  "home.x.legReports": "<span class=\"sw\" style=\"background:var(--crimson);border-radius:50%\"></span>Titik kecil = laporan pembakaran dari warga, memudar selama 30 hari",
+  "report.tag": "Laporan warga",
+  "report.category.burning": "Pembakaran",
+  "report.approxLocation": "lokasi ditampilkan hingga ~250 m, tidak persis",
+  "report.justNow": "baru saja",
+  "report.hoursAgo": "jam lalu",
+  "report.dayAgo": "hari lalu",
+  "report.daysAgo": "hari lalu",
+  "report.about": "Tentang laporan ini",
+  "report.aboutBody": "Dikirim oleh warga melalui WhatsApp atau Telegram dan ditinjau oleh moderator manusia sebelum diterbitkan. Ini adalah observasi warga, bukan pembacaan sensor, dan tidak menjadi bagian dari statistik kualitas udara mana pun di situs ini.",
+  "report.source": "Sumber",
+  "report.whatWasSeen": "Apa yang terlihat",
+  "report.whatWasSeenAll": "Apa yang terlihat di sini",
+  "report.reportsHere": "laporan di lokasi ini",
+  "report.aiNote": "Deskripsi di atas dihasilkan otomatis dari foto dan belum diverifikasi.",
+  "report.mostRecent": "Terbaru"
 }

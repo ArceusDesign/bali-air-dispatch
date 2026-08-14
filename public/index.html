@@ -159,6 +159,16 @@ body::before{
 .pin.seed{background:var(--paper);border-color:var(--rule);color:var(--ink-faint);animation:seedPulse 1.25s ease-in-out infinite;cursor:default}
 .pin.seed .pm{opacity:.45}
 @keyframes seedPulse{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:.55;transform:scale(.93)}}
+/* Community burning reports — deliberately a small plain dot, not a pin, so
+   it never reads as a sensor reading. Colour + glow are set inline per-marker
+   (continuous fade with age), not via class, since every dot's age differs. */
+.report-dot{border-radius:50%;border:1px solid var(--ink);cursor:pointer;transition:transform .15s;display:flex;align-items:center;justify-content:center;position:relative}
+.report-dot:hover{transform:scale(1.35);z-index:1000!important}
+.report-dot.selected{transform:scale(1.5);box-shadow:0 0 0 3px var(--crimson);z-index:1001!important}
+/* Count badge — a cell holding several reports of the same site over time.
+   Recurrence is the most useful thing this layer surfaces, so it's shown on
+   the dot rather than only inside the panel. */
+.report-count{position:absolute;top:-6px;right:-7px;background:var(--ink);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-size:8.5px;font-weight:700;line-height:1;padding:2px 3.5px;border-radius:7px;min-width:12px;text-align:center;letter-spacing:-.02em}
 
 /* ===== FLOATING MAP CARDS ===== */
 .map-card{position:absolute;z-index:500;background:var(--paper);border:1px solid var(--rule);box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
@@ -523,6 +533,10 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
         <svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h14a3 3 0 1 1-3 3"/><path d="M3 16h8"/></svg>
         <span class="lbl" data-i18n="home.layer.wind">Wind</span><span class="swch"></span>
       </div>
+      <div class="layer-row on" id="lr-reports" onclick="toggleLayer('reports')">
+        <svg class="icn" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+        <span class="lbl" data-i18n="home.layer.reports">Reports</span><span class="swch"></span>
+      </div>
       </div><!-- /card-body -->
     </div>
 
@@ -554,6 +568,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
           <div class="legend-row" data-i18n-html="home.x.legVunh"><span class="sw" style="background:var(--aqi-vunh)"></span>Very Unhealthy · 150.5–250.4</div>
           <div class="legend-row" data-i18n-html="home.x.legHaz"><span class="sw" style="background:var(--aqi-haz)"></span>Hazardous · 250.5+</div>
           <div class="legend-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--hairline)" data-i18n-html="home.x.legDashed"><span class="dash"></span>Dashed ring = offline sensor</div>
+          <div class="legend-row" data-i18n-html="home.x.legReports"><span class="sw" style="background:var(--crimson);border-radius:50%"></span>Small dot = community burning report, fading over 30 days</div>
         </div>
       </div>
     </div>
@@ -770,7 +785,7 @@ const map = L.map('map-leaflet',{
   zoomControl:true
 });
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-  attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> · © <a href="https://carto.com/attributions">CARTO</a>',
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> · © <a href="https://carto.com/attributions">CARTO</a> · <a href="https://mdg-bali.github.io/makingsensebali/" target="_blank" rel="noopener">Reports: Making Sense Bali</a> (CC BY 4.0)',
   subdomains:'abcd', maxZoom:19
 }).addTo(map);
 map.fitBounds(BALI,{padding:[20,20]});
@@ -829,9 +844,16 @@ let scTombstones = []; // server-driven OFFLINE tombstones (off:true) — dead /
                        // indoor-retagged Smart Citizen units kept visible with
                        // their archived record; never counted as live
 let allStations  = []; // live + offline
+// Community burning reports (Making Sense Bali). Deliberately kept OUT of
+// allStations/liveStations — these are unverified citizen claims, not sensor
+// readings, and must never be able to reach the median/worst-now/WHO-ratio
+// math or the station roll. Own array, own layer, own panel renderer.
+let reportStations = [];
+const reportMarkers = {};
 const hazeLayer  = L.layerGroup().addTo(map);
 const liveLayer  = L.layerGroup().addTo(map);
 const offLayer   = L.layerGroup().addTo(map);
+const reportLayer = L.layerGroup().addTo(map);
 const markers = {};
 
 // haze cloud colors keyed to AQI class
@@ -913,6 +935,140 @@ async function loadLive(){
     const tb=document.getElementById('mt-ts2'); if(tb) tb.textContent='unreachable';
     renderAll(new Date().toISOString());
   }
+}
+
+/* =========================================================
+   COMMUNITY REPORTS (Making Sense Bali) — burning events only.
+   Entirely separate from the sensor pipeline above: own array, own
+   layer, own panel renderer. Never touches liveStations/allStations,
+   so it can never reach the median/worst-now/WHO-ratio math.
+   ========================================================= */
+async function loadReports(){
+  try{
+    const r = await fetch(API_BASE + '/api/reports', {cache:'no-cache'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    reportStations = (d.reports||[]).filter(x=>x && x.lat!=null && x.lon!=null);
+    renderReports();
+  }catch(e){
+    console.warn('reports fetch failed', e); // enhancement layer — never block the base map
+  }
+}
+function reportColor(ageHours){
+  // Dark crimson (fresh) fading to the page's own paper colour at 30 days —
+  // old reports look like they're fading into the page, not just "lighter red".
+  const frac = Math.min(1, Math.max(0, ageHours / (30*24)));
+  const c0=[139,26,26], c1=[243,236,224];
+  const rgb = c0.map((v,i)=>Math.round(v+(c1[i]-v)*frac));
+  return `rgb(${rgb.join(',')})`;
+}
+// Group reports by their SNAPPED cell before drawing. The ~275 m snap in
+// functions/api/reports.js deliberately collapses repeat reports of the same
+// site onto one identical point — that clustering is the signal we want. But
+// one Leaflet marker per report then means N fully-overlapping opaque dots:
+// everything underneath is invisible AND unclickable (the top marker takes all
+// pointer events), and which one ends up on top is an accident of DOM order
+// rather than a decision. Measured against live data, 5 of 12 reports were
+// unreachable this way. One marker per cell, carrying the whole group.
+let reportCells = new Map();
+function renderReports(){
+  reportLayer.clearLayers();
+  for(const k in reportMarkers) delete reportMarkers[k];
+  reportCells = new Map();
+  for(const r of reportStations){
+    const key = r.lat+','+r.lon;
+    if(!reportCells.has(key)) reportCells.set(key, []);
+    reportCells.get(key).push(r);
+  }
+  for(const [key, group] of reportCells){
+    group.sort((a,b)=>a.age_hours-b.age_hours);   // freshest first, explicitly —
+                                                  // never rely on server sort order
+    const head = group[0];
+    const fresh = head.age_hours < 24;
+    const size = fresh ? 13 : 10;
+    const color = reportColor(head.age_hours);    // cell takes the FRESHEST report's age
+    // Ember glow on fresh reports only, faded out with the dot itself —
+    // ties the visual metaphor to the thing being reported.
+    const glow = fresh ? '0 0 0 4px rgba(139,26,26,.16), 0 0 7px 2px rgba(139,26,26,.30)' : 'none';
+    const badge = group.length>1
+      ? `<span class="report-count">${group.length}</span>` : '';
+    const html = `<div class="report-dot" data-rcell="${esc(key)}" style="width:${size}px;height:${size}px;background:${color};box-shadow:${glow}">${badge}</div>`;
+    const icon = L.divIcon({ className:'', html, iconSize:[size,size], iconAnchor:[size/2,size/2] });
+    const mk = L.marker([head.lat,head.lon],{icon, riseOnHover:true});
+    mk.on('click',()=>openReportPanel(key));
+    mk.addTo(reportLayer);
+    reportMarkers[key]=mk;
+  }
+}
+function fmtAge(hours){
+  const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
+  if(hours < 1) return t('report.justNow','just now');
+  if(hours < 24) return hours + ' ' + t('report.hoursAgo','hours ago');
+  const d = Math.round(hours/24);
+  return d + ' ' + (d===1 ? t('report.dayAgo','day ago') : t('report.daysAgo','days ago'));
+}
+function openReportPanel(cellKey){
+  const group = reportCells.get(cellKey);
+  if(!group || !group.length) return;
+  const panel = document.getElementById('panel');
+  const body  = document.getElementById('panelBody');
+  Object.values(markers).forEach(m=>{
+    const el = m.getElement()?.querySelector('.pin'); if(el) el.classList.remove('selected');
+  });
+  Object.values(reportMarkers).forEach(m=>{
+    const el = m.getElement()?.querySelector('.report-dot'); if(el) el.classList.remove('selected');
+  });
+  const sel = reportMarkers[cellKey]?.getElement()?.querySelector('.report-dot'); if(sel) sel.classList.add('selected');
+  panel.classList.add('open'); panel.setAttribute('aria-hidden','false');
+  body.innerHTML = panelReport(group);
+}
+// Renders ONE CELL — which may hold several reports of the same site over time.
+// A repeatedly-reported location is the most valuable thing in this dataset, so
+// the panel leads with that fact rather than hiding it behind a single dot.
+//
+// NOTE: the resident's own free-text `description` is deliberately not shown —
+// /api/reports does not return it. See that file's header: it carries street
+// names, named businesses and self-identifying phrasing, which would undo the
+// coordinate snapping the dot depends on. `ai_description` is scene text only.
+function panelReport(group){
+  const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
+  const head = group[0];
+  const recurring = group.length > 1;
+  const entry = (r) => {
+    // Lazy-loaded: the browser only requests a photo once this HTML is actually
+    // inserted into the panel, i.e. once the visitor opens it. These run
+    // 150 KB–900 KB each, so eager loading would be a real cost.
+    const photoHtml = r.has_photo ? `
+      <img src="${API_BASE}/api/reports/${encodeURIComponent(r.id)}" alt="" loading="lazy"
+           style="width:100%;display:block;border:1px solid var(--hairline);margin-bottom:10px">` : '';
+    return `
+      <div style="margin-bottom:18px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);margin-bottom:8px">${fmtAge(r.age_hours)} · ${fmtDate(r.date_added)}</div>
+        ${photoHtml}
+        ${r.ai_description ? `<p style="font-family:'Source Serif 4',serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin:0;font-style:italic">${esc(r.ai_description)}</p>` : ''}
+      </div>`;
+  };
+  return `
+    <div class="side-hero">
+      <div class="side-kicker"><span class="tag">${t('report.tag','Community report')}</span> ${t('report.category.burning','Burning')}</div>
+      <div class="side-name">${esc(head.locality || 'Bali')}</div>
+      <div class="side-byline">${recurring
+        ? `<b style="color:var(--crimson)">${group.length} ${t('report.reportsHere','reports at this location')}</b> · ${t('report.approxLocation','location shown to ~250 m, not exact')}`
+        : `${fmtAge(head.age_hours)} · ${t('report.approxLocation','location shown to ~250 m, not exact')}`}</div>
+    </div>
+    <div class="side-section">
+      <h4>${recurring ? t('report.whatWasSeenAll','What was seen here') : t('report.whatWasSeen','What was seen')}</h4>
+      ${group.map(entry).join('')}
+      <p style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.06em;color:var(--ink-whisper);margin:0">${t('report.aiNote','Descriptions above are generated automatically from the photo and are not verified.')}</p>
+    </div>
+    <div class="side-section">
+      <h4>${t('report.about','About this report')}</h4>
+      <p style="font-family:'Source Serif 4',serif;font-size:13px;line-height:1.6;color:var(--ink-faint);margin:0 0 10px">${t('report.aboutBody','Submitted by a resident via WhatsApp or Telegram and reviewed by a human moderator before publication. This is a citizen observation, not a sensor reading, and plays no part in any air-quality statistic on this site.')}</p>
+      <div class="rows">
+        <div class="r"><span class="k">${t('report.mostRecent','Most recent')}</span><span class="v">${fmtDate(head.date_added)}</span></div>
+        <div class="r"><span class="k">${t('report.source','Source')}</span><span class="v"><a href="https://mdg-bali.github.io/makingsensebali/" target="_blank" rel="noopener" style="color:var(--ink-soft)">Making Sense Bali</a></span></div>
+      </div>
+    </div>`;
 }
 
 function renderAll(ts){
@@ -1364,6 +1520,9 @@ function closePanel(){
   Object.values(markers).forEach(m=>{
     const el = m.getElement()?.querySelector('.pin'); if(el) el.classList.remove('selected');
   });
+  Object.values(reportMarkers).forEach(m=>{
+    const el = m.getElement()?.querySelector('.report-dot'); if(el) el.classList.remove('selected');
+  });
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
 
@@ -1771,6 +1930,8 @@ function toggleLayer(kind){
     if(on) offLayer.addTo(map); else map.removeLayer(offLayer);
   } else if(kind==='wind'){
     if(on) startWind(); else stopWind();
+  } else if(kind==='reports'){
+    if(on) reportLayer.addTo(map); else map.removeLayer(reportLayer);
   }
 }
 
@@ -1951,6 +2112,8 @@ function animateWind(){
 renderSkeleton();   // placeholder pins on screen within one frame
 loadLive();         // real data swaps them in when /api/live returns
 setInterval(loadLive, 5*60*1000);
+loadReports();       // community burning reports (Making Sense Bali)
+setInterval(loadReports, 10*60*1000); // matches our own /api/reports cache TTL — no benefit polling faster
 </script>
 
 <!-- ====================================================================
