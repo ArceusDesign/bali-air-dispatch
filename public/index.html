@@ -166,13 +166,13 @@ body::before{
    dashed edge so it reads as "somewhere in this desa" rather than a surveyed
    point: upstream publishes desa centroids and asks integrators not to imply
    point precision. Sized by report count, coloured by the freshest report. */
-.report-area{border-radius:50%;border:1.5px dashed rgba(20,17,13,.55);cursor:pointer;transition:transform .15s;display:flex;align-items:center;justify-content:center;position:relative;opacity:.55;mix-blend-mode:multiply}
-.report-area:hover{transform:scale(1.12);opacity:.72;z-index:1000!important}
-.report-area.selected{transform:scale(1.16);opacity:.8;border-style:solid;border-color:var(--crimson);border-width:2px;z-index:1001!important}
-/* Report count — recurrence in one desa is the most useful thing this layer
-   surfaces, so the number sits in the middle of the area rather than hidden
-   in the panel. */
-.report-count{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:700;line-height:1;color:var(--ink);letter-spacing:-.02em}
+.report-area{border-radius:50%;border:1.5px dashed rgba(139,26,26,.5);cursor:pointer;transition:transform .15s,opacity .15s;position:relative;opacity:.34;mix-blend-mode:multiply}
+.report-area:hover{transform:scale(1.06);opacity:.5}
+.report-area.selected{opacity:.58;border-style:solid;border-color:var(--crimson);border-width:2px}
+/* Count badge, pinned to the edge — NEVER centred. A bare digit in the middle
+   of a circle on an air-quality map is indistinguishable from a µg/m³ reading;
+   at the rim, attached to a dashed region, it reads as "how many reports". */
+.report-count{position:absolute;top:2px;right:2px;background:var(--crimson);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:700;line-height:1;padding:2.5px 4px;border-radius:8px;min-width:13px;text-align:center;letter-spacing:-.02em;opacity:.92}
 
 /* ===== FLOATING MAP CARDS ===== */
 .map-card{position:absolute;z-index:500;background:var(--paper);border:1px solid var(--rule);box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
@@ -857,6 +857,11 @@ const reportMarkers = {};
 const hazeLayer  = L.layerGroup().addTo(map);
 const liveLayer  = L.layerGroup().addTo(map);
 const offLayer   = L.layerGroup().addTo(map);
+// Dedicated pane BELOW markerPane (600) so report areas always render behind
+// sensor pins. Without this, a large translucent region can sit on top of the
+// readings it surrounds and both compete for the same click.
+map.createPane('reportsPane');
+map.getPane('reportsPane').style.zIndex = 450;
 const reportLayer = L.layerGroup().addTo(map);
 const markers = {};
 
@@ -996,16 +1001,20 @@ function renderReports(){
     const head = group[0];
     const fresh = head.age_days < 2;
     // Area grows with report count — upstream's suggested "sized marker per
-    // desa". sqrt so 18 reports reads as a bigger area than 2 without the disc
-    // swallowing half the island.
-    const size = Math.round(22 + Math.sqrt(group.length) * 9);
+    // desa". Deliberately LARGER than any sensor pin and heavily translucent:
+    // on an air-quality map a crisp numbered circle reads as a measurement, so
+    // the region has to be unmistakably a region. sqrt keeps 18 reports bigger
+    // than 2 without swallowing the island.
+    const size = Math.round(46 + Math.sqrt(group.length) * 13);
     const color = reportColor(head.age_days * 24);  // area takes the FRESHEST report's age
-    const glow = fresh ? '0 0 14px 4px rgba(139,26,26,.28)' : 'none';
-    const label = group.length>1
-      ? `<span class="report-count">${group.length}</span>` : '';
+    const glow = fresh ? '0 0 18px 6px rgba(139,26,26,.22)' : 'none';
+    // Count sits in a corner badge, never centred in the disc — a bare digit in
+    // the middle of a circle on this map is indistinguishable from a µg/m³
+    // reading. The badge reads as metadata attached to a region.
+    const label = `<span class="report-count">${group.length}</span>`;
     const html = `<div class="report-area" data-rcell="${esc(key)}" style="width:${size}px;height:${size}px;background:${color};box-shadow:${glow}">${label}</div>`;
     const icon = L.divIcon({ className:'', html, iconSize:[size,size], iconAnchor:[size/2,size/2] });
-    const mk = L.marker([head.lat,head.lon],{icon, riseOnHover:true});
+    const mk = L.marker([head.lat,head.lon],{icon, riseOnHover:true, pane:'reportsPane'});
     mk.on('click',()=>openReportPanel(key));
     mk.addTo(reportLayer);
     reportMarkers[key]=mk;
@@ -1030,9 +1039,9 @@ function openReportPanel(cellKey){
     const el = m.getElement()?.querySelector('.pin'); if(el) el.classList.remove('selected');
   });
   Object.values(reportMarkers).forEach(m=>{
-    const el = m.getElement()?.querySelector('.report-dot'); if(el) el.classList.remove('selected');
+    const el = m.getElement()?.querySelector('.report-area'); if(el) el.classList.remove('selected');
   });
-  const sel = reportMarkers[cellKey]?.getElement()?.querySelector('.report-dot'); if(sel) sel.classList.add('selected');
+  const sel = reportMarkers[cellKey]?.getElement()?.querySelector('.report-area'); if(sel) sel.classList.add('selected');
   panel.classList.add('open'); panel.setAttribute('aria-hidden','false');
   body.innerHTML = panelReport(group);
 }
@@ -1153,9 +1162,11 @@ function renderAll(ts){
       const c = catFor(s.pm25);
       size = 42 + Math.min(16, Math.round((s.pm25||0)/6));
       const pulse = s.id===worst.id && (s.pm25||0)>12 ? ' worst' : '';
-      // Stale stations get a dashed-ring marker styled like an offline pin
-      // (the upstream timestamp is > 24h old → don't render the cached pm25
-      // as if it were a current reading).
+      // Stale stations get a dashed-ring marker styled like an offline pin —
+      // the upstream reading time is older than that source's freshness limit
+      // (24h generally, 6h for the hourly-publishing OpenAQ relays; see
+      // SOURCE_STALE_MS in functions/api/live.js), so the cached pm25 must not
+      // be rendered as if it were a current reading.
       if (s.stale) {
         size = 38;
         html = `<div class="pin offline" data-sid="${esc(s.id)}"><span class="pm" style="font-size:9px;font-weight:600;letter-spacing:.06em">STALE</span></div>`;
@@ -1539,7 +1550,7 @@ function closePanel(){
     const el = m.getElement()?.querySelector('.pin'); if(el) el.classList.remove('selected');
   });
   Object.values(reportMarkers).forEach(m=>{
-    const el = m.getElement()?.querySelector('.report-dot'); if(el) el.classList.remove('selected');
+    const el = m.getElement()?.querySelector('.report-area'); if(el) el.classList.remove('selected');
   });
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});

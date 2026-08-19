@@ -89,7 +89,7 @@ function epaCorrectPm25(raw, rh) {
 
 function isRecent(isoStr) {
   if (!isoStr) return false;
-  return (Date.now() - new Date(isoStr).getTime()) < 6 * 60 * 60 * 1000;
+  return (Date.now() - new Date(isoStr).getTime()) < SOURCE_STALE_MS.OpenAQ;
 }
 // Tries to parse upstream `lastSeen` / `till` as a unix-ms timestamp.
 // Handles ISO-with-Z, ISO-with-offset, and Nafas's "YYYY-MM-DD HH:MM:SS"
@@ -109,12 +109,32 @@ function parseLastSeenMs(s) {
 // like IQAir update hourly, AQICN updates hourly, daily-aggregate sources
 // could legitimately be 12-18h old without being "broken".
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+// Per-source overrides, for feeds whose own publishing cadence makes the
+// generic 24 h far too generous.
+//
+// OpenAQ (6 h): every Bali OpenAQ station republishes hourly, and it is honest
+// about it — its `datetime` advances with each new value and simply stops when
+// the upstream device goes quiet, so a reading whose timestamp is hours old is
+// genuinely hours old, not a mislabelled fresh one. At 24 h a device could go
+// dark mid-morning and still be presented as current air all day; measured
+// across the whole OpenAQ archive, 6 h flags 2.0% of polls and lands almost
+// entirely on stations that really are lagging (Shiva Industries 77% of polls,
+// median reading age 15.5 h) while barely touching healthy ones (Kuwum 0.2%,
+// Pantai Nyanyi 0.0%). 6 h is also what fetchOpenAQ already applied via
+// isRecent() on the slow path — the fast path rebuilt stations from D1 and
+// silently reverted them to 24 h, so identical data was flagged differently
+// depending on which path served the request. Both paths now share this table.
+const SOURCE_STALE_MS = {
+  OpenAQ: 6 * 60 * 60 * 1000,
+};
 function flagStale(station) {
   const ms = parseLastSeenMs(station.lastSeen);
   if (ms == null) return station;
-  if (Date.now() - ms > STALE_THRESHOLD_MS) {
+  const limit = SOURCE_STALE_MS[station.source] || STALE_THRESHOLD_MS;
+  const age = Date.now() - ms;
+  if (age > limit) {
     station.stale = true;
-    station.staleAgeHours = Math.round((Date.now() - ms) / 3600000);
+    station.staleAgeHours = Math.round(age / 3600000);
   }
   return station;
 }
@@ -846,58 +866,102 @@ function dropAirlyNearNafas(stations) {
 }
 
 // OpenAQ ↔ AirGradient de-dup (display only) — prefer the DIRECT feed.
-// Two Bali AirGradient units reach us twice: once straight from AirGradient's
-// public feed (ag-*), once relayed through OpenAQ (oq-*). Verified same
-// physical hardware, 0 m apart: ag-195872 == oq-6403967 (Kuwum) and
-// ag-196524 == oq-6413387 (Tabanan). The relayed copy is materially worse:
-// OpenAQ republishes ~hourly aggregates (our archive shows those stations'
-// values moving only every ~1.3–1.4 h despite 15-min polling) while the direct
-// feed is instantaneous and timestamped to the minute — a live spot-check had
-// Tabanan at 10.3 via OpenAQ against 6.5 raw via AirGradient at the same moment.
-// So: drop any OpenAQ station within 300 m of a FRESH AirGradient station. If
-// the AirGradient feed goes quiet, its pin ages out of the fast path (or flags
-// stale) and the OpenAQ pin returns on its own — automatic failover to the
-// redundant relay, exactly like dropAirlyNearNafas.
+// Bali's AirGradient units reach us twice: once straight from AirGradient's
+// public feed (ag-*), once relayed through OpenAQ (oq-*). Every Bali OpenAQ
+// station is such a relay. The relayed copy is materially worse: OpenAQ
+// republishes ~hourly (our archive shows those stations' values moving only
+// every ~1.3-1.4 h despite 15-min polling) while the direct feed is
+// instantaneous and timestamped to the minute — a live spot-check had Tabanan
+// at 10.3 via OpenAQ against 6.5 raw via AirGradient at the same moment. The
+// direct feed is also the one we humidity-correct (see epaCorrectPm25); OpenAQ
+// rows are published exactly as OpenAQ supplies them and are never corrected,
+// so preferring the relay would quietly show an uncorrected number instead.
+// So: collapse each relay pair onto ONE pin, preferring the direct feed. If the
+// AirGradient feed goes quiet the OpenAQ pin takes over on its own — automatic
+// failover to the redundant relay, exactly like dropAirlyNearNafas.
 //
-// Applied ONLY to the served fast path. The archive worker reads the slow path
-// (?fresh=1) and keeps snapshotting BOTH, so oq-* history stays continuous and
-// untouched under its own id while ag-* builds a clean raw 15-min record.
-// Verified relay pairs: OpenAQ id → the AirGradient id that is the SAME physical
-// unit (both confirmed 0 m apart, carrying identical names). Deliberately an
-// explicit pairing rather than pure geometry: AirGradient is a consumer product
-// on a worldwide public feed, and an unrelated new unit parked a couple of
-// hundred metres from an OpenAQ-only station (Umadawa has open ground that
-// close) would otherwise silently delete a genuine, distinct sensor from the map
-// AND from the history picker. Suppression is only ever safe for hardware we
-// have actually confirmed is the same device. A third pair is a one-line edit.
-const AG_OQ_TWINS = new Map([
-  ['oq-6403967', 'ag-195872'],  // Kuwum, Bali
-  ['oq-6413387', 'ag-196524'],  // Tabanan
-  ['oq-6404859', 'ag-195778'],  // Umadawa — AirGradient unit entered the public
-                                // feed later than the other two, so it briefly
-                                // double-pinned against its OpenAQ relay (both
-                                // at 0 m). Verified same device, same name.
-]);
-function dropOpenAQNearAirGradient(stations) {
-  const DEDUP_M = 300;
-  // A suppressing twin must carry an actual reading: fastPathFromD1 has no
-  // pm25 IS NOT NULL filter, so a null-reading AG snapshot would otherwise
-  // hide a live OpenAQ value behind a blank pin.
-  const freshAG = new Map();
+// Applied ONLY to what a VISITOR is served. The archive worker reads the slow
+// path with ?fresh=1, which skips this entirely, so oq-* history stays
+// continuous and untouched under its own id while ag-* builds a clean raw
+// 15-min record. Both remain fully published through /api/v1.
+//
+// PAIRING IS DISCOVERED, NOT LISTED. This used to be a hand-maintained map of
+// three verified ids, on the reasoning that geometry alone is unsafe: an
+// unrelated AirGradient unit parked a couple of hundred metres from an
+// OpenAQ-only station would silently delete a genuine distinct sensor. That
+// reasoning was sound for a 300 m radius, but the list could not keep up —
+// every Bali OpenAQ station turns out to be an AirGradient relay, and by the
+// time this was rewritten 9 of 12 pairs were double-pinned, inflating the live
+// station count and counting one physical device twice in the median and WHO
+// ratio. Two facts make discovery strictly SAFER than that 300 m rule:
+//   • the relay reports the device's coordinates unchanged — all 12 pairs match
+//     at exactly 0.000000 m, not "nearby", so TWIN_M is 1 m rather than 300;
+//   • OpenAQ names the instrument itself in provider.name, which live.js
+//     carries through as `type` ("AirGradient sensor").
+// Requiring BOTH is far stronger evidence of same-hardware than proximity ever
+// was, and a new twin now collapses the moment it appears instead of waiting
+// for someone to notice. A relay of any other network never matches the type
+// check; an unrelated AirGradient unit merely nearby never matches at 1 m.
+const TWIN_M = 1;
+function isAirGradientRelay(s) {
+  return !!s && s.source === 'OpenAQ' &&
+    /airgradient/i.test(String(s.type || ''));
+}
+// oq id → its ag twin, for every relay pair present in `stations`.
+function pairAirGradientRelays(stations) {
+  const ag = stations.filter(s =>
+    s && s.source === 'AirGradient' && !s.off &&
+    Number.isFinite(s.lat) && Number.isFinite(s.lon));
+  const pairs = new Map();
+  if (!ag.length) return pairs;
   for (const s of stations) {
-    if (s && s.source === 'AirGradient' && !s.stale && !s.off &&
-        Number.isFinite(s.pm25) &&
-        Number.isFinite(s.lat) && Number.isFinite(s.lon)) freshAG.set(s.id, s);
+    if (!isAirGradientRelay(s) || s.off) continue;
+    if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) continue;
+    // Deterministic when a site runs two units at one coordinate: prefer an
+    // exact name match, then the closest, then the lowest id — so the same
+    // pairing is produced on every request rather than flapping with feed order.
+    let best = null;
+    for (const a of ag) {
+      const d = metresBetween(s.lat, s.lon, a.lat, a.lon);
+      if (d > TWIN_M) continue;
+      const named = String(a.name || '').trim().toLowerCase() ===
+                    String(s.name || '').trim().toLowerCase();
+      if (!best) { best = { a, d, named }; continue; }
+      if (named !== best.named) { if (named) best = { a, d, named }; continue; }
+      if (d !== best.d) { if (d < best.d) best = { a, d, named }; continue; }
+      if (String(a.id) < String(best.a.id)) best = { a, d, named };
+    }
+    if (best) pairs.set(s.id, best.a.id);
   }
-  if (!freshAG.size) return stations;  // no live AirGradient → keep OpenAQ (failover)
-  return stations.filter(s => {
-    if (!s || s.source !== 'OpenAQ') return true;
-    const twin = freshAG.get(AG_OQ_TWINS.get(s.id));
-    if (!twin) return true;              // unpaired, or twin absent/stale/blank → keep (failover)
-    if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return true;
-    // Sanity check: if a "pair" has drifted apart, the pairing is stale — keep both.
-    return !(metresBetween(s.lat, s.lon, twin.lat, twin.lon) < DEDUP_M);
-  });
+  return pairs;
+}
+// Collapse each discovered pair to a single pin. Precedence:
+//   1. the direct AirGradient reading, when it is fresh and carries a value;
+//   2. otherwise the OpenAQ relay, when IT is fresh and carries a value;
+//   3. otherwise the more recently reported of the two, kept and shown muted —
+//      one honest "this sensor has gone quiet" pin instead of two, and never a
+//      confident-looking number sourced from a feed that has stopped moving.
+// A station carrying no reading can never suppress one that does: fastPathFromD1
+// has no `pm25 IS NOT NULL` filter, so a blank snapshot would otherwise hide a
+// live value behind an empty pin.
+function dropOpenAQNearAirGradient(stations) {
+  const pairs = pairAirGradientRelays(stations);
+  if (!pairs.size) return stations;
+  const byId = new Map(stations.map(s => [s && s.id, s]));
+  const usable = (s) => !!s && !s.stale && !s.off && Number.isFinite(s.pm25);
+  const drop = new Set();
+  for (const [oqId, agId] of pairs) {
+    const oq = byId.get(oqId), ag = byId.get(agId);
+    if (!oq || !ag) continue;
+    if (usable(ag))      { drop.add(oqId); continue; }
+    if (usable(oq))      { drop.add(agId); continue; }
+    const agMs = parseLastSeenMs(ag.lastSeen);
+    const oqMs = parseLastSeenMs(oq.lastSeen);
+    // Null timestamps sort oldest, so a pin that at least knows when it last
+    // reported wins over one that does not.
+    drop.add((oqMs != null && (agMs == null || oqMs > agMs)) ? agId : oqId);
+  }
+  return drop.size ? stations.filter(s => !(s && drop.has(s.id))) : stations;
 }
 
 async function fetchOpenAQ(env) {
@@ -1196,6 +1260,15 @@ export async function onRequest(context) {
       const tomb = await scOfflineFromD1(env.ARCHIVE_DB, results.stations);
       if (tomb.length) results.stations.push(...tomb);
     } catch (_) { /* tombstones optional */ }
+    // Same display folds the fast path applies, so a visitor sees ONE pin per
+    // physical device whichever path served them. Gated on !noFast because the
+    // archive worker is the only caller that passes ?fresh=1, and it must keep
+    // receiving every station — including both halves of a relay pair — or the
+    // suppressed half stops being archived under its own id.
+    if (!noFast) {
+      results.stations = dropAirlyNearNafas(results.stations);
+      results.stations = dropOpenAQNearAirGradient(results.stations);
+    }
     // Source count reflects LIVE feeds only — tombstones aren't a source.
     results.sources = new Set(results.stations.filter(s => !s.off).map(s => s.source)).size;
   }
