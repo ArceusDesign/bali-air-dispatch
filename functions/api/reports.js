@@ -37,10 +37,19 @@ const GRID_DEG = 0.0025; // ~275 m at Bali's latitude — collapses exact points
                          // to a neighbourhood cell, and usefully re-clusters
                          // repeat reports of the same site into one dot.
                          // (index.html groups by cell so they don't stack.)
-const ID_RE = /^AQ_\d{8}_\d{6}_\d{3}$/; // exact shape of every filename observed;
-                                        // validated BEFORE it's used to build any
-                                        // upstream URL — never trust the index
-                                        // blindly, even though it's not user input.
+// Validated BEFORE the id is used to build any upstream URL — never trust the
+// index blindly, even though it is not user input.
+//
+// Deliberately shape-tolerant rather than pinned to one format. Upstream has
+// already re-keyed once: v2 filenames were AQ_YYYYMMDD_HHMMSS_NNN, v3 (15 Aug
+// 2026) switched to random aliases AQ_YYYYMMDD_xxxxxxxx because the old names
+// encoded submission time to the second and identified reporters with a
+// routine. A regex pinned to the old shape rejected 100% of the new index and
+// silently emptied the layer. What actually matters for safety is that the id
+// is alphanumeric/underscore only (so it cannot escape the URL path) and
+// carries a parseable date prefix — both enforced here, without caring how the
+// suffix is formed.
+const ID_RE = /^AQ_\d{8}_[A-Za-z0-9_]{1,32}$/;
 const TEST_JUNK_RE = /\btest\b|do not approve|safe to reject|safe to ignore|auto-?rejected|smoke test/i;
 
 // Hard ceiling on upstream fan-out per cache miss. Cloudflare caps subrequests
@@ -107,11 +116,13 @@ export async function onRequestGet({ request, waitUntil }) {
   let failed = 0;
   let attempted = 0;
   let indexOk = false;
+  let indexProfiles = 0;
 
   try {
     const idx = await fetchJSON(MSB_BASE + 'reports/index.json');
     const profiles = Array.isArray(idx && idx.profiles) ? idx.profiles : [];
     indexOk = profiles.length > 0;
+    indexProfiles = profiles.length;
 
     if (indexOk) {
       const padMs = 2 * 86400000;
@@ -146,13 +157,26 @@ export async function onRequestGet({ request, waitUntil }) {
           if (addedMs > nowMs + 3600000) continue;
 
           const ai = r.ai_analysis || {};
+          const admin = r.admin_area || {};
+          // Grouping key. Upstream states admin_area is authoritative and that
+          // `name`/`locality` may carry a looser colloquial area, so prefer the
+          // desa and fall back only if it is absent.
+          const desa = typeof admin.desa === 'string' ? admin.desa
+                     : (typeof r.locality === 'string' ? r.locality : null);
           reports.push({
             id,
             lat: snap(lat),
             lon: snap(lon),
             date_added: r.date_added,
-            age_hours: Math.max(0, Math.round((nowMs - addedMs) / 3600000)),
-            locality: typeof r.locality === 'string' ? r.locality : null,
+            age_days: Math.max(0, Math.floor((nowMs - addedMs) / 86400000)),
+            desa,
+            kecamatan: typeof admin.kecamatan === 'string' ? admin.kecamatan : null,
+            kabupaten: typeof admin.kabupaten === 'string' ? admin.kabupaten : null,
+            // Upstream's own precision claim, passed through so the frontend can
+            // refuse to imply more precision than the data has. Today every
+            // report is "administrative_area"; "grid_1km" and "unavailable" are
+            // documented as possible.
+            location_precision: typeof r.location_precision === 'string' ? r.location_precision : null,
             // Resident free-text is deliberately absent — see header note 3.
             ai_description: typeof ai.description === 'string' ? ai.description : null,
             has_photo: !!r.photo_path,
@@ -168,7 +192,14 @@ export async function onRequestGet({ request, waitUntil }) {
     indexOk = false;
   }
 
-  const partial = !indexOk || failed > 0;
+  // `rejectedAll` is the lesson from the v3 cutover: upstream re-keyed every
+  // filename, our id regex matched none of them, and the endpoint returned
+  // HTTP 200 with reports:[] and partial:false — i.e. it asserted "no burning
+  // anywhere in Bali" with total confidence, and the map went blank with no
+  // signal anywhere. An index that lists reports but yields nothing to fetch is
+  // a fault on OUR side, and must be reported as one.
+  const rejectedAll = indexOk && indexProfiles > 0 && attempted === 0;
+  const partial = !indexOk || rejectedAll || failed > 0;
   const body = {
     source: 'Making Sense Bali',
     licence: 'CC BY 4.0 — attribute "Data: Making Sense Bali", linked to https://mdg-bali.github.io/makingsensebali/',
@@ -180,6 +211,7 @@ export async function onRequestGet({ request, waitUntil }) {
     partial,
     fetched: attempted - failed,
     attempted,
+    index_profiles: indexProfiles,
     generated_at: new Date(nowMs).toISOString(),
     reports,
   };

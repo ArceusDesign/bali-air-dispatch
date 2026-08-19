@@ -4,7 +4,10 @@
 // party this project doesn't control. See functions/api/reports.js for the
 // feed this serves and why the two validation layers below exist.
 const MSB_BASE = 'https://mdg-bali.github.io/makingsensebali/data/';
-const ID_RE = /^AQ_\d{8}_\d{6}_\d{3}$/;
+// Shape-tolerant by design — see the matching note in functions/api/reports.js.
+// Upstream re-keyed every filename once already (v3, 15 Aug 2026); what matters
+// for safety is that the id cannot escape the URL path, not its exact layout.
+const ID_RE = /^AQ_\d{8}_[A-Za-z0-9_]{1,32}$/;
 const PHOTO_PATH_RE = /^photos\/[A-Za-z0-9_]+\.jpg$/;
 const TEST_JUNK_RE = /\btest\b|do not approve|safe to reject|safe to ignore|auto-?rejected|smoke test/i;
 const UPSTREAM_TIMEOUT_MS = 8000;

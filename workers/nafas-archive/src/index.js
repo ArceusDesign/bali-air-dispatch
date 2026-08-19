@@ -350,17 +350,22 @@ async function reportsArchive(db, originBase, nowSec) {
     const stmt = db.prepare(`
       INSERT INTO community_reports
         (report_id, category, lat, lon, locality, date_added,
-         description, ai_description, has_photo, first_seen, last_seen, revoked_at)
-      VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, ?7, ?8, ?9, ?9, NULL)
+         description, ai_description, has_photo, first_seen, last_seen, revoked_at,
+         desa, kecamatan, kabupaten, location_precision)
+      VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, ?7, ?8, ?9, ?9, NULL, ?10, ?11, ?12, ?13)
       ON CONFLICT(report_id) DO UPDATE SET
-        lat            = excluded.lat,
-        lon            = excluded.lon,
-        locality       = excluded.locality,
-        ai_description = excluded.ai_description,
-        has_photo      = excluded.has_photo,
-        last_seen      = excluded.last_seen,
+        lat                = excluded.lat,
+        lon                = excluded.lon,
+        locality           = excluded.locality,
+        ai_description     = excluded.ai_description,
+        has_photo          = excluded.has_photo,
+        last_seen          = excluded.last_seen,
+        desa               = excluded.desa,
+        kecamatan          = excluded.kecamatan,
+        kabupaten          = excluded.kabupaten,
+        location_precision = excluded.location_precision,
         -- Seen again ⇒ published again. Clears a previous revocation.
-        revoked_at     = NULL
+        revoked_at         = NULL
     `);
     // `description` is bound to NULL, never written: /api/reports deliberately
     // does not return the resident's free text (it carries street names, named
@@ -371,9 +376,11 @@ async function reportsArchive(db, originBase, nowSec) {
     for (const rep of reports) {
       if (!rep || !rep.id || rep.lat == null || rep.lon == null || !rep.date_added) continue;
       batch.push(stmt.bind(
-        rep.id, 'burning', rep.lat, rep.lon, rep.locality || null, rep.date_added,
+        rep.id, 'burning', rep.lat, rep.lon, rep.desa || null, rep.date_added,
         rep.ai_description || null,
-        rep.has_photo ? 1 : 0, nowSec
+        rep.has_photo ? 1 : 0, nowSec,
+        rep.desa || null, rep.kecamatan || null, rep.kabupaten || null,
+        rep.location_precision || null
       ));
     }
     if (batch.length) {
@@ -399,7 +406,17 @@ async function reportsArchive(db, originBase, nowSec) {
   const held = await db.prepare(
     `SELECT report_id FROM community_reports WHERE revoked_at IS NULL`
   ).all();
-  const heldIds = (held.results || []).map((x) => x.report_id);
+  // Legacy-format ids are excluded from the sweep entirely. Upstream re-keyed
+  // every filename on 15 Aug 2026 (v3): the pre-v3 ids we archived can never
+  // appear in the index again, so they would read as 12 simultaneous consent
+  // withdrawals forever — permanently tripping the mass-revocation guard (which
+  // is exactly what it did, correctly, every tick from the cutover onward) and,
+  // once enough new reports diluted the ratio, eventually NULLing their text for
+  // a reason that never happened. "Upstream changed its id scheme" is not
+  // "a resident withdrew consent", and only the latter may erase words.
+  const CURRENT_ID_RE = /^AQ_\d{8}_[A-Za-z0-9]{6,32}$/;
+  const isLegacy = (id) => /^AQ_\d{8}_\d{6}_\d{3}$/.test(id) || !CURRENT_ID_RE.test(id);
+  const heldIds = (held.results || []).map((x) => x.report_id).filter((id) => !isLegacy(id));
   const gone = heldIds.filter((id) => !published.has(id));
   if (!gone.length) return out;
 

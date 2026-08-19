@@ -162,13 +162,17 @@ body::before{
 /* Community burning reports — deliberately a small plain dot, not a pin, so
    it never reads as a sensor reading. Colour + glow are set inline per-marker
    (continuous fade with age), not via class, since every dot's age differs. */
-.report-dot{border-radius:50%;border:1px solid var(--ink);cursor:pointer;transition:transform .15s;display:flex;align-items:center;justify-content:center;position:relative}
-.report-dot:hover{transform:scale(1.35);z-index:1000!important}
-.report-dot.selected{transform:scale(1.5);box-shadow:0 0 0 3px var(--crimson);z-index:1001!important}
-/* Count badge — a cell holding several reports of the same site over time.
-   Recurrence is the most useful thing this layer surfaces, so it's shown on
-   the dot rather than only inside the panel. */
-.report-count{position:absolute;top:-6px;right:-7px;background:var(--ink);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-size:8.5px;font-weight:700;line-height:1;padding:2px 3.5px;border-radius:7px;min-width:12px;text-align:center;letter-spacing:-.02em}
+/* Community burning reports — an AREA mark, not a pin. Translucent with a
+   dashed edge so it reads as "somewhere in this desa" rather than a surveyed
+   point: upstream publishes desa centroids and asks integrators not to imply
+   point precision. Sized by report count, coloured by the freshest report. */
+.report-area{border-radius:50%;border:1.5px dashed rgba(20,17,13,.55);cursor:pointer;transition:transform .15s;display:flex;align-items:center;justify-content:center;position:relative;opacity:.55;mix-blend-mode:multiply}
+.report-area:hover{transform:scale(1.12);opacity:.72;z-index:1000!important}
+.report-area.selected{transform:scale(1.16);opacity:.8;border-style:solid;border-color:var(--crimson);border-width:2px;z-index:1001!important}
+/* Report count — recurrence in one desa is the most useful thing this layer
+   surfaces, so the number sits in the middle of the area rather than hidden
+   in the panel. */
+.report-count{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:700;line-height:1;color:var(--ink);letter-spacing:-.02em}
 
 /* ===== FLOATING MAP CARDS ===== */
 .map-card{position:absolute;z-index:500;background:var(--paper);border:1px solid var(--rule);box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
@@ -568,7 +572,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
           <div class="legend-row" data-i18n-html="home.x.legVunh"><span class="sw" style="background:var(--aqi-vunh)"></span>Very Unhealthy · 150.5–250.4</div>
           <div class="legend-row" data-i18n-html="home.x.legHaz"><span class="sw" style="background:var(--aqi-haz)"></span>Hazardous · 250.5+</div>
           <div class="legend-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--hairline)" data-i18n-html="home.x.legDashed"><span class="dash"></span>Dashed ring = offline sensor</div>
-          <div class="legend-row" data-i18n-html="home.x.legReports"><span class="sw" style="background:var(--crimson);border-radius:50%"></span>Small dot = community burning report, fading over 30 days</div>
+          <div class="legend-row" data-i18n-html="home.x.legReports"><span class="sw" style="background:var(--crimson);border-radius:50%;border-style:dashed;opacity:.55"></span>Dashed circle = area with community burning reports, sized by count, fading over 30 days</div>
         </div>
       </div>
     </div>
@@ -962,37 +966,44 @@ function reportColor(ageHours){
   const rgb = c0.map((v,i)=>Math.round(v+(c1[i]-v)*frac));
   return `rgb(${rgb.join(',')})`;
 }
-// Group reports by their SNAPPED cell before drawing. The ~275 m snap in
-// functions/api/reports.js deliberately collapses repeat reports of the same
-// site onto one identical point — that clustering is the signal we want. But
-// one Leaflet marker per report then means N fully-overlapping opaque dots:
-// everything underneath is invisible AND unclickable (the top marker takes all
-// pointer events), and which one ends up on top is an accident of DOM order
-// rather than a decision. Measured against live data, 5 of 12 reports were
-// unreachable this way. One marker per cell, carrying the whole group.
+// Group reports by DESA (administrative village), not by point.
+//
+// Upstream's v3 feed publishes the centroid of the reporting area rather than
+// the observation's location — every report in a desa carries one identical
+// coordinate — and asks integrators explicitly not to plot them as pins,
+// because a cluster of overlapping precise-looking dots implies a precision the
+// data does not have and edges toward naming individual properties. So the mark
+// here is deliberately an AREA: a soft, translucent disc that grows with the
+// number of reports, not a hard pin. `admin_area.desa` is the authoritative
+// grouping key (upstream notes `name`/`locality` may carry looser colloquial
+// areas), so grouping keys off that rather than off coordinates.
 let reportCells = new Map();
 function renderReports(){
   reportLayer.clearLayers();
   for(const k in reportMarkers) delete reportMarkers[k];
   reportCells = new Map();
   for(const r of reportStations){
-    const key = r.lat+','+r.lon;
+    // Fall back to the coordinate only if upstream sent no desa at all, so a
+    // missing admin_area degrades to the old behaviour instead of collapsing
+    // every such report into one bogus "unknown" blob.
+    const key = r.desa || ('@'+r.lat+','+r.lon);
     if(!reportCells.has(key)) reportCells.set(key, []);
     reportCells.get(key).push(r);
   }
   for(const [key, group] of reportCells){
-    group.sort((a,b)=>a.age_hours-b.age_hours);   // freshest first, explicitly —
+    group.sort((a,b)=>a.age_days-b.age_days);     // freshest first, explicitly —
                                                   // never rely on server sort order
     const head = group[0];
-    const fresh = head.age_hours < 24;
-    const size = fresh ? 13 : 10;
-    const color = reportColor(head.age_hours);    // cell takes the FRESHEST report's age
-    // Ember glow on fresh reports only, faded out with the dot itself —
-    // ties the visual metaphor to the thing being reported.
-    const glow = fresh ? '0 0 0 4px rgba(139,26,26,.16), 0 0 7px 2px rgba(139,26,26,.30)' : 'none';
-    const badge = group.length>1
+    const fresh = head.age_days < 2;
+    // Area grows with report count — upstream's suggested "sized marker per
+    // desa". sqrt so 18 reports reads as a bigger area than 2 without the disc
+    // swallowing half the island.
+    const size = Math.round(22 + Math.sqrt(group.length) * 9);
+    const color = reportColor(head.age_days * 24);  // area takes the FRESHEST report's age
+    const glow = fresh ? '0 0 14px 4px rgba(139,26,26,.28)' : 'none';
+    const label = group.length>1
       ? `<span class="report-count">${group.length}</span>` : '';
-    const html = `<div class="report-dot" data-rcell="${esc(key)}" style="width:${size}px;height:${size}px;background:${color};box-shadow:${glow}">${badge}</div>`;
+    const html = `<div class="report-area" data-rcell="${esc(key)}" style="width:${size}px;height:${size}px;background:${color};box-shadow:${glow}">${label}</div>`;
     const icon = L.divIcon({ className:'', html, iconSize:[size,size], iconAnchor:[size/2,size/2] });
     const mk = L.marker([head.lat,head.lon],{icon, riseOnHover:true});
     mk.on('click',()=>openReportPanel(key));
@@ -1000,12 +1011,15 @@ function renderReports(){
     reportMarkers[key]=mk;
   }
 }
-function fmtAge(hours){
+// Day granularity only. Upstream publishes date_added at day precision
+// (always T00:00:00) on purpose — an exact timestamp on a repeated report
+// identifies a reporter with a routine — so rendering "6 hours ago" here would
+// be inventing precision the feed deliberately withheld.
+function fmtAge(days){
   const t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
-  if(hours < 1) return t('report.justNow','just now');
-  if(hours < 24) return hours + ' ' + t('report.hoursAgo','hours ago');
-  const d = Math.round(hours/24);
-  return d + ' ' + (d===1 ? t('report.dayAgo','day ago') : t('report.daysAgo','days ago'));
+  if(days <= 0) return t('report.today','today');
+  if(days === 1) return t('report.yesterday','yesterday');
+  return days + ' ' + t('report.daysAgo','days ago');
 }
 function openReportPanel(cellKey){
   const group = reportCells.get(cellKey);
@@ -1043,19 +1057,23 @@ function panelReport(group){
            style="width:100%;display:block;border:1px solid var(--hairline);margin-bottom:10px">` : '';
     return `
       <div style="margin-bottom:18px">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);margin-bottom:8px">${fmtAge(r.age_hours)} · ${fmtDate(r.date_added)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);margin-bottom:8px">${fmtAge(r.age_days)} · ${fmtDate(r.date_added)}</div>
         ${photoHtml}
         ${r.ai_description ? `<p style="font-family:'Source Serif 4',serif;font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin:0;font-style:italic">${esc(r.ai_description)}</p>` : ''}
       </div>`;
   };
+  const area = [head.desa, head.kecamatan].filter(Boolean).join(', ');
   return `
     <div class="side-hero">
       <div class="side-kicker"><span class="tag">${t('report.tag','Community report')}</span> ${t('report.category.burning','Burning')}</div>
-      <div class="side-name">${esc(head.locality || 'Bali')}</div>
+      <div class="side-name">${esc(head.desa || 'Bali')}</div>
       <div class="side-byline">${recurring
-        ? `<b style="color:var(--crimson)">${group.length} ${t('report.reportsHere','reports at this location')}</b> · ${t('report.approxLocation','location shown to ~250 m, not exact')}`
-        : `${fmtAge(head.age_hours)} · ${t('report.approxLocation','location shown to ~250 m, not exact')}`}</div>
+        ? `<b style="color:var(--crimson)">${group.length} ${t('report.reportsHere','reports in this area')}</b> · ${t('report.areaOnly','anywhere within the desa — not a specific address')}`
+        : `${fmtAge(head.age_days)} · ${t('report.areaOnly','anywhere within the desa — not a specific address')}`}</div>
     </div>
+    ${area ? `<div class="side-section" style="padding-top:14px;padding-bottom:14px">
+      <div class="rows"><div class="r"><span class="k">${t('report.area','Area')}</span><span class="v">${esc(area)}${head.kabupaten ? ' · '+esc(head.kabupaten) : ''}</span></div></div>
+    </div>` : ''}
     <div class="side-section">
       <h4>${recurring ? t('report.whatWasSeenAll','What was seen here') : t('report.whatWasSeen','What was seen')}</h4>
       ${group.map(entry).join('')}
