@@ -128,11 +128,10 @@ const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 // AirGradient (6 h): the direct feed timestamps to the minute and normally
 // reports every few minutes — measured across the live map, every AirGradient
 // station's reading was 5-6 MINUTES old. It kept the generic 24 h only by
-// omission, and that gap was load-bearing in the wrong direction: a fresh
-// AirGradient pin suppresses its OpenAQ twin, so a unit that died at breakfast
-// stayed "fresh" until the following breakfast and deleted a live relay reading
-// for the whole day. 6 h is 60x its normal cadence — a gap that long is a dead
-// sensor, not a slow one.
+// omission. 6 h is 60x its normal cadence — a gap that long is a dead sensor,
+// not a slow one, and the pin should say so promptly: a paired station's relay
+// stays suppressed either way (see dropOpenAQNearAirGradient), so the muted
+// STALE marker is the only honest signal a visitor gets that the unit paused.
 //
 // Null-prototype so an upstream source string can never reach Object.prototype:
 // a station whose source was 'constructor' or 'toString' would otherwise look
@@ -733,9 +732,14 @@ async function fetchAirGradient() {
     const pm25Corrected = epaCorrectPm25(pm25Raw, rhum);
     const pm25 = pm25Corrected != null ? pm25Corrected : pm25Raw;
     // Staleness backstop (mirrors Smart Citizen): if the feed's own timestamp
-    // is >24 h old despite offline:false, don't surface it as live air.
+    // is >24 h old despite offline:false, don't surface it as live air. A
+    // MISSING/unparseable timestamp fails this check too, not just an old one:
+    // healthy units always carry one (the world feed sends every key, null for
+    // missing), and an entry that cannot prove its freshness would otherwise
+    // sail past flagStale forever — lastSeen null means "never goes stale",
+    // which for a paired unit would suppress its OpenAQ twin indefinitely.
     const lastMs = d.timestamp ? Date.parse(d.timestamp) : NaN;
-    if (Number.isFinite(lastMs) && (Date.now() - lastMs) > 24 * 60 * 60 * 1000) continue;
+    if (!Number.isFinite(lastMs) || (Date.now() - lastMs) > 24 * 60 * 60 * 1000) continue;
     const { cat, cls } = pm25Category(pm25);
     out.push({
       id: `ag-${devId}`,
@@ -770,7 +774,7 @@ async function fetchAirGradient() {
 // hardware, and the AG station would never be archived at all. So both are
 // admitted here and both get archived (oq-* history stays continuous under its
 // own id; ag-* builds a clean raw 15-min record), and the DISPLAY choice is
-// made later, on the fast path only, by dropOpenAQNearAirGradient().
+// made later, on every visitor-served path, by dropOpenAQNearAirGradient().
 function dedupAirGradient(agStations, existing) {
   const DEDUP_M = 300;
   return agStations.filter(a =>
@@ -894,9 +898,18 @@ function dropAirlyNearNafas(stations) {
 // direct feed is also the one we humidity-correct (see epaCorrectPm25); OpenAQ
 // rows are published exactly as OpenAQ supplies them and are never corrected,
 // so preferring the relay would quietly show an uncorrected number instead.
-// So: collapse each relay pair onto ONE pin, preferring the direct feed. If the
-// AirGradient feed goes quiet the OpenAQ pin takes over on its own — automatic
-// failover to the redundant relay, exactly like dropAirlyNearNafas.
+// So: collapse each relay pair onto ONE pin — the direct feed, always. There is
+// deliberately NO numeric failover to the relay: swapping in the uncorrected
+// figure whenever AirGradient pauses made the same pin jump 20-45% between two
+// different numbers for the same air. Measured over each pair's coexistence,
+// AirGradient was up 91-100% of hours, so the relay was buying at most a few
+// percent of coverage at the cost of that inconsistency — and the relay itself
+// goes quiet often enough (3 of 5 relay pins were stale the day this was
+// decided) that it could not be counted on for even that. When the direct feed
+// goes quiet, the pin goes honestly STALE — muted, excluded from the published
+// figures — rather than borrowing the higher raw number. If the AirGradient
+// unit drops off the feed entirely, no pair forms and the OpenAQ record stands
+// on its own again, exactly like any station we cannot pair.
 //
 // Applied ONLY to what a VISITOR is served. The archive worker reads the slow
 // path with ?fresh=1, which skips this entirely, so oq-* history stays
@@ -938,14 +951,20 @@ const TWIN_M = 1;
 // proposition from reacting to a burn event in progress. Genuine twins appear
 // in the archive within ~1-2 h of each other and simply collapse a day later.
 const TWIN_SETTLE_MS = 24 * 60 * 60 * 1000;
-// Refuse a suppression that would hide a materially WORSE reading. One-way on
-// purpose: showing two pins is untidy, hiding pollution is the failure this
-// site exists to prevent. Legitimate twins disagree — OpenAQ relays the RAW
-// figure while we publish the humidity-corrected one, and its hourly
-// republishing lags a fast-moving plume — but measured across all ten current
-// pairs the direct feed never reads less than 63% of its relay (worst case
-// Umadawa, raw 49.2 vs 77.9). A third is far outside that, and the floor keeps
-// the rule from firing on clean-air noise where the ratio means nothing.
+// Refuse a suppression that would hide a materially WORSE relay reading.
+// One-way on purpose: showing two pins is untidy, hiding pollution is the
+// failure this site exists to prevent. Legitimate twins disagree — OpenAQ
+// relays the RAW figure while we publish the humidity-corrected one, and its
+// hourly republishing lags a fast-moving plume — but measured across all ten
+// current pairs the direct feed never reads less than 63% of its relay (worst
+// case Umadawa, raw 49.2 vs 77.9). A third is far outside that, and the floor
+// keeps the rule from firing on clean-air noise where the ratio means nothing.
+// The guard deliberately fires even when the relay reading is STALE: a frozen
+// high number next to a suspiciously low direct pin still earns its muted
+// marker on the map (excluded from every stat, so it costs nothing), and
+// review showed relays sit stale ~42% of the time on some stations — a guard
+// that switched off with them would be off exactly when an impostor would
+// strike.
 const TWIN_HIDE_RATIO = 3;
 const TWIN_HIDE_FLOOR = 35;
 function isAirGradientRelay(s) {
@@ -1017,15 +1036,17 @@ async function stationFirstSeen(db) {
   } catch (_) { /* no ages → no pairing → both pins shown */ }
   return out;
 }
-// Collapse each discovered pair to a single pin. Precedence:
-//   1. the direct AirGradient reading, when it is fresh and carries a value;
-//   2. otherwise the OpenAQ relay, when IT is fresh and carries a value;
-//   3. otherwise the more recently reported of the two, kept and shown muted —
-//      one honest "this sensor has gone quiet" pin instead of two, and never a
-//      confident-looking number sourced from a feed that has stopped moving.
-// A station carrying no reading can never suppress one that does: fastPathFromD1
-// has no `pm25 IS NOT NULL` filter, so a blank snapshot would otherwise hide a
-// live value behind an empty pin.
+// Collapse each discovered pair to the direct AirGradient pin, whether that pin
+// is fresh or stale — a stale pin renders muted ("STALE") and is excluded from
+// every published figure, which is the honest state for a paused sensor. The
+// relay's number is never swapped in for it. Two exceptions, both erring toward
+// showing MORE, never less:
+//   • a blank AirGradient pin (no reading at all — fastPathFromD1 has no
+//     `pm25 IS NOT NULL` filter) never buries a live OpenAQ value: the relay is
+//     kept instead, since an empty pin standing in front of a reading serves
+//     nobody;
+//   • the anti-burying guard above: a relay reading materially worse than the
+//     direct feed's raw figure keeps both pins on the map, fresh or stale.
 function dropOpenAQNearAirGradient(stations, firstSeen) {
   const pairs = pairAirGradientRelays(stations, firstSeen);
   if (!pairs.size) return stations;
@@ -1037,7 +1058,6 @@ function dropOpenAQNearAirGradient(stations, firstSeen) {
     if (byId.has(s.id)) { byId.set(s.id, null); continue; }
     byId.set(s.id, s);
   }
-  const usable = (s) => !!s && !s.stale && !s.off && Number.isFinite(s.pm25);
   // OpenAQ republishes the sensor's raw figure, so compare like with like.
   const rawOf = (s) => Number.isFinite(s && s.pm25_raw) ? s.pm25_raw
                      : (Number.isFinite(s && s.pm25) ? s.pm25 : null);
@@ -1045,23 +1065,19 @@ function dropOpenAQNearAirGradient(stations, firstSeen) {
   for (const [oqId, agId] of pairs) {
     const oq = byId.get(oqId), ag = byId.get(agId);
     if (!oq || !ag) continue;
-    if (usable(ag)) {
-      const agRaw = rawOf(ag);
-      if (Number.isFinite(oq.pm25) && oq.pm25 >= TWIN_HIDE_FLOOR &&
-          Number.isFinite(agRaw) && agRaw * TWIN_HIDE_RATIO < oq.pm25) {
-        continue;   // would bury a much worse reading — show both, decide nothing
-      }
-      drop.add(oqId); continue;
+    // A pin with no visible reading must never bury one that has one — keyed
+    // on pm25, the field the visitor actually sees, not the raw audit field.
+    if (!Number.isFinite(ag.pm25) && Number.isFinite(oq.pm25)) { drop.add(agId); continue; }
+    // Anti-burying guard — see TWIN_HIDE_RATIO/FLOOR. Fires in every state:
+    // fresh-vs-fresh (the impostor case), stale direct pin (live much-worse
+    // air must not hide behind a quiet sensor's muted marker), and stale relay
+    // (a frozen high number still earns its marker — see the constant's note).
+    const agRaw = rawOf(ag);
+    if (Number.isFinite(oq.pm25) && oq.pm25 >= TWIN_HIDE_FLOOR &&
+        Number.isFinite(agRaw) && agRaw * TWIN_HIDE_RATIO < oq.pm25) {
+      continue;   // show both, decide nothing
     }
-    if (usable(oq))  { drop.add(agId); continue; }
-    // Neither is usable. Keep the one that still carries a reading at all, so a
-    // blank pin can never bury a value; if that does not separate them, keep
-    // whichever reported most recently. Null timestamps sort oldest.
-    const agHas = Number.isFinite(ag.pm25), oqHas = Number.isFinite(oq.pm25);
-    if (agHas !== oqHas) { drop.add(agHas ? oqId : agId); continue; }
-    const agMs = parseLastSeenMs(ag.lastSeen);
-    const oqMs = parseLastSeenMs(oq.lastSeen);
-    drop.add((oqMs != null && (agMs == null || oqMs > agMs)) ? agId : oqId);
+    drop.add(oqId);
   }
   return drop.size ? stations.filter(s => !(s && drop.has(s.id))) : stations;
 }
@@ -1274,8 +1290,10 @@ export async function onRequest(context) {
         fast.stations = dropAirlyNearNafas(fast.stations);
         // Collapse OpenAQ-relayed AirGradient units onto their direct feed
         // (fresher, 15-min, un-aggregated, and the one we humidity-correct).
-        // Failover: if AirGradient goes quiet, the OpenAQ pin comes back on its
-        // own. Pairing needs catalog first_seen — see TWIN_SETTLE_MS.
+        // AG-only: if AirGradient goes quiet the pin shows muted STALE rather
+        // than borrowing the relay's uncorrected number; the relay returns on
+        // its own only if the AG unit leaves the feed entirely (no pair forms).
+        // Pairing needs catalog first_seen — see TWIN_SETTLE_MS.
         fast.stations = dropOpenAQNearAirGradient(
           fast.stations, await stationFirstSeen(env.ARCHIVE_DB));
         // Fold in Smart Citizen OFFLINE tombstones (off:true) — dead or
