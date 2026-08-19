@@ -834,13 +834,18 @@ const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c => (
 const INDOOR_IDS = new Set([
   'nafas-ba19b143-3580-4a60-a3ce-135a5e5936dd',  // Pemogan (Nafas)
   'pa-36601',                                     // Jimbaran by Lumi Clinic (PurpleAir)
-  // Tonja (Nafas) — reported normal ambient air for months (55.9 µg/m³ on 1 Jul,
-  // and the island's worst single day at 164.6 on 10 Jun), then resumed on
-  // 27 Jul reading a flat 0.0 every day since. A true zero for days on end in
-  // burn season is not outdoor Bali air. An AirGradient unit ("Tonja - Nafas")
-  // appeared at the identical coordinates on that same date, so the site was
-  // evidently reworked and this unit ended up inside.
-  'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',   // Tonja (Nafas)
+  // IQAir republishes the same physical Jimbaran unit as pa-36601 (identical
+  // coordinates to 6dp). Today it is hidden anyway by the 300 m cross-source
+  // de-dup, but that only holds while the PurpleAir side keeps reporting —
+  // tagging it too means an indoor series cannot re-enter ambient figures
+  // through the other copy if PurpleAir goes quiet. Matches the same list in
+  // functions/api/v1.
+  'iqs-jimbaran-s',
+  // Tonja (Nafas) was tagged here from 27 Jul 2026, when it began reading a flat
+  // 0.0 every day — untrue of outdoor Bali air in burn season. It resumed normal
+  // ambient values on 3 Aug (25-42 µg/m³, tracking the other Denpasar stations)
+  // and the tag was removed on 20 Aug. Its 27 Jul - 2 Aug run of zeros is still
+  // in the archive and is self-evidently bad data; nothing was rewritten.
 ]);
 const isIndoor = (s) => INDOOR_IDS.has(typeof s === 'string' ? s : (s && s.id));
 let liveStations = [];
@@ -1211,10 +1216,13 @@ function renderAll(ts){
     // toggle with the Offline layer alongside the hardcoded offline set.
     // Without this, the Offline toggle silently leaves stale pins behind.
     const goesOffline = !!(s.offline || s.stale);
-    (goesOffline ? offLayer : liveLayer).addTo(map);
+    // Add to the layer GROUP only. Whether that group is on the map is decided
+    // by applyLayerVisibility() below, from the toggle rows — adding it here
+    // would override a visitor's choice on every refresh.
     mk.addTo(goesOffline ? offLayer : liveLayer);
     markers[s.id] = mk;
   });
+  applyLayerVisibility();
 
   // --- bulletin + HUD + nav ---
   // Every headline count is derived from FRESH stations only — a stale station
@@ -1959,19 +1967,31 @@ function drawPanelChart(s){
 /* =========================================================
    LAYER TOGGLES
    ========================================================= */
+// The toggle ROWS own layer visibility — not the render pass. renderAll() used
+// to re-add each layer to the map every time it ran, which quietly switched a
+// layer the visitor had turned off back on at the next refresh. Reading the
+// state back from the row on every apply keeps the two in step.
+function layerOn(kind){
+  const row = document.getElementById('lr-'+kind);
+  return !row || row.classList.contains('on');
+}
+function applyLayerVisibility(){
+  // Haze belongs to the Live layer. The clouds are drawn only around live,
+  // non-stale, non-indoor stations, so hiding the live pins has to hide their
+  // haze too — otherwise switching Live off leaves the big coloured blooms
+  // behind with nothing underneath them, which reads as a broken map.
+  if (layerOn('live')) { liveLayer.addTo(map); hazeLayer.addTo(map); }
+  else { map.removeLayer(liveLayer); map.removeLayer(hazeLayer); }
+  if (layerOn('off')) offLayer.addTo(map); else map.removeLayer(offLayer);
+  if (layerOn('reports')) reportLayer.addTo(map); else map.removeLayer(reportLayer);
+}
 function toggleLayer(kind){
   const row = document.getElementById('lr-'+kind);
   const on = !row.classList.contains('on');
   row.classList.toggle('on', on);
-  if(kind==='live'){
-    if(on) liveLayer.addTo(map); else map.removeLayer(liveLayer);
-  } else if(kind==='off'){
-    if(on) offLayer.addTo(map); else map.removeLayer(offLayer);
-  } else if(kind==='wind'){
-    if(on) startWind(); else stopWind();
-  } else if(kind==='reports'){
-    if(on) reportLayer.addTo(map); else map.removeLayer(reportLayer);
-  }
+  // Wind is a canvas animation, not a Leaflet layer group.
+  if(kind==='wind'){ if(on) startWind(); else stopWind(); return; }
+  applyLayerVisibility();
 }
 
 /* =========================================================

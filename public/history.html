@@ -380,11 +380,16 @@ let chartInstance = null;
 const INDOOR_IDS = new Set([
   'nafas-ba19b143-3580-4a60-a3ce-135a5e5936dd',  // Pemogan
   'pa-36601',                                     // Jimbaran by Lumi Clinic
-  // Tonja — months of normal ambient readings (peaking at 164.6 µg/m³ on 10 Jun,
-  // the island's worst day), then a flat 0.0 every day from 27 Jul. Its
-  // pre-27-Jul outdoor record stays intact and chartable; the tag marks that
-  // readings from that date forward are not comparable to ambient air.
-  'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',   // Tonja (Nafas)
+  // IQAir republishes the same physical Jimbaran unit as pa-36601 (identical
+  // coordinates to 6dp). Today it is hidden anyway by the 300 m cross-source
+  // de-dup, but that only holds while the PurpleAir side keeps reporting —
+  // tagging it too means an indoor series cannot re-enter ambient figures
+  // through the other copy if PurpleAir goes quiet. Matches the same list in
+  // functions/api/v1.
+  'iqs-jimbaran-s',
+  // Tonja (Nafas) was tagged here 27 Jul - 20 Aug 2026 while it read a flat 0.0;
+  // it resumed normal ambient values on 3 Aug and the tag was removed. The run
+  // of zeros stays in the archive, visibly bad rather than quietly deleted.
 ]);
 const isIndoorId = (id) => INDOOR_IDS.has(id);
 

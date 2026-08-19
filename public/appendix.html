@@ -70,6 +70,14 @@ body::before{
 .data-table th,.data-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--hairline)}
 .data-table th{font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:500;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid var(--rule)}
 .data-table td.big{font-family:"Fraunces",serif;font-weight:700;font-size:18px}
+/* Narrow screens: let a wide table scroll inside ITSELF rather than pushing the
+   whole page sideways. The five-column reading tables (Chapter C) need ~400px
+   and were forcing a 24px horizontal scroll on the entire document at 375px,
+   which drags the header and every paragraph with it. Same approach as .tscroll
+   on the API page. Desktop rendering is untouched. */
+@media(max-width:720px){
+  .data-table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
 .badge{display:inline-block;padding:3px 9px;border:1px solid currentColor;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase}
 .b-good{color:var(--good)}
 .b-mod{color:var(--ochre)}
@@ -293,6 +301,7 @@ body::before{
       <div>
         <p data-i18n-html="appx.x.mP3"><strong>What it does to the numbers.</strong> The correction is mostly downward and can be substantial — in humid, smoky conditions a raw 28 µg/m³ becomes roughly 15. It is not downward everywhere: the formula carries a fixed offset, so in very clean, drier air a near-zero raw reading is lifted to about 2 µg/m³. That floor is a known property of the published regression at the bottom of its range, not a fault in the sensor; readings that low are already well within the "Good" band and the distinction has no health meaning. We publish the corrected value as-is rather than hiding this behaviour.</p>
         <p data-i18n-html="appx.x.mP4"><strong>Provenance and reversibility.</strong> The raw figure is stored alongside every corrected reading, so the correction is fully auditable and reversible and nothing a sensor actually reported is lost. Correction began on <strong>21 July 2026</strong>; earlier readings from these networks remain as they were recorded. PurpleAir history before that date stays uncorrected because we did not previously store the humidity needed to correct it, so a PurpleAir sensor's own record shows a small one-time step at the changeover. A <em>· corrected</em> tag marks any reading this has been applied to.</p>
+        <p data-i18n-html="appx.x.mP5"><strong>A step in the headline figure, 20 August 2026.</strong> The network median fell from about 24.8 to about 17.7 µg/m³ that day. The air did not improve. Every Bali OpenAQ station is an AirGradient unit relayed through OpenAQ, so ten devices were reaching the map twice — once directly, once relayed — and each was being counted twice in the median. The map now shows one pin per device and takes the direct feed, which is also the humidity-corrected one; the relayed copy carries the uncorrected figure and lags an hour behind. So the drop is two changes at once: ten devices stopped being double-counted, and those ten switched from an uncorrected number to a corrected one. Readings either side of that date are not directly comparable. Both records are kept in full and both remain published through the API.</p>
       </div>
     </div>
 

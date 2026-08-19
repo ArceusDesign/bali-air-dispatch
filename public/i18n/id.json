@@ -1254,5 +1254,6 @@
   "report.yesterday": "kemarin",
   "report.areaOnly": "di mana saja dalam desa — bukan alamat tertentu",
   "report.area": "Wilayah",
-  "report.mostRecent": "Terbaru"
+  "report.mostRecent": "Terbaru",
+  "appx.x.mP5": "<strong>Lonjakan pada angka utama, 20 Agustus 2026.</strong> Median jaringan turun dari sekitar 24,8 menjadi sekitar 17,7 µg/m³ pada hari itu. Udaranya tidak membaik. Setiap stasiun OpenAQ di Bali adalah unit AirGradient yang direlai melalui OpenAQ, sehingga sepuluh perangkat sampai ke peta dua kali — sekali langsung, sekali direlai — dan masing-masing terhitung dua kali dalam median. Peta kini menampilkan satu pin per perangkat dan memakai umpan langsung, yang juga merupakan angka terkoreksi kelembapan; salinan relai membawa angka tanpa koreksi dan tertinggal satu jam. Jadi penurunan itu adalah dua perubahan sekaligus: sepuluh perangkat berhenti terhitung ganda, dan kesepuluhnya beralih dari angka tanpa koreksi ke angka terkoreksi. Pembacaan sebelum dan sesudah tanggal itu tidak dapat dibandingkan secara langsung. Kedua rekaman disimpan utuh dan keduanya tetap diterbitkan melalui API."
 }

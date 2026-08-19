@@ -39,7 +39,9 @@ const MAX_LIMIT = 10000;
 const INDOOR_IDS = new Set([
   'nafas-ba19b143-3580-4a60-a3ce-135a5e5936dd',  // Pemogan (Nafas)
   'pa-36601',                                     // Jimbaran by Lumi Clinic (PurpleAir)
-  'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',   // Tonja (Nafas) — indoors since 27 Jul 2026
+  // Tonja (nafas-2ab21828-...) was flagged here 27 Jul - 20 Aug 2026 while it
+  // read a flat 0.0; it resumed normal ambient values on 3 Aug and the flag was
+  // removed. Its run of zeros remains in the archive as recorded.
   // Same physical sensor as pa-36601, republished by IQAir — identical
   // coordinates to 6dp. Flagging only one copy lets an indoor series back into
   // an ambient analysis through the other.
