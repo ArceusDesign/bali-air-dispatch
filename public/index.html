@@ -1138,7 +1138,9 @@ function renderAll(ts){
   for(const k in markers) delete markers[k];
 
   // Exclude stale stations from "worst now" — their pm25 is a frozen cached value,
-  // not a current reading. A station flagged stale has not reported in >24h.
+  // not a current reading. A station is flagged stale once its reading passes
+  // that source's freshness limit (24h generally, 6h for AirGradient and the
+  // hourly-publishing OpenAQ relays — SOURCE_STALE_MS in functions/api/live.js).
   // AMBIENT set = fresh AND outdoor. Every figure that makes a claim about the
   // island's air — worst-now, network median, the WHO exceedance ratio, the
   // Worst-3 cards — is computed from this, never from the raw live list.
@@ -1164,7 +1166,7 @@ function renderAll(ts){
       const pulse = s.id===worst.id && (s.pm25||0)>12 ? ' worst' : '';
       // Stale stations get a dashed-ring marker styled like an offline pin —
       // the upstream reading time is older than that source's freshness limit
-      // (24h generally, 6h for the hourly-publishing OpenAQ relays; see
+      // (24h generally, 6h for AirGradient and the hourly OpenAQ relays; see
       // SOURCE_STALE_MS in functions/api/live.js), so the cached pm25 must not
       // be rendered as if it were a current reading.
       if (s.stale) {
@@ -1216,7 +1218,8 @@ function renderAll(ts){
 
   // --- bulletin + HUD + nav ---
   // Every headline count is derived from FRESH stations only — a stale station
-  // is one the upstream API still lists but whose reading is >24h old, and it
+  // is one the upstream API still lists but whose reading has passed its
+  // source's freshness limit (see SOURCE_STALE_MS in functions/api/live.js), and it
   // renders on the map as a dashed "STALE" pin on the Offline layer. Counting
   // those as live overstated the network (17 vs the 14 coloured pins actually
   // visible) and let months-old cached values move the median. Both boxes and
@@ -1324,12 +1327,19 @@ function renderRollTable(){
     // Stale rows: render visually like an offline row — gray PM2.5,
     // "Stale Nd" badge — so visitors don't read a months-old value as live.
     if (s.stale) {
-      const ageDays = Math.round((s.staleAgeHours || 0) / 24);
+      // Age in hours below a day. Sources now go stale on their own schedule
+      // (OpenAQ and AirGradient at 6h — see SOURCE_STALE_MS in
+      // functions/api/live.js), so rounding straight to days printed a
+      // self-contradicting "Stale · 0d" for everything under 12 hours.
+      const ageH = s.staleAgeHours || 0;
+      const T = (k, f) => (window.I18N && window.I18N.t) ? window.I18N.t(k, f) : f;
+      const age = ageH < 24 ? `${Math.max(1, Math.round(ageH))}${T('roll.hoursShort','h')}`
+                            : `${Math.round(ageH / 24)}${T('roll.daysShort','d')}`;
       return `<tr class="offline" data-sid="${esc(s.id)}">
         <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
         <td>${esc(s.source)}</td>
         <td class="r"><span class="pm-cell" style="color:var(--ink-whisper);font-style:italic">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
-        <td><span class="badge off">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.stale','Stale') : 'Stale'} · ${ageDays}${(window.I18N && window.I18N.t) ? window.I18N.t('roll.daysShort','d') : 'd'}</span></td>
+        <td><span class="badge off">${T('roll.stale','Stale')} · ${age}</span></td>
         <td class="c">${historyCell(s)}</td>
         <td class="r">${s.lastSeen?new Date(s.lastSeen).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</td>
       </tr>`;
