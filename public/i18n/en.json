@@ -641,6 +641,5 @@
   "report.yesterday": "yesterday",
   "report.areaOnly": "anywhere within the desa — not a specific address",
   "report.area": "Area",
-  "report.mostRecent": "Most recent",
-  "appx.x.mP5": "<strong>A step in the headline figure, 20 August 2026.</strong> The network median fell from about 24.8 to about 17.7 µg/m³ that day. The air did not improve. Every Bali OpenAQ station is an AirGradient unit relayed through OpenAQ, so ten devices were reaching the map twice — once directly, once relayed — and each was being counted twice in the median. The map now shows one pin per device and takes the direct feed, which is also the humidity-corrected one; the relayed copy carries the uncorrected figure and lags an hour behind. So the drop is two changes at once: ten devices stopped being double-counted, and those ten switched from an uncorrected number to a corrected one. Readings either side of that date are not directly comparable. Both records are kept in full and both remain published through the API."
+  "report.mostRecent": "Most recent"
 }
