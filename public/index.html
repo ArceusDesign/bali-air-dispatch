@@ -1209,7 +1209,16 @@ function renderAll(ts){
         }
       }
     }
-    const icon = L.divIcon({ className:'', html, iconSize:[size,size], iconAnchor:[size/2,size/2] });
+    // A relay flagged twinConflict sits at EXACTLY its twin's coordinates, so
+    // drawn normally it would be painted underneath and be neither visible nor
+    // clickable — the anti-burying guard (functions/api/live.js) would fire and
+    // surface nothing. Shifting the anchor moves the pin ~54 px clear of its
+    // twin on screen at every zoom, without moving the station's real position:
+    // the two readings that disagree end up side by side, which is the whole
+    // point of the guard. No z-index games — those cannot help when one disc is
+    // drawn entirely inside another.
+    const anchorX = s.twinConflict ? size/2 - 54 : size/2;
+    const icon = L.divIcon({ className:'', html, iconSize:[size,size], iconAnchor:[anchorX,size/2] });
     const mk = L.marker([s.lat,s.lon],{icon, riseOnHover:true});
     mk.on('click',()=>openPanel(s.id));
     // Stale stations look offline (dashed-ring "STALE" pin) and should

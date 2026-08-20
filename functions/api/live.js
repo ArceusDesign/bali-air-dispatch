@@ -929,36 +929,64 @@ function dropAirlyNearNafas(stations) {
 //     at exactly 0.000000 m, not "nearby", so TWIN_M is 1 m rather than 300;
 //   • OpenAQ names the instrument itself in provider.name, which live.js
 //     carries through as `type` ("AirGradient sensor").
-// Requiring BOTH is far stronger evidence of same-hardware than proximity ever
-// was, and a new twin now collapses the moment it appears instead of waiting
-// for someone to notice. A relay of any other network never matches the type
-// check; an unrelated AirGradient unit merely nearby never matches at 1 m.
+// Together these keep the blast radius to relays only: a relay of any other
+// network never matches the type check, and an unrelated AirGradient unit
+// merely nearby never matches at 1 m. Note the type test is one-sided — it is
+// a property of the OpenAQ station being suppressed, not a cross-check against
+// the AirGradient one doing the suppressing, so it distinguishes "is this a
+// relay at all" and not "is this the RIGHT device". Only the coordinate match
+// and the id tiebreak below speak to the latter.
 const TWIN_M = 1;
-// A brand-new AirGradient unit is not allowed to claim a twin. Anyone can put a
-// device on AirGradient's keyless world feed and type in any coordinates they
-// like (this file already notes at fetchAirGradient that names and models are
-// attacker-controllable — coordinates are no better protected), and the type
-// check below is a property of the OpenAQ station being suppressed, not of the
-// AirGradient one doing the suppressing, so it cannot tell a real twin from an
-// impostor parked on the same spot. Without a settling period, one registration
-// at a victim station's exact coordinates would delete that station's reading
-// from the map and publish the impostor's number in its place — silently, and
-// on the one kind of site where hiding a high reading is the entire motive.
-// Requiring the unit to have been in OUR archive for a day is the automatic
-// stand-in for the hand-verification this replaced: an impostor has to be
-// planted a day ahead of whatever it wants to hide and sit visibly on the map
-// (and on AirGradient's own public map) the whole time, which is a different
-// proposition from reacting to a burn event in progress. Genuine twins appear
-// in the archive within ~1-2 h of each other and simply collapse a day later.
-const TWIN_SETTLE_MS = 24 * 60 * 60 * 1000;
+// PAIRING IS IMMEDIATE. A 24 h archive-settling gate used to stand here, so a
+// freshly-registered AirGradient unit could not claim a twin straight away.
+// It was removed on 2026-08-20: the cost was paid every time a real sensor
+// came online — the pair double-pinned for a day, and because the two markers
+// sit at 0.000000 m the OpenAQ pin landed ON TOP, showing its uncorrected
+// number (Nyambu 48.4 against the true 26.2, Sogil Brew 67.5 against 15.5) and
+// making the correct pin unclickable. AirGradient has been adding a Bali unit
+// roughly daily, so that was close to a permanent condition on the newest
+// sensors — the ones people go looking for.
+//
+// What the gate defended, and what still does. The attack is an impostor
+// registering a unit at a victim relay's exact coordinates to make that relay
+// vanish. Suppression removes the OpenAQ COPY; the impostor's own ag-* pin is
+// normally drawn either way (the one exception is the blank-pin rule below,
+// which drops a value-less ag-* rather than let it bury a live reading). Note
+// that an impostor pin, like any fresh station, DOES enter the published
+// median / WHO count / worst-now — that is true with or without pairing, and
+// is not something this de-dup can address. Two cases:
+//   • the genuine AirGradient twin is present — the ordinary case for every
+//     current pair. Two ag-* units then sit at one coordinate and the tiebreak
+//     below takes the lowest id, which is the longer-established device; ids
+//     are issued in ascending order, so an impostor cannot outrank a unit
+//     registered earlier. The real pin keeps showing its corrected value and
+//     what got suppressed is the duplicate we no longer want anyway.
+//   • the genuine twin has dropped off the feed, leaving the relay as the only
+//     record of that spot. This is the case with real exposure. The
+//     anti-burying guard below is all that holds it, and it holds a narrower
+//     line than is comfortable: it caps UNDERSTATEMENT AT A RATIO, not at an
+//     absolute level. An impostor publishing a third of the relay's figure
+//     suppresses it at ANY level — 300 hidden behind a raw 100 — and anything
+//     below TWIN_HIDE_FLOOR can be hidden outright. What the guard does buy is
+//     that concealment requires publishing a roughly truthful number, so the
+//     displayed value cannot be driven to zero while real air is bad.
+// So the residual risk is: at a location whose direct feed has gone dark, an
+// impostor can understate by up to ~3x, or conceal a below-floor reading
+// entirely. Weighed against a daily, visible, wrong number sitting on top of
+// the right one, that is the better trade — but it IS a trade, and the second
+// bullet is a real hole, recorded here rather than glossed.
 // Refuse a suppression that would hide a materially WORSE relay reading.
 // One-way on purpose: showing two pins is untidy, hiding pollution is the
 // failure this site exists to prevent. Legitimate twins disagree — OpenAQ
 // relays the RAW figure while we publish the humidity-corrected one, and its
-// hourly republishing lags a fast-moving plume — but measured across all ten
-// current pairs the direct feed never reads less than 63% of its relay (worst
-// case Umadawa, raw 49.2 vs 77.9). A third is far outside that, and the floor
-// keeps the rule from firing on clean-air noise where the ratio means nothing.
+// hourly republishing lags a fast-moving plume, so the two are often reading
+// air up to ~3.5 h apart. Measured over the ten live pairs the direct feed
+// runs 44.7%-124% of its relay; the worst case (Sogil Brew, raw 30.2 vs 67.5
+// = 2.24x) is a timing offset, not sensor disagreement. So 3x leaves only
+// ~1.34x of headroom over observed normal behaviour — thinner than is
+// comfortable, and worth re-measuring if legitimate pairs start tripping it.
+// The floor keeps the rule from firing on clean-air noise where a ratio
+// between two small numbers means nothing.
 // The guard deliberately fires even when the relay reading is STALE: a frozen
 // high number next to a suspiciously low direct pin still earns its muted
 // marker on the map (excluded from every stat, so it costs nothing), and
@@ -982,59 +1010,39 @@ function agIdNum(id) {
   return Number.isFinite(n) ? n : Infinity;
 }
 // oq id → its ag twin, for every relay pair present in `stations`.
-// `firstSeen` maps station_id → unix seconds of first archive sighting; a
-// station missing from it has no established history, so it never pairs.
-function pairAirGradientRelays(stations, firstSeen) {
+function pairAirGradientRelays(stations) {
   const pairs = new Map();
-  if (!firstSeen || !firstSeen.size) return pairs;   // unknown ages → show both
-  const settledBefore = Math.floor((Date.now() - TWIN_SETTLE_MS) / 1000);
-  const ag = stations.filter(s => {
-    if (!s || s.source !== 'AirGradient' || s.off) return false;
-    if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return false;
-    const fs = firstSeen.get(s.id);
-    return Number.isFinite(fs) && fs <= settledBefore;
-  });
+  const ag = stations.filter(s =>
+    s && s.source === 'AirGradient' && !s.off &&
+    Number.isFinite(s.lat) && Number.isFinite(s.lon));
   if (!ag.length) return pairs;
   for (const s of stations) {
     if (!isAirGradientRelay(s) || s.off) continue;
     if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) continue;
-    // Deterministic when a site runs two units at one coordinate: prefer an
-    // exact name match, then the closest, then the lowest (numeric) id — so the
-    // same pairing is produced on every request rather than flapping with feed
-    // order, and the established unit wins over anything parked beside it.
+    // Deterministic when a site runs two units at one coordinate: closest
+    // first, then the LOWEST NUMERIC id. Name is deliberately NOT consulted.
+    // It used to be the first test, which review showed handed the whole
+    // tiebreak to an attacker: the AirGradient name is free text on a keyless
+    // feed (see fetchAirGradient), so an impostor copying the relay's name beat
+    // a genuine unit whose name had drifted even slightly — and `scClean`
+    // truncates at 80 chars and strips punctuation, so drift happens on its
+    // own. Winning the pairing lets the impostor's raw value, not the genuine
+    // unit's, become the reference the anti-burying guard is measured against.
+    // Ids are issued in ascending order and cannot be chosen, so ordering on id
+    // alone means the longer-established device always wins. Cost is a rare
+    // mis-pick between two genuine units sharing one coordinate — both
+    // AirGradient, both corrected, so the harm is nil.
     let best = null;
     for (const a of ag) {
       const d = metresBetween(s.lat, s.lon, a.lat, a.lon);
       if (d > TWIN_M) continue;
-      const named = String(a.name || '').trim().toLowerCase() ===
-                    String(s.name || '').trim().toLowerCase();
-      if (!best) { best = { a, d, named }; continue; }
-      if (named !== best.named) { if (named) best = { a, d, named }; continue; }
-      if (d !== best.d) { if (d < best.d) best = { a, d, named }; continue; }
-      if (agIdNum(a.id) < agIdNum(best.a.id)) best = { a, d, named };
+      if (!best) { best = { a, d }; continue; }
+      if (d !== best.d) { if (d < best.d) best = { a, d }; continue; }
+      if (agIdNum(a.id) < agIdNum(best.a.id)) best = { a, d };
     }
     if (best) pairs.set(s.id, best.a.id);
   }
   return pairs;
-}
-// First-archive-sighting per station, for the settling rule above. Read from the
-// catalog rather than trusted from the feed, because first_seen is written by
-// the archive worker and is not something an upstream feed can backdate.
-// Any failure returns an empty Map, which disables pairing entirely — both pins
-// show. Untidy, never unsafe.
-async function stationFirstSeen(db) {
-  const out = new Map();
-  try {
-    const rows = await db.prepare(
-      `SELECT station_id, first_seen FROM stations
-        WHERE station_id LIKE 'ag-%' OR station_id LIKE 'oq-%'`
-    ).all();
-    for (const r of (rows.results || [])) {
-      const fs = r && r.first_seen != null ? +r.first_seen : NaN;
-      if (Number.isFinite(fs)) out.set(r.station_id, fs);
-    }
-  } catch (_) { /* no ages → no pairing → both pins shown */ }
-  return out;
 }
 // Collapse each discovered pair to the direct AirGradient pin, whether that pin
 // is fresh or stale — a stale pin renders muted ("STALE") and is excluded from
@@ -1047,8 +1055,8 @@ async function stationFirstSeen(db) {
 //     nobody;
 //   • the anti-burying guard above: a relay reading materially worse than the
 //     direct feed's raw figure keeps both pins on the map, fresh or stale.
-function dropOpenAQNearAirGradient(stations, firstSeen) {
-  const pairs = pairAirGradientRelays(stations, firstSeen);
+function dropOpenAQNearAirGradient(stations) {
+  const pairs = pairAirGradientRelays(stations);
   if (!pairs.size) return stations;
   const byId = new Map();
   for (const s of stations) {
@@ -1075,7 +1083,14 @@ function dropOpenAQNearAirGradient(stations, firstSeen) {
     const agRaw = rawOf(ag);
     if (Number.isFinite(oq.pm25) && oq.pm25 >= TWIN_HIDE_FLOOR &&
         Number.isFinite(agRaw) && agRaw * TWIN_HIDE_RATIO < oq.pm25) {
-      continue;   // show both, decide nothing
+      // Show both, decide nothing — and TELL THE FRONTEND, because "both" at
+      // 0.000000 m means one marker painted exactly on top of the other. The
+      // relay is the smaller pin when stale (38 px inside a 42-58 px disc), so
+      // without an offset the guard would fire, produce a DOM node nobody can
+      // see or click, and the pollution it exists to surface would stay hidden
+      // just the same. The frontend draws a flagged pin beside its twin.
+      oq.twinConflict = true;
+      continue;
     }
     drop.add(oqId);
   }
@@ -1293,9 +1308,7 @@ export async function onRequest(context) {
         // AG-only: if AirGradient goes quiet the pin shows muted STALE rather
         // than borrowing the relay's uncorrected number; the relay returns on
         // its own only if the AG unit leaves the feed entirely (no pair forms).
-        // Pairing needs catalog first_seen — see TWIN_SETTLE_MS.
-        fast.stations = dropOpenAQNearAirGradient(
-          fast.stations, await stationFirstSeen(env.ARCHIVE_DB));
+        fast.stations = dropOpenAQNearAirGradient(fast.stations);
         // Fold in Smart Citizen OFFLINE tombstones (off:true) — dead or
         // indoor-retagged units keep a grey pin + reachable history. Added
         // after the live folds so live pins act as the de-dup anchors.
@@ -1390,13 +1403,11 @@ export async function onRequest(context) {
   // archive worker is the only caller that passes ?fresh=1, and it must keep
   // receiving every station — including both halves of a relay pair — or the
   // suppressed half stops being archived under its own id. Outside the
-  // ARCHIVE_DB block on purpose: the Airly fold needs no database, and without
-  // one the relay fold simply finds no ages and leaves both pins alone.
+  // ARCHIVE_DB block on purpose: neither fold touches the database, so both
+  // still run for a visitor served the slow path with no binding present.
   if (!noFast) {
     results.stations = dropAirlyNearNafas(results.stations);
-    results.stations = dropOpenAQNearAirGradient(
-      results.stations,
-      env.ARCHIVE_DB ? await stationFirstSeen(env.ARCHIVE_DB) : null);
+    results.stations = dropOpenAQNearAirGradient(results.stations);
     results.sources = new Set(results.stations.filter(s => !s.off).map(s => s.source)).size;
   }
   if (results.errors.length === 0) delete results.errors;
