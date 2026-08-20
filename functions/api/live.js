@@ -215,6 +215,12 @@ async function fastPathFromD1(db) {
       // would flicker depending on which path served the request.
       pm25_raw: r.pm25_raw != null ? +(+r.pm25_raw).toFixed(1) : null,
       pm25_corrected: r.pm25_raw != null,
+      // Derived from the id prefix rather than carried in the row, so the fast
+      // path and contribFromD1() agree by construction. Without it a
+      // contributed sensor would count toward the island median on the fast
+      // path and not on the slow one — the published figure would depend on
+      // which path happened to serve the request.
+      contributed: String(r.station_id).startsWith('cs-'),
       pm10: r.pm10 != null ? +(+r.pm10).toFixed(1) : null,
       pm1:  r.pm1  != null ? +(+r.pm1).toFixed(1)  : null,
       aqi: r.aqi != null ? +r.aqi : null,
@@ -865,6 +871,63 @@ async function scOfflineFromD1(db, baseStations) {
   }
 }
 
+// Community-contributed sensors (cs-*) — residents running their own hardware
+// who POST to /api/ingest. Their readings already live in the universal
+// stations/station_snapshots tables, so the D1 FAST path picks them up with no
+// special handling. This function exists for the SLOW path only: that path
+// rebuilds the station list from upstream APIs, and a pushed sensor has no
+// upstream to poll, so without this it would vanish whenever the fast path
+// wasn't used (including for the archive worker, which reads ?fresh=1).
+//
+// `contributed: true` is what the frontend keys off to keep these out of the
+// island-wide statistics — unverified siting must not move a published health
+// figure. Never blocking: any failure returns [] and live air is served
+// unchanged.
+async function contribFromD1(db, existing = []) {
+  const FRESH_MS = 60 * 60 * 1000;   // pushed sensors report far more often
+  try {
+    const rows = await db.prepare(`
+      SELECT s.station_id, s.name, s.lat, s.lon, s.type,
+             sn.pm25, sn.pm10, sn.pm1, sn.temperature, sn.humidity, sn.ts
+      FROM stations s
+      JOIN station_snapshots sn ON sn.station_id = s.station_id
+      WHERE s.station_id LIKE 'cs-%'
+        AND sn.ts = (SELECT MAX(ts) FROM station_snapshots WHERE station_id = s.station_id)
+    `).all();
+    const present = new Set((existing || []).map(s => s && s.id).filter(Boolean));
+    const out = [];
+    for (const r of (rows.results || [])) {
+      if (!r || present.has(r.station_id)) continue;
+      if (r.lat == null || r.lon == null) continue;
+      const pm25 = r.pm25 != null ? +(+r.pm25).toFixed(1) : null;
+      const { cat, cls } = pm25Category(pm25);
+      const lastMs = (+r.ts) * 1000;
+      out.push({
+        id: r.station_id,
+        name: r.name || r.station_id,
+        source: 'Community',
+        type: r.type || 'Community sensor',
+        lat: +r.lat, lon: +r.lon,
+        pm25,
+        pm25_raw: null,
+        pm25_corrected: false,
+        pm10: r.pm10 != null ? +(+r.pm10).toFixed(1) : null,
+        pm1:  r.pm1  != null ? +(+r.pm1).toFixed(1)  : null,
+        aqi: null,
+        temperature: r.temperature != null ? +(+r.temperature).toFixed(1) : null,
+        humidity:    r.humidity    != null ? +(+r.humidity).toFixed(1)    : null,
+        category: cat, cls,
+        contributed: true,
+        lastSeen: new Date(lastMs).toISOString(),
+        stale: (Date.now() - lastMs) > FRESH_MS,
+      });
+    }
+    return out;
+  } catch (_) {
+    return [];   // contributed sensors are additive — never break live air
+  }
+}
+
 // Airly de-dup (display only). Both Bali Airly installations are Nafas-SPONSORED
 // hardware co-located (~12 m) with a Nafas station, publishing the same readings
 // (daily-mean r≈0.97, mean |Δ|<1 µg/m³). Show one pin: drop any Airly station
@@ -1386,6 +1449,14 @@ export async function onRequest(context) {
         results.stations.push(...scraped);
       }
     } catch (_) { /* scraped optional */ }
+    // Community-contributed sensors (cs-*). Pushed, not polled, so none of the
+    // upstream fetchers above can see them — folded in from D1. The archive
+    // worker reads this path (?fresh=1) and skips cs-* when snapshotting, so
+    // these are never written back on top of the rows /api/ingest just wrote.
+    try {
+      const contrib = await contribFromD1(env.ARCHIVE_DB, results.stations);
+      if (contrib.length) results.stations.push(...contrib);
+    } catch (_) { /* contributed optional */ }
     // Smart Citizen OFFLINE tombstones (see scOfflineFromD1) — folded LAST so
     // every live pin (including scraped IQAir) is already in the base list and
     // a tombstone can never act as a de-dup anchor against a live station.

@@ -238,6 +238,12 @@ async function snapshotUniversal(db, live, nowSec) {
     // which /api/live + /history would otherwise have to filter out as stale
     // duplicate pins. Skipping at the source keeps those tables clean.
     if (String(s.id).startsWith('iqs-')) continue;
+    // Skip community-contributed sensors (cs-*): /api/ingest writes their rows
+    // directly, with the CONTRIBUTOR's timestamp. Re-snapshotting them from
+    // /api/live would append a second row per tick stamped with OUR poll time,
+    // inflating the archive and — worse — freezing the last pushed value into a
+    // fresh-looking row every 15 minutes if the device goes offline.
+    if (String(s.id).startsWith('cs-')) continue;
     // Skip OFFLINE tombstone pins (off:true — Smart Citizen retention): they
     // carry no current reading (pm25 null, lastSeen = last archived day).
     // Without this, a freshly-dead unit would get null-pm25 snapshots for the

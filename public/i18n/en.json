@@ -641,5 +641,6 @@
   "report.yesterday": "yesterday",
   "report.areaOnly": "anywhere within the desa — not a specific address",
   "report.area": "Area",
-  "report.mostRecent": "Most recent"
+  "report.mostRecent": "Most recent",
+  "panel.contributed": "Community-contributed · unverified siting"
 }

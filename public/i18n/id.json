@@ -1254,5 +1254,6 @@
   "report.yesterday": "kemarin",
   "report.areaOnly": "di mana saja dalam desa — bukan alamat tertentu",
   "report.area": "Wilayah",
-  "report.mostRecent": "Terbaru"
+  "report.mostRecent": "Terbaru",
+  "panel.contributed": "Kontribusi warga · penempatan belum diverifikasi"
 }

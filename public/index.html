@@ -262,6 +262,10 @@ body::before{
 .side-kicker .tag.gone{background:var(--ink)}
 .side-name{font-family:"Fraunces",serif;font-weight:800;font-variation-settings:"opsz" 120;font-size:clamp(28px,3.6vw,40px);line-height:1.02;letter-spacing:-.02em;color:var(--ink);margin-bottom:6px}
 .indoor-flag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:#5c5852;background:#e2ded6;border:1px solid #a9a499;border-radius:3px;padding:4px 10px;margin-bottom:10px}
+/* Community-contributed sensor. The panel states a health directive and a WHO
+   exceedance multiple for whatever station is open; on an unverified device
+   that claim needs its provenance attached to it, not buried in a footnote. */
+.contrib-flag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:#6b5a3a;background:#efe6d2;border:1px solid #bda87e;border-radius:3px;padding:4px 10px;margin-bottom:10px}
 .side-byline{font-family:"Source Serif 4",serif;font-style:italic;color:var(--ink-faint);font-size:13px}
 
 .side-big{padding:24px 28px;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start}
@@ -848,6 +852,26 @@ const INDOOR_IDS = new Set([
   // in the archive and is self-evidently bad data; nothing was rewritten.
 ]);
 const isIndoor = (s) => INDOOR_IDS.has(typeof s === 'string' ? s : (s && s.id));
+// Community-contributed sensors (cs-*, source "Community") — residents running
+// their own hardware, pushed via /api/ingest. We did not site the device,
+// cannot inspect it and cannot audit its firmware.
+const isContributed = (s) => !!(s && (s.contributed || String((typeof s === 'string' ? s : s.id) || '').startsWith('cs-')));
+
+// THE AMBIENT SET — the single gate for every figure on this site that makes a
+// claim about the island's outdoor air: the network median, "worst right now",
+// the WHO exceedance ratio and count, the Worst-3 cards, and the haze overlay.
+//
+// Defined ONCE, at module scope, deliberately. It previously lived inside
+// renderAll() while renderArchive() and the haze guard each re-derived their
+// own filter by hand — so adding the contributed exclusion in one place left a
+// contributed sensor able to own the "Worst right now" headline and to paint a
+// haze cloud, while the median correctly ignored it. Any new statistic MUST
+// filter with this predicate rather than rewriting the condition.
+//   • stale      → pm25 is a frozen cached value, not a current measurement
+//   • indoor     → measures a room, not the air outside
+//   • contributed→ unverified siting; visible on the map and in the API, but no
+//                  vote on a published health figure until siting is settled
+const isAmbient = (s) => s && !s.stale && !isIndoor(s) && !isContributed(s);
 let liveStations = [];
 let scTombstones = []; // server-driven OFFLINE tombstones (off:true) — dead /
                        // indoor-retagged Smart Citizen units kept visible with
@@ -1155,7 +1179,10 @@ function renderAll(ts){
   // cleaner than it is — the one direction of error this site must not make.
   // They are still counted as LIVE SENSORS below, because they are real pins a
   // visitor can count on the map; they just don't get a vote on ambient air.
-  const isAmbient = (s) => s && !s.stale && !isIndoor(s);
+  // isAmbient / isContributed are module-scope (see their definition above) so
+  // every published figure filters through the same predicate. Do not re-derive
+  // this condition locally — that is exactly how the Worst-3 cards and the haze
+  // overlay silently diverged from the median.
   const ambientStations = liveStations.filter(isAmbient);
   const worst = ambientStations.reduce((a,b)=>((b.pm25??-1)>(a.pm25??-1)?b:a),{pm25:-1});
 
@@ -1186,10 +1213,16 @@ function renderAll(ts){
 
       // Draw a "haze cloud" around affected live stations. Radius grows with PM2.5,
       // rendered in meters so it scales naturally with zoom. Skip stale + indoor.
-      if (!s.stale && !isIndoor(s) && s.pm25!=null && s.pm25 > 12 && HAZE[c.cls]) {
+      if (isAmbient(s) && s.pm25!=null && s.pm25 > 12 && HAZE[c.cls]) {
         const color = HAZE[c.cls];
         // inner denser cloud
-        const rInner = 600 + s.pm25 * 55;   // e.g. 20 µg/m³ → 1.7 km
+        // Clamped, and the clamp applies to EVERY source, not just contributed
+        // ones. Unclamped this is 600 + pm25*55 metres, so a reading of 2000
+        // (accepted by /api/ingest, and reachable by any sensor stuck at its
+        // ceiling) drew a 111 km inner cloud and a 310 km outer drift — Bali is
+        // ~150 km across, so one bad reading painted the entire island
+        // "Hazardous". No single station should ever be able to do that.
+        const rInner = Math.min(600 + s.pm25 * 55, 12000);
         const opInner = Math.min(0.32, 0.10 + s.pm25/180);
         L.circle([s.lat,s.lon], {
           radius: rInner, color:'transparent', weight:0,
@@ -1420,7 +1453,10 @@ async function renderArchive(){
   // Suspected-indoor sensors are excluded too: this section claims "where the
   // air is most consistently bad", which is a statement about ambient air.
   const ranked = [...liveStations]
-    .filter(s => Number.isFinite(+s.pm25) && +s.pm25 > 0 && !s.stale && !isIndoor(s))
+    // isAmbient covers stale + indoor + contributed. These cards name a place
+    // and call its air the worst on the island — a published health claim — so
+    // they must consume the same set as the median, not a hand-rolled filter.
+    .filter(s => Number.isFinite(+s.pm25) && +s.pm25 > 0 && isAmbient(s))
     .sort((a,b) => (+b.pm25) - (+a.pm25))
     .slice(0, 3);
 
@@ -1603,6 +1639,7 @@ function panelLive(s){
       <div class="side-kicker"><span class="tag">${t('panel.tagLive','Live')}</span> ${esc(s.source)}${s.type?' · '+esc(s.type):''}</div>
       <div class="side-name">${esc(s.name)||t('panel.unnamed','Unnamed station')}</div>
       ${isIndoor(s) ? `<div class="indoor-flag">${t('panel.suspectedIndoor','Suspected indoor monitor')}</div>` : ''}
+      ${isContributed(s) ? `<div class="contrib-flag">${t('panel.contributed','Community-contributed · unverified siting')}</div>` : ''}
       <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.reporting','reporting')} ${s.lastSeen?t('panel.at','at')+' '+new Date(s.lastSeen).toLocaleTimeString('en-GB'):t('panel.now','now')}</div>
     </div>
     <div class="side-big">
