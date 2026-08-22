@@ -5,7 +5,10 @@
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
-  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=()
+  # geolocation=(self): the map's locate-me button needs the API. The
+  # coordinate never leaves the page — it moves the view and is discarded,
+  # nothing stores or transmits it (connect-src 'self' below, and no storage).
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
   Cross-Origin-Opener-Policy: same-origin
   # Loose enough to allow inline scripts (we have no build step) but
   # restrictive on outbound origins.

@@ -99,8 +99,18 @@ body::before{
 /* ===== MAP HERO (full-bleed) ===== */
 .hero{padding:0;margin:0;position:relative}
 .map-frame{position:relative;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--paper-2)}
-#map-leaflet{height:calc(75vh - 120px)!important;min-height:480px!important;max-height:none!important;width:100%;background:var(--paper-3);position:relative;z-index:1}
-@media(max-width:720px){#map-leaflet{height:calc(72vh - 90px)!important;min-height:420px!important}}
+/* The map is the story, so it gets the screen (airgradient.com/map is the
+   reference). The subtracted offset is NOT chrome above the map — the topbar
+   is an overlay and costs nothing — it is the legend bar underneath plus a
+   sliver of breathing room, so that scrolling the map frame to the top of the
+   viewport shows topbar AND legend bar together with nothing cut off.
+   svh, not vh: on mobile Safari 100vh is the URL-bar-collapsed height, which
+   over-measures by ~90px while the bar is showing and would push the legend
+   below the fold. svh is the smallest viewport, so it always fits, and unlike
+   dvh it does not resize (and re-tile the map) as the URL bar slides away.
+   The plain-vh line stays first as the fallback for browsers without svh. */
+#map-leaflet{height:calc(100vh - 150px)!important;height:calc(100svh - 150px)!important;min-height:560px!important;max-height:none!important;width:100%;background:var(--paper-3);position:relative;z-index:1}
+@media(max-width:720px){#map-leaflet{height:calc(100vh - 140px)!important;height:calc(100svh - 140px)!important;min-height:520px!important}}
 
 /* compact top bar overlaid on map */
 .map-topbar{
@@ -114,7 +124,15 @@ body::before{
   pointer-events:none;
 }
 .map-topbar>*{pointer-events:auto}
-.map-topbar .tb-left{display:flex;align-items:center;gap:10px;text-transform:uppercase}
+.map-topbar .tb-left{display:flex;align-items:center;gap:14px;text-transform:uppercase;flex-wrap:wrap}
+.map-topbar .tb-now{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}
+/* Live-network counts, previously a floating HUD card. They belong in the
+   banner, not on the map: they describe the network, not a place on it, and
+   as a card they sat on top of the north-west corner of the island. */
+.tb-stats{display:flex;align-items:baseline;gap:14px;font-family:"IBM Plex Mono",monospace;padding-left:16px;border-left:1px solid var(--hairline)}
+.tb-stats .st{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}
+.tb-stats .v{font-family:"Fraunces",serif;font-weight:800;font-size:15px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.tb-stats .k{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
 .map-topbar .tb-left .dot{width:8px;height:8px;background:var(--crimson);border-radius:50%;box-shadow:0 0 0 2px rgba(139,26,26,.2);animation:pls 1.8s ease-in-out infinite}
 @keyframes pls{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
 .map-topbar .tb-center{
@@ -122,11 +140,29 @@ body::before{
   font-size:clamp(15px,1.6vw,20px);letter-spacing:-.01em;color:var(--ink);
   text-align:center;font-style:italic;
 }
+/* The banner is absolutely positioned over the map, and the Layers card and the
+   zoom stack are pinned to a fixed offset below it — so the banner must stay
+   ONE row tall on every desktop width. With the counts now beside the
+   timestamp, the left column needs ~385px (more in Indonesian, whose labels are
+   longer); below ~1100px the decorative hero line squeezes it under that and
+   the counts wrap, growing the banner ~15px and letting it paint over the tops
+   of both cards. The hero line is ornament, the controls are not: drop it first
+   and hand the width to the column that carries data. */
+@media(max-width:1100px){
+  .map-topbar{grid-template-columns:1fr auto}
+  .map-topbar .tb-center{display:none}
+}
 .map-topbar .tb-right{text-align:right;text-transform:uppercase;color:var(--ink-faint)}
 .map-topbar .tb-right b{color:var(--ink);font-weight:600}
 @media(max-width:720px){
-  .map-topbar{grid-template-columns:1fr auto;gap:10px;padding:8px 12px}
+  /* align-items:start so the wind readout stays level with the timestamp
+     instead of floating between the two rows of a taller left column. */
+  .map-topbar{grid-template-columns:1fr auto;gap:10px;padding:8px 12px;align-items:start}
   .map-topbar .tb-center{display:none}
+  /* No room beside the timestamp on a phone — flex-basis:100% forces the
+     counts onto their own row directly under it instead of squeezing both. */
+  .tb-stats{flex-basis:100%;padding-left:0;border-left:none;gap:12px;justify-content:flex-start}
+  .tb-stats .v{font-size:14px}
 }
 
 /* MAP chrome — sepia-ish tiles via CSS filter to match paper */
@@ -178,17 +214,12 @@ body::before{
 .map-card{position:absolute;z-index:500;background:var(--paper);border:1px solid var(--rule);box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
 .map-card h5{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);padding:8px 12px 6px;border-bottom:1px solid var(--hairline);font-weight:600}
 
-/* HUD top-left — offset for overlay topbar */
-.hud{top:84px;left:18px;max-width:280px}
-.hud-search{padding:10px 12px;border-bottom:1px solid var(--hairline)}
-.hud-search input{width:100%;background:transparent;border:none;outline:none;font-family:"Source Serif 4",serif;font-size:14px;color:var(--ink);font-style:italic}
-.hud-search input::placeholder{color:var(--ink-whisper)}
-.hud-stats{padding:10px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-family:"IBM Plex Mono",monospace}
-.hud-stats .v{font-family:"Fraunces",serif;font-weight:800;font-size:18px;color:var(--ink);line-height:1}
-.hud-stats .k{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+/* (HUD card removed — the Live/Offline/Worst counts now live in .tb-stats
+   in the map topbar, and the search field it once held is long gone.) */
 
-/* Layer toggles top-right — offset for overlay topbar */
-.layers{top:84px;right:18px;min-width:170px}
+/* Layer toggles top-right — offset for overlay topbar. Narrow, because the
+   card ships collapsed and only ever has to fit its own header. */
+.layers{top:84px;right:18px;min-width:120px}
 .layer-row{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--hairline);transition:background .12s}
 .layer-row:last-child{border-bottom:none}
 .layer-row:hover{background:var(--dust)}
@@ -200,41 +231,61 @@ body::before{
 .layer-row.on .swch::after{transform:translateX(12px);background:var(--paper)}
 .layer-row.on .icn{color:var(--crimson)}
 
-/* Legend bottom-right */
-.legend{bottom:20px;right:18px;min-width:230px}
-.legend-body{padding:10px 12px 12px}
+/* ===== LEGEND BAR — a rule under the map, not a card floating on it =====
+   As an overlay the legend permanently covered the south-east of the island
+   (Klungkung, Karangasem, the Nusa islands) — the corner it happened to sit
+   in, not a corner nobody needed. Below the map it reads as furniture
+   belonging to the map, costs no island, and can run the full width. */
+.legend-bar{border-top:1px solid var(--rule);background:var(--paper);padding:9px 18px 10px;position:relative;z-index:2}
+.legend-bar-main{display:flex;align-items:center;gap:18px}
+.legend-bar-title{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;white-space:nowrap;flex:none}
+.legend-scale{flex:1;min-width:0}
 .legend-grad{display:flex;height:9px;border:1px solid var(--rule);overflow:hidden}
 .legend-grad>div{flex:1}
-.legend-ticks{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--ink-faint);margin-top:5px;font-variant-numeric:tabular-nums}
-.legend-more{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-top:8px;padding-top:8px;border-top:1px dashed var(--hairline);cursor:pointer;text-align:center}
+.legend-ticks{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--ink-faint);margin-top:4px;font-variant-numeric:tabular-nums}
+.legend-more{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);background:none;border:none;padding:0;cursor:pointer;text-align:center;flex:none;white-space:nowrap}
 .legend-more:hover{color:var(--crimson)}
-.legend-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--hairline)}
-.legend.expanded .legend-detail{display:block}
+.legend-detail{display:none;margin-top:9px;padding-top:9px;border-top:1px dashed var(--hairline)}
+.legend-bar.expanded .legend-detail{display:block}
+/* Columns, so the full scale reads as a short block rather than a ten-row
+   list that shoves the rest of the front page off the screen. Fixed counts
+   rather than auto-fit: there are exactly six categories, and auto-fit landed
+   on five, leaving one orphan on a second row. */
+.legend-cats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px 24px}
+@media(max-width:900px){.legend-cats{grid-template-columns:repeat(2,1fr)}}
+.legend-marks{margin-top:8px;padding-top:8px;border-top:1px dashed var(--hairline);display:grid;gap:3px}
 .legend-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink-soft);font-family:"Source Serif 4",serif;padding:2px 0}
 .legend-row .sw{width:12px;height:12px;border:1px solid var(--rule);flex-shrink:0}
 .legend-row .dash{width:12px;height:12px;border:1.5px dashed var(--crimson);flex-shrink:0}
+/* The reports row is a sentence, not a label — top-align its swatch so the
+   second line does not start under the colour chip. */
+.legend-marks .legend-row{align-items:flex-start}
+.legend-marks .legend-row .sw,.legend-marks .legend-row .dash{margin-top:3px}
 
 /* (Wind caption card removed; wind speed/direction now in masthead top-right) */
 
 /* ============== MOBILE MAP CHROME ============== */
 @media(max-width:720px){
-  /* Hide the search HUD — use the big registry table below instead on mobile. */
-  .hud{display:none}
-  /* Compact layer toggles: icons only, smaller */
-  .layers{top:68px;right:10px;min-width:120px}
+  /* Compact layer toggles: icons only, smaller. Width/offset live in the
+     later mobile block so there is ONE source of truth — a second rule here
+     was silently overridden by it. */
   .layer-row{padding:7px 10px;font-size:10px}
   .layer-row .lbl{flex:1}
-  /* Compact legend */
-  .legend{bottom:14px;right:10px;min-width:180px}
-  .legend-body{padding:8px 10px 10px}
+  /* Legend bar: two lines. Title + scale share the first; the "read the full
+     scale" control is pushed onto its own by flex-basis:100%, because at
+     375px all three on one line leaves the colour bar about 90px wide. */
+  .legend-bar{padding:8px 14px 9px}
+  .legend-bar-main{flex-wrap:wrap;gap:7px 12px}
   .legend-ticks{font-size:8px}
-  .legend-more{font-size:9px}
+  .legend-more{font-size:9px;flex-basis:100%;border-top:1px dashed var(--hairline);padding-top:7px}
+  .legend-cats{grid-template-columns:1fr}
   /* Bigger tap targets on markers */
   .pin{box-shadow:0 2px 0 rgba(20,17,13,.4)}
   /* Station side panel covers the full screen */
   .side{width:100vw}
-  /* Topbar: allow the right-side wind info to wrap cleanly */
-  .map-topbar{padding:14px 14px 18px}
+  /* Topbar: allow the right-side wind info to wrap cleanly. Tighter vertical
+     padding than before because the banner now carries a second row. */
+  .map-topbar{padding:12px 14px 14px}
   .map-topbar .tb-right{font-size:9.5px}
 }
 
@@ -398,7 +449,9 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 /* DATE in masthead-top center */
 .masthead-top .c{font-weight:600;color:var(--ink-soft);letter-spacing:.18em}
 
-/* COLLAPSIBLE map cards (desktop AND mobile, default expanded) */
+/* COLLAPSIBLE map cards (desktop AND mobile). Layers ships with .collapsed
+   already on it in the HTML rather than being folded by script on load, so
+   there is no first-paint flash of an open card over the island. */
 .map-card .card-h{cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding-right:10px}
 .map-card .card-h .cap{display:inline-block;font-size:11px;color:var(--ink-faint);transition:transform .2s;margin-left:6px}
 .map-card .card-body{transition:opacity .2s}
@@ -407,40 +460,61 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 .map-card.collapsed{padding-bottom:0}
 
 @media(max-width:720px){
-  /* Mobile: show HUD too (was previously hidden), align with Layers card */
-  .hud{display:block!important;top:68px;left:10px;right:auto;min-width:160px;max-width:200px}
-  .layers{top:68px;right:10px;min-width:140px}
+  /* Clear of the two-row topbar; zoom and layers share the same baseline. */
+  .layers{top:80px;right:10px;min-width:98px}
   /* Mobile edge buffer — extra safe area on text containers */
   .wrap{padding:0 19px}
   .colophon{padding-left:19px;padding-right:19px}
   .foot{padding-left:19px;padding-right:19px}
-  .map-topbar{padding:14px 17px 18px}
+  .map-topbar{padding:12px 17px 14px}
   /* Date and ID on mobile shrink */
   .masthead-top{font-size:9px;letter-spacing:.1em;gap:8px}
   .masthead-top .c{font-size:9.5px;letter-spacing:.14em}
 }
 
-/* CUSTOM ZOOM CONTROLS — sit below the HUD card */
+/* CUSTOM MAP CONTROLS — zoom pair, then locate, top-left.
+   Plain CSS placement. This used to be positioned by a placeZoom() that
+   measured the HUD card's bounding box on load, resize and a fistful of
+   setTimeouts; the HUD card is gone, and a fixed corner never needed
+   measuring in the first place. */
 .zoom-card{
-  top:auto;left:18px;right:auto;
-  /* JS positions vertically based on HUD card bottom — fallback inline coordinates */
-  display:flex;flex-direction:column;gap:0;padding:0;border:1px solid var(--rule);background:var(--paper);
+  top:84px;left:18px;right:auto;bottom:auto;
   position:absolute;z-index:501;
+  display:flex;flex-direction:column;align-items:flex-start;gap:8px;
 }
+.zoom-row{display:flex;box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
 .zoom-btn{
-  display:block;width:38px;height:38px;
-  background:var(--paper);color:var(--ink);border:none;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:center;width:38px;height:38px;
+  background:var(--paper);color:var(--ink);border:1px solid var(--rule);
   font-family:"Fraunces",serif;font-size:22px;font-weight:600;line-height:1;cursor:pointer;
   transition:background .15s,color .15s;
 }
-.zoom-btn:last-child{border-bottom:none}
+.zoom-row .zoom-btn+.zoom-btn{border-left:none}   /* shared edge, not a double rule */
 .zoom-btn:hover{background:var(--ink);color:var(--paper)}
+.zoom-btn:disabled{opacity:.55;cursor:default}
+.locate-row{display:flex;align-items:flex-start;gap:8px}
+.locate-btn{box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
+.locate-btn svg{width:17px;height:17px;display:block}
+/* Failure notice beside the pin, not a dialog: it is a five-second aside,
+   and an alert() for "you're not in Bali" would be absurd. */
+.locate-msg{
+  font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--crimson);background:var(--paper);border:1px solid var(--crimson);
+  padding:5px 7px;max-width:176px;line-height:1.4;
+}
+.locate-msg[hidden]{display:none}
 @media(max-width:720px){
-  .zoom-card{left:10px;width:36px}
+  .zoom-card{left:10px;top:80px}
   .zoom-btn{width:36px;height:36px;font-size:20px}
+  .locate-btn svg{width:16px;height:16px}
+  .locate-msg{max-width:150px;font-size:8.5px}
 }
 /* Hide Leaflet's default zoom — replaced by our custom card */
 .leaflet-control-zoom{display:none!important}
+
+/* The visitor's own position — deliberately NOT a sensor pin. No number, no
+   AQI colour, no click target, so it can never be read as a measurement. */
+.me-dot{width:20px;height:20px;border-radius:50%;background:var(--ink);border:4px solid var(--paper);box-shadow:0 0 0 1.5px var(--ink),0 0 14px 5px rgba(20,17,13,.22)}
 
 /* ISLAND AVERAGE pointer over the legend gradient */
 .legend-grad-wrap{position:relative;padding-top:22px}
@@ -509,24 +583,56 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 <section id="map" class="hero">
   <div class="map-frame">
     <div class="map-topbar">
-      <div class="tb-left"><span class="dot"></span><span><span data-i18n="home.tb.live">Live ·</span> <span id="mt-ts2">Syncing…</span></span></div>
+      <div class="tb-left">
+        <span class="tb-now"><span class="dot"></span><span><span data-i18n="home.tb.live">Live ·</span> <span id="mt-ts2">Syncing…</span></span></span>
+        <!-- ids stay hud-* : renderAll() writes these three by id. -->
+        <div class="tb-stats">
+          <span class="st"><span class="v" id="hud-live">—</span><span class="k" data-i18n="home.hud.live">Live</span></span>
+          <span class="st"><span class="v" id="hud-off">—</span><span class="k" data-i18n="home.hud.offline">Offline</span></span>
+          <span class="st"><span class="v" id="hud-worst">—</span><span class="k" data-i18n="home.hud.worst">Worst</span></span>
+        </div>
+      </div>
       <div class="tb-center" data-i18n-html="home.hero">A bird&rsquo;s-eye of <em>Bali&rsquo;s air</em>.</div>
       <div class="tb-right" id="heroWx">Wind <b>—</b> m/s · <b>—</b></div>
     </div>
     <div id="map-leaflet"></div>
 
-    <!-- HUD -->
-    <div class="map-card hud" style="display:none" id="hudCard">
-      <h5 class="card-h" onclick="toggleCard(this)" data-i18n-html="home.x.hudTitle">Bali · Live Network <span class="cap">▾</span></h5>
-      <div class="hud-stats card-body">
-        <div><div class="v" id="hud-live">—</div><div class="k" data-i18n="home.hud.live">Live</div></div>
-        <div><div class="v" id="hud-off">—</div><div class="k" data-i18n="home.hud.offline">Offline</div></div>
-        <div><div class="v" id="hud-worst">—</div><div class="k" data-i18n="home.hud.worst">Worst</div></div>
+    <!-- Legend, directly under the map so it reads as the map's own furniture
+         rather than a card parked on top of Karangasem. -->
+    <div class="legend-bar" id="legend">
+      <div class="legend-bar-main">
+        <div class="legend-bar-title" data-i18n="home.legend.title">PM2.5 · µg/m³</div>
+        <div class="legend-scale">
+          <div class="legend-grad">
+            <div style="background:var(--aqi-good)"></div>
+            <div style="background:var(--aqi-mod)"></div>
+            <div style="background:var(--aqi-usg)"></div>
+            <div style="background:var(--aqi-unh)"></div>
+            <div style="background:var(--aqi-vunh)"></div>
+            <div style="background:var(--aqi-haz)"></div>
+          </div>
+          <div class="legend-ticks"><span>0</span><span>12</span><span>35</span><span>55</span><span>150</span><span>250+</span></div>
+        </div>
+        <button type="button" class="legend-more" aria-controls="legend" onclick="document.getElementById('legend').classList.toggle('expanded')" data-i18n="home.x.legendMore">Read the full scale ▾</button>
+      </div>
+      <div class="legend-detail">
+        <div class="legend-cats">
+          <div class="legend-row" data-i18n-html="home.x.legGood"><span class="sw" style="background:var(--aqi-good)"></span>Good · 0–12</div>
+          <div class="legend-row" data-i18n-html="home.x.legMod"><span class="sw" style="background:var(--aqi-mod)"></span>Moderate · 12.1–35.4</div>
+          <div class="legend-row" data-i18n-html="home.x.legUsg"><span class="sw" style="background:var(--aqi-usg)"></span>Unhealthy (Sensitive) · 35.5–55.4</div>
+          <div class="legend-row" data-i18n-html="home.x.legUnh"><span class="sw" style="background:var(--aqi-unh)"></span>Unhealthy · 55.5–150.4</div>
+          <div class="legend-row" data-i18n-html="home.x.legVunh"><span class="sw" style="background:var(--aqi-vunh)"></span>Very Unhealthy · 150.5–250.4</div>
+          <div class="legend-row" data-i18n-html="home.x.legHaz"><span class="sw" style="background:var(--aqi-haz)"></span>Hazardous · 250.5+</div>
+        </div>
+        <div class="legend-marks">
+          <div class="legend-row" data-i18n-html="home.x.legDashed"><span class="dash"></span>Dashed ring = offline sensor</div>
+          <div class="legend-row" data-i18n-html="home.x.legReports"><span class="sw" style="background:var(--crimson);border-radius:50%;border-style:dashed;opacity:.55"></span>Dashed circle = area with community burning reports, sized by count, fading over 30 days</div>
+        </div>
       </div>
     </div>
 
-    <!-- Layers -->
-    <div class="map-card layers">
+    <!-- Layers · ships collapsed on every breakpoint -->
+    <div class="map-card layers collapsed">
       <h5 class="card-h" onclick="toggleCard(this)" data-i18n-html="home.x.layersTitle">Layers <span class="cap">▾</span></h5>
       <div class="card-body">
       <div class="layer-row on" id="lr-live" onclick="toggleLayer('live')">
@@ -548,36 +654,17 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       </div><!-- /card-body -->
     </div>
 
-    <!-- Custom Zoom (placed below the HUD card; replaces default Leaflet zoom) -->
-    <div class="map-card zoom-card" id="zoomCard">
-      <button type="button" class="zoom-btn" id="zoomIn"  aria-label="Zoom in" data-i18n-attr="aria-label:home.x.zoomIn">+</button>
-      <button type="button" class="zoom-btn" id="zoomOut" aria-label="Zoom out" data-i18n-attr="aria-label:home.x.zoomOut">−</button>
-    </div>
-
-    <!-- Legend -->
-    <div class="map-card legend" id="legend">
-      <h5 data-i18n="home.legend.title">PM2.5 · µg/m³</h5>
-      <div class="legend-body">
-        <div class="legend-grad">
-          <div style="background:var(--aqi-good)"></div>
-          <div style="background:var(--aqi-mod)"></div>
-          <div style="background:var(--aqi-usg)"></div>
-          <div style="background:var(--aqi-unh)"></div>
-          <div style="background:var(--aqi-vunh)"></div>
-          <div style="background:var(--aqi-haz)"></div>
-        </div>
-        <div class="legend-ticks"><span>0</span><span>12</span><span>35</span><span>55</span><span>150</span><span>250+</span></div>
-        <div class="legend-more" onclick="document.getElementById('legend').classList.toggle('expanded')" data-i18n="home.x.legendMore">Read the full scale ▾</div>
-        <div class="legend-detail">
-          <div class="legend-row" data-i18n-html="home.x.legGood"><span class="sw" style="background:var(--aqi-good)"></span>Good · 0–12</div>
-          <div class="legend-row" data-i18n-html="home.x.legMod"><span class="sw" style="background:var(--aqi-mod)"></span>Moderate · 12.1–35.4</div>
-          <div class="legend-row" data-i18n-html="home.x.legUsg"><span class="sw" style="background:var(--aqi-usg)"></span>Unhealthy (Sensitive) · 35.5–55.4</div>
-          <div class="legend-row" data-i18n-html="home.x.legUnh"><span class="sw" style="background:var(--aqi-unh)"></span>Unhealthy · 55.5–150.4</div>
-          <div class="legend-row" data-i18n-html="home.x.legVunh"><span class="sw" style="background:var(--aqi-vunh)"></span>Very Unhealthy · 150.5–250.4</div>
-          <div class="legend-row" data-i18n-html="home.x.legHaz"><span class="sw" style="background:var(--aqi-haz)"></span>Hazardous · 250.5+</div>
-          <div class="legend-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--hairline)" data-i18n-html="home.x.legDashed"><span class="dash"></span>Dashed ring = offline sensor</div>
-          <div class="legend-row" data-i18n-html="home.x.legReports"><span class="sw" style="background:var(--crimson);border-radius:50%;border-style:dashed;opacity:.55"></span>Dashed circle = area with community burning reports, sized by count, fading over 30 days</div>
-        </div>
+    <!-- Zoom pair + locate, top-left. Replaces Leaflet's default zoom UI. -->
+    <div class="zoom-card" id="zoomCard">
+      <div class="zoom-row">
+        <button type="button" class="zoom-btn" id="zoomIn"  aria-label="Zoom in" data-i18n-attr="aria-label:home.x.zoomIn">+</button>
+        <button type="button" class="zoom-btn" id="zoomOut" aria-label="Zoom out" data-i18n-attr="aria-label:home.x.zoomOut">−</button>
+      </div>
+      <div class="locate-row">
+        <button type="button" class="zoom-btn locate-btn" id="locateBtn" aria-label="Show my location" data-i18n-attr="aria-label:home.x.locate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.2 7-11.5a7 7 0 1 0-14 0c0 5.3 7 11.5 7 11.5Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+        </button>
+        <span class="locate-msg" id="locateMsg" role="status" aria-live="polite" hidden></span>
       </div>
     </div>
 
@@ -797,8 +884,6 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
   subdomains:'abcd', maxZoom:19
 }).addTo(map);
 map.fitBounds(BALI,{padding:[20,20]});
-
-document.getElementById('hudCard').style.display='block';
 
 // Kick off wind overlay by default — iqair-style airflow visible on load.
 setTimeout(()=>{ try{ startWind(); }catch(e){} }, 800);
@@ -1216,14 +1301,18 @@ function renderAll(ts){
       if (isAmbient(s) && s.pm25!=null && s.pm25 > 12 && HAZE[c.cls]) {
         const color = HAZE[c.cls];
         // inner denser cloud
+        // Half the former diameter and roughly half the former opacity: at the
+        // old size the clouds merged into one continuous smear across the south
+        // and the pin numbers were unreadable through them. Haze is context for
+        // the readings, not the headline.
         // Clamped, and the clamp applies to EVERY source, not just contributed
-        // ones. Unclamped this is 600 + pm25*55 metres, so a reading of 2000
+        // ones. Unclamped this is 300 + pm25*27.5 metres, so a reading of 2000
         // (accepted by /api/ingest, and reachable by any sensor stuck at its
-        // ceiling) drew a 111 km inner cloud and a 310 km outer drift — Bali is
-        // ~150 km across, so one bad reading painted the entire island
-        // "Hazardous". No single station should ever be able to do that.
-        const rInner = Math.min(600 + s.pm25 * 55, 12000);
-        const opInner = Math.min(0.32, 0.10 + s.pm25/180);
+        // ceiling) would draw a 55 km inner cloud and a 155 km outer drift —
+        // Bali is ~150 km across, so one bad reading still painted the entire
+        // island "Hazardous". No single station should ever be able to do that.
+        const rInner = Math.min(300 + s.pm25 * 27.5, 6000);
+        const opInner = Math.min(0.18, 0.05 + s.pm25/320);
         L.circle([s.lat,s.lon], {
           radius: rInner, color:'transparent', weight:0,
           fillColor:color, fillOpacity:opInner, interactive:false, className:'haze-cloud'
@@ -2238,8 +2327,8 @@ table.roll th.c, table.roll td.c{text-align:center}
 </style>
 <script>
 /* ====================================================================
-   EDITION III — additive script (dynamic date, custom zoom, island avg,
-   collapsible mobile cards, ticker override). Loads after the main
+   EDITION III — additive script (dynamic date, custom zoom, locate-me,
+   collapsible map cards, ticker override). Loads after the main
    script so window.* references resolve and function names override.
    ==================================================================== */
 (function(){
@@ -2257,55 +2346,95 @@ table.roll th.c, table.roll td.c{text-align:center}
   setInterval(updateDate, 60*1000);
   document.addEventListener('i18n:changed', updateDate);
 
-  // 2. Collapsible map cards (default expanded on both desktop and mobile)
+  // 2. Collapsible map cards. Layers ships with .collapsed in the markup;
+  //    this only handles the click.
   window.toggleCard = function(headerEl){
     const card = headerEl.closest('.map-card');
     if (card) card.classList.toggle('collapsed');
   };
 
-  // Make the HUD card visible on mobile too (previous CSS hid it on mobile)
-  const hudCard = document.getElementById('hudCard');
-  if (hudCard) hudCard.style.display = ''; // unhide
+  // The main script declares `const map = L.map(...)`. A top-level const is a
+  // LEXICAL global: it never becomes a property of window — and `window.map`
+  // then resolves by named-element access to <section id="map">, an element
+  // with no zoomIn and no setView. Every window.map call in here was therefore
+  // a silent no-op (guards passed, because an element is truthy), which is why
+  // the custom zoom buttons did nothing. Resolve the real map through the
+  // scope chain instead, once, and use it everywhere below.
+  let LMAP = null;
+  try {
+    if (typeof map !== 'undefined' && map && typeof map.setView === 'function') LMAP = map;
+  } catch(_) { /* TDZ or no global map — controls stay inert rather than throwing */ }
 
-  // 3. Custom zoom controls — bound to map; positioned below the HUD card
+  // 3. Custom zoom controls — bound to map. Placement is pure CSS now
+  //    (top-left corner); nothing here measures anything.
   const zoomIn  = document.getElementById('zoomIn');
   const zoomOut = document.getElementById('zoomOut');
-  if (zoomIn  && window.map) zoomIn.onclick  = () => window.map.zoomIn();
-  if (zoomOut && window.map) zoomOut.onclick = () => window.map.zoomOut();
+  if (zoomIn  && LMAP) zoomIn.onclick  = () => LMAP.zoomIn();
+  if (zoomOut && LMAP) zoomOut.onclick = () => LMAP.zoomOut();
 
   // Remove Leaflet's default zoom UI (CSS already hides it; this also frees memory)
-  if (window.map && window.map.zoomControl) {
-    try { window.map.removeControl(window.map.zoomControl); } catch(_){}
+  if (LMAP && LMAP.zoomControl) {
+    try { LMAP.removeControl(LMAP.zoomControl); } catch(_){}
   }
 
-  function placeZoom(){
-    const hud  = document.getElementById('hudCard');
-    const zc   = document.getElementById('zoomCard');
-    const mapEl= document.getElementById('map-leaflet');
-    if (!hud || !zc || !mapEl) return;
-    const isMobile = window.matchMedia('(max-width:720px)').matches;
-    if (isMobile) {
-      // On mobile the HUD lives top-left; place zoom directly below it
-      const hudRect = hud.getBoundingClientRect();
-      const mapRect = mapEl.getBoundingClientRect();
-      zc.style.top  = (hudRect.bottom - mapRect.top + 10) + 'px';
-      zc.style.left = '10px';
-    } else {
-      const hudRect = hud.getBoundingClientRect();
-      const mapRect = mapEl.getBoundingClientRect();
-      zc.style.top  = (hudRect.bottom - mapRect.top + 12) + 'px';
-      zc.style.left = (hudRect.left   - mapRect.left)      + 'px';
+  // 4. LOCATE ME.
+  //    PRIVACY: the coordinate returned here is held in a local variable for
+  //    the length of one map.setView() call and one marker, and nothing else.
+  //    It is never written to storage of any kind, never put in a URL, never
+  //    sent to any endpoint (the CSP's connect-src 'self' would not permit it
+  //    anyway), and never logged. This site's whole proposition is that it
+  //    watches the air, not the people looking at it — a "where am I" button
+  //    that quietly kept the answer would break that.
+  const locateBtn = document.getElementById('locateBtn');
+  const locateMsg = document.getElementById('locateMsg');
+  // Same envelope the rest of the codebase treats as Bali.
+  const BALI_BOX = { latMin:-9.2, latMax:-8.0, lonMin:114.4, lonMax:115.8 };
+  let locateTimer = null, locateWatchdog = null, meMarker = null;
+
+  function locateSay(key, fallback){
+    if (!locateMsg) return;
+    locateMsg.textContent = (window.I18N && window.I18N.t) ? window.I18N.t(key, fallback) : fallback;
+    locateMsg.hidden = false;
+    clearTimeout(locateTimer);
+    locateTimer = setTimeout(() => { locateMsg.hidden = true; locateMsg.textContent = ''; }, 5000);
+  }
+  function locateDone(){ clearTimeout(locateWatchdog); locateWatchdog = null; locateBtn.disabled = false; }
+
+  if (locateBtn) locateBtn.onclick = function(){
+    if (!navigator.geolocation) {
+      locateSay('home.x.locateUnsupported', 'Location is unavailable in this browser');
+      return;
     }
-  }
-  window.addEventListener('load', () => setTimeout(placeZoom, 60));
-  window.addEventListener('resize', placeZoom);
-  setTimeout(placeZoom, 200);
-  setTimeout(placeZoom, 800);
-  setTimeout(placeZoom, 2000); // catch later layout settles
-  // Also reposition whenever the HUD itself collapses/expands
-  if (hudCard && 'ResizeObserver' in window) {
-    new ResizeObserver(placeZoom).observe(hudCard);
-  }
+    locateBtn.disabled = true;
+    // A permission prompt the visitor dismisses rather than answers calls
+    // NEITHER callback, and the `timeout` option below only starts once
+    // permission is granted — it does not cover the prompt. Without this
+    // watchdog the button would stay disabled for the rest of the session.
+    clearTimeout(locateWatchdog);
+    locateWatchdog = setTimeout(() => { locateBtn.disabled = false; }, 12000);
+    navigator.geolocation.getCurrentPosition(function(pos){
+      locateDone();
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      if (lat < BALI_BOX.latMin || lat > BALI_BOX.latMax ||
+          lon < BALI_BOX.lonMin || lon > BALI_BOX.lonMax) {
+        // Leave the view alone. Flying somebody in Jakarta or Berlin to an
+        // empty patch of sea is worse than simply telling them.
+        locateSay('home.x.locateOutside', 'Your location is outside Bali');
+        return;
+      }
+      if (!LMAP) return;
+      if (meMarker) { try { LMAP.removeLayer(meMarker); } catch(_){} }
+      meMarker = L.marker([lat, lon], {
+        icon: L.divIcon({ className:'', html:'<div class="me-dot"></div>', iconSize:[20,20], iconAnchor:[10,10] }),
+        interactive:false, keyboard:false
+      }).addTo(LMAP);
+      LMAP.setView([lat, lon], 13);
+    }, function(err){
+      locateDone();
+      if (err && err.code === 1) locateSay('home.x.locateDenied', 'Location permission is off');
+      else                       locateSay('home.x.locateFailed', 'Could not find your location');
+    }, { enableHighAccuracy:false, timeout:10000, maximumAge:0 });
+  };
 
   // (Island Average pointer removed in Edition III — air quality is local; an
   //  island-wide mean was conceptually misleading. Original ticker preserved.)
