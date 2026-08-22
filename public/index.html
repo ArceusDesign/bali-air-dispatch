@@ -89,10 +89,21 @@ body::before{
 .edition{background:var(--ink);color:var(--paper);padding:3px 9px;font-weight:600;letter-spacing:.16em}
 
 /* ===== BULLETIN BAR ===== */
+/* text-transform:uppercase maps µ (U+00B5 MICRO SIGN) to Μ (U+039C GREEK
+   CAPITAL MU), which a reader sees as a plain M — so "111.7 µg/m³", the
+   largest number on the page, rendered as "111.7 MG/M³": milligrams, a
+   thousandfold overstatement, on a site whose whole value is being right
+   about this number. The readings carry no letters that need uppercasing,
+   so the transform is simply switched off wherever a unit appears. */
 .bulletin{background:var(--crimson);color:var(--paper);padding:7px 0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;overflow:hidden;position:relative}
 .bulletin-inner{display:flex;gap:36px;white-space:nowrap;animation:tick 42s linear infinite}
 .bulletin-inner span{display:inline-flex;align-items:center;gap:10px}
-.bulletin-inner b{font-weight:700;color:#fff}
+.bulletin-inner b{font-weight:700;color:#fff;text-transform:none}
+/* `.bulletin-inner span` above is display:inline-flex with gap:10px, which
+   these two would inherit — opening a 10px hole between the µ and the g.
+   Force them back to plain inline runs. */
+.bulletin-inner .unit{display:inline;gap:0;text-transform:uppercase}
+.bulletin-inner .unit .mu{display:inline;gap:0;text-transform:none}
 .bulletin-inner .sep{opacity:.5}
 @keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
@@ -219,7 +230,7 @@ body::before{
 
 /* Layer toggles top-right — offset for overlay topbar. Narrow, because the
    card ships collapsed and only ever has to fit its own header. */
-.layers{top:84px;right:18px;min-width:120px}
+.layers{top:94px;right:18px;min-width:120px}
 .layer-row{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--hairline);transition:background .12s}
 .layer-row:last-child{border-bottom:none}
 .layer-row:hover{background:var(--dust)}
@@ -238,7 +249,9 @@ body::before{
    belonging to the map, costs no island, and can run the full width. */
 .legend-bar{border-top:1px solid var(--rule);background:var(--paper);padding:9px 18px 10px;position:relative;z-index:2}
 .legend-bar-main{display:flex;align-items:center;gap:18px}
-.legend-bar-title{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;white-space:nowrap;flex:none}
+/* NOT uppercase — see the note on .bulletin-inner b. "PM2.5 · µg/m³" is
+   already capitals apart from the micro sign, which uppercasing destroys. */
+.legend-bar-title{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;color:var(--ink-faint);font-weight:600;white-space:nowrap;flex:none}
 .legend-scale{flex:1;min-width:0}
 .legend-grad{display:flex;height:9px;border:1px solid var(--rule);overflow:hidden}
 .legend-grad>div{flex:1}
@@ -472,13 +485,13 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   .masthead-top .c{font-size:9.5px;letter-spacing:.14em}
 }
 
-/* CUSTOM MAP CONTROLS — zoom pair, then locate, top-left.
+/* CUSTOM MAP CONTROLS — zoom pair, top-left.
    Plain CSS placement. This used to be positioned by a placeZoom() that
    measured the HUD card's bounding box on load, resize and a fistful of
    setTimeouts; the HUD card is gone, and a fixed corner never needed
    measuring in the first place. */
 .zoom-card{
-  top:84px;left:18px;right:auto;bottom:auto;
+  top:94px;left:18px;right:auto;bottom:auto;
   position:absolute;z-index:501;
   display:flex;flex-direction:column;align-items:flex-start;gap:8px;
 }
@@ -492,29 +505,14 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 .zoom-row .zoom-btn+.zoom-btn{border-left:none}   /* shared edge, not a double rule */
 .zoom-btn:hover{background:var(--ink);color:var(--paper)}
 .zoom-btn:disabled{opacity:.55;cursor:default}
-.locate-row{display:flex;align-items:flex-start;gap:8px}
-.locate-btn{box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
-.locate-btn svg{width:17px;height:17px;display:block}
 /* Failure notice beside the pin, not a dialog: it is a five-second aside,
    and an alert() for "you're not in Bali" would be absurd. */
-.locate-msg{
-  font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--crimson);background:var(--paper);border:1px solid var(--crimson);
-  padding:5px 7px;max-width:176px;line-height:1.4;
-}
-.locate-msg[hidden]{display:none}
 @media(max-width:720px){
   .zoom-card{left:10px;top:80px}
   .zoom-btn{width:36px;height:36px;font-size:20px}
-  .locate-btn svg{width:16px;height:16px}
-  .locate-msg{max-width:150px;font-size:8.5px}
-}
-/* Hide Leaflet's default zoom — replaced by our custom card */
+    /* Hide Leaflet's default zoom — replaced by our custom card */
 .leaflet-control-zoom{display:none!important}
 
-/* The visitor's own position — deliberately NOT a sensor pin. No number, no
-   AQI colour, no click target, so it can never be read as a measurement. */
-.me-dot{width:20px;height:20px;border-radius:50%;background:var(--ink);border:4px solid var(--paper);box-shadow:0 0 0 1.5px var(--ink),0 0 14px 5px rgba(20,17,13,.22)}
 
 /* ISLAND AVERAGE pointer over the legend gradient */
 .legend-grad-wrap{position:relative;padding-top:22px}
@@ -613,9 +611,9 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
           </div>
           <div class="legend-ticks"><span>0</span><span>12</span><span>35</span><span>55</span><span>150</span><span>250+</span></div>
         </div>
-        <button type="button" class="legend-more" aria-controls="legend" onclick="document.getElementById('legend').classList.toggle('expanded')" data-i18n="home.x.legendMore">Read the full scale ▾</button>
+        <button type="button" class="legend-more" aria-controls="legendDetail" aria-expanded="false" onclick="toggleLegendScale(this)" data-i18n="home.x.legendMore">Read the full scale ▾</button>
       </div>
-      <div class="legend-detail">
+      <div class="legend-detail" id="legendDetail">
         <div class="legend-cats">
           <div class="legend-row" data-i18n-html="home.x.legGood"><span class="sw" style="background:var(--aqi-good)"></span>Good · 0–12</div>
           <div class="legend-row" data-i18n-html="home.x.legMod"><span class="sw" style="background:var(--aqi-mod)"></span>Moderate · 12.1–35.4</div>
@@ -654,17 +652,11 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       </div><!-- /card-body -->
     </div>
 
-    <!-- Zoom pair + locate, top-left. Replaces Leaflet's default zoom UI. -->
+    <!-- Zoom pair, top-left. Replaces Leaflet's default zoom UI. -->
     <div class="zoom-card" id="zoomCard">
       <div class="zoom-row">
         <button type="button" class="zoom-btn" id="zoomIn"  aria-label="Zoom in" data-i18n-attr="aria-label:home.x.zoomIn">+</button>
         <button type="button" class="zoom-btn" id="zoomOut" aria-label="Zoom out" data-i18n-attr="aria-label:home.x.zoomOut">−</button>
-      </div>
-      <div class="locate-row">
-        <button type="button" class="zoom-btn locate-btn" id="locateBtn" aria-label="Show my location" data-i18n-attr="aria-label:home.x.locate">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.2 7-11.5a7 7 0 1 0-14 0c0 5.3 7 11.5 7 11.5Z"/><circle cx="12" cy="10" r="2.6"/></svg>
-        </button>
-        <span class="locate-msg" id="locateMsg" role="status" aria-live="polite" hidden></span>
       </div>
     </div>
 
@@ -1415,7 +1407,12 @@ function renderBulletinTicker(worst,median,overWho,offN,liveN){
   const parts = [];
   if(worst.pm25>0) parts.push(`<span>${t('ticker.worstNow','Worst now')} · <b>${worst.pm25.toFixed(1)} µg/m³</b> ${t('ticker.at','at')} <b>${esc((worst.name||'').split(' (')[0])}</b></span>`);
   if(median!=null) parts.push(`<span>${t('ticker.netMedian','Network median')} · <b>${median.toFixed(1)} µg/m³</b></span>`);
-  parts.push(`<span><b>${overWho}</b> ${t('ticker.aboveWhoMid','of')} ${liveN != null ? liveN : liveStations.length} ${t('ticker.aboveWhoTail','stations above WHO 24h (15 µg/m³)')}</span>`);
+  // The unit sits mid-sentence inside a translated string, so it cannot be a
+  // separate template slot. Split on the micro sign instead and let it keep its
+  // own casing — see the note on .bulletin for why uppercasing µ is harmful.
+  const _tail = t('ticker.aboveWhoTail','stations above WHO 24h (15 µg/m³)');
+  const _tailHtml = esc(_tail).split('\u00b5').join('<span class="mu">\u00b5</span>');
+  parts.push(`<span><b>${overWho}</b> ${esc(t('ticker.aboveWhoMid','of'))} ${liveN != null ? liveN : liveStations.length} <span class="unit">${_tailHtml}</span></span>`);
   parts.push(`<span><b>${offN}</b> ${t('ticker.offline','sensors offline · historical data preserved below')}</span>`);
   parts.push(`<span>${t('ticker.tagline','Air quality watch — citizen-maintained · anonymous · public interest')}</span>`);
   // repeat for seamless scroll
@@ -2106,6 +2103,15 @@ function drawPanelChart(s){
 // to re-add each layer to the map every time it ran, which quietly switched a
 // layer the visitor had turned off back on at the next refresh. Reading the
 // state back from the row on every apply keeps the two in step.
+// The button reveals .legend-detail, so aria-controls must name THAT region,
+// and aria-expanded has to track the class or a screen reader is told the
+// scale is collapsed while it is on screen.
+function toggleLegendScale(btn){
+  const card = document.getElementById('legend');
+  if (!card) return;
+  const open = card.classList.toggle('expanded');
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
 function layerOn(kind){
   const row = document.getElementById('lr-'+kind);
   return !row || row.classList.contains('on');
@@ -2327,7 +2333,7 @@ table.roll th.c, table.roll td.c{text-align:center}
 </style>
 <script>
 /* ====================================================================
-   EDITION III — additive script (dynamic date, custom zoom, locate-me,
+   EDITION III — additive script (dynamic date, custom zoom,
    collapsible map cards, ticker override). Loads after the main
    script so window.* references resolve and function names override.
    ==================================================================== */
@@ -2385,56 +2391,6 @@ table.roll th.c, table.roll td.c{text-align:center}
   //    anyway), and never logged. This site's whole proposition is that it
   //    watches the air, not the people looking at it — a "where am I" button
   //    that quietly kept the answer would break that.
-  const locateBtn = document.getElementById('locateBtn');
-  const locateMsg = document.getElementById('locateMsg');
-  // Same envelope the rest of the codebase treats as Bali.
-  const BALI_BOX = { latMin:-9.2, latMax:-8.0, lonMin:114.4, lonMax:115.8 };
-  let locateTimer = null, locateWatchdog = null, meMarker = null;
-
-  function locateSay(key, fallback){
-    if (!locateMsg) return;
-    locateMsg.textContent = (window.I18N && window.I18N.t) ? window.I18N.t(key, fallback) : fallback;
-    locateMsg.hidden = false;
-    clearTimeout(locateTimer);
-    locateTimer = setTimeout(() => { locateMsg.hidden = true; locateMsg.textContent = ''; }, 5000);
-  }
-  function locateDone(){ clearTimeout(locateWatchdog); locateWatchdog = null; locateBtn.disabled = false; }
-
-  if (locateBtn) locateBtn.onclick = function(){
-    if (!navigator.geolocation) {
-      locateSay('home.x.locateUnsupported', 'Location is unavailable in this browser');
-      return;
-    }
-    locateBtn.disabled = true;
-    // A permission prompt the visitor dismisses rather than answers calls
-    // NEITHER callback, and the `timeout` option below only starts once
-    // permission is granted — it does not cover the prompt. Without this
-    // watchdog the button would stay disabled for the rest of the session.
-    clearTimeout(locateWatchdog);
-    locateWatchdog = setTimeout(() => { locateBtn.disabled = false; }, 12000);
-    navigator.geolocation.getCurrentPosition(function(pos){
-      locateDone();
-      const lat = pos.coords.latitude, lon = pos.coords.longitude;
-      if (lat < BALI_BOX.latMin || lat > BALI_BOX.latMax ||
-          lon < BALI_BOX.lonMin || lon > BALI_BOX.lonMax) {
-        // Leave the view alone. Flying somebody in Jakarta or Berlin to an
-        // empty patch of sea is worse than simply telling them.
-        locateSay('home.x.locateOutside', 'Your location is outside Bali');
-        return;
-      }
-      if (!LMAP) return;
-      if (meMarker) { try { LMAP.removeLayer(meMarker); } catch(_){} }
-      meMarker = L.marker([lat, lon], {
-        icon: L.divIcon({ className:'', html:'<div class="me-dot"></div>', iconSize:[20,20], iconAnchor:[10,10] }),
-        interactive:false, keyboard:false
-      }).addTo(LMAP);
-      LMAP.setView([lat, lon], 13);
-    }, function(err){
-      locateDone();
-      if (err && err.code === 1) locateSay('home.x.locateDenied', 'Location permission is off');
-      else                       locateSay('home.x.locateFailed', 'Could not find your location');
-    }, { enableHighAccuracy:false, timeout:10000, maximumAge:0 });
-  };
 
   // (Island Average pointer removed in Edition III — air quality is local; an
   //  island-wide mean was conceptually misleading. Original ticker preserved.)
