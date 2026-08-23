@@ -9,12 +9,19 @@
 <link rel="preload" as="style" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/fonts/fonts.css">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<!-- Vendored, not CDN-loaded. Two reasons, both load-bearing. Privacy: every
+     CDN request handed unpkg and jsdelivr each visitor's IP on every page load,
+     which made the whole point of proxying basemap tiles moot — the tiles
+     stopped leaking and these did not. Security: two of the four used to load
+     with no integrity hash at all, and once the map can ask for a visitor's
+     location a compromised bundle running in this origin could read it. Local
+     files let the CSP drop to script-src 'self', which forecloses both.
+     Leaflet's bytes were verified against the SRI hashes previously pinned
+     here before the tags were replaced. -->
+<link rel="stylesheet" href="/vendor/leaflet.css"/>
+<script src="/vendor/leaflet.js"></script>
+<script src="/vendor/chart.umd.min.js"></script>
+<script src="/vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
 
 <style>
 :root{
@@ -505,14 +512,29 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 .zoom-row .zoom-btn+.zoom-btn{border-left:none}   /* shared edge, not a double rule */
 .zoom-btn:hover{background:var(--ink);color:var(--paper)}
 .zoom-btn:disabled{opacity:.55;cursor:default}
+.locate-row{display:flex;align-items:flex-start;gap:8px}
+.locate-btn{box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
+.locate-btn svg{width:17px;height:17px;display:block}
 /* Failure notice beside the pin, not a dialog: it is a five-second aside,
    and an alert() for "you're not in Bali" would be absurd. */
+.locate-msg{
+  font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--crimson);background:var(--paper);border:1px solid var(--crimson);
+  padding:5px 7px;max-width:176px;line-height:1.4;
+}
+.locate-msg[hidden]{display:none}
 @media(max-width:720px){
   .zoom-card{left:10px;top:80px}
   .zoom-btn{width:36px;height:36px;font-size:20px}
-    /* Hide Leaflet's default zoom — replaced by our custom card */
+  .locate-btn svg{width:16px;height:16px}
+  .locate-msg{max-width:150px;font-size:8.5px}
+}
+/* Hide Leaflet's default zoom — replaced by our custom card */
 .leaflet-control-zoom{display:none!important}
 
+/* The visitor's own position — deliberately NOT a sensor pin. No number, no
+   AQI colour, no click target, so it can never be read as a measurement. */
+.me-dot{width:20px;height:20px;border-radius:50%;background:var(--ink);border:4px solid var(--paper);box-shadow:0 0 0 1.5px var(--ink),0 0 14px 5px rgba(20,17,13,.22)}
 
 /* ISLAND AVERAGE pointer over the legend gradient */
 .legend-grad-wrap{position:relative;padding-top:22px}
@@ -652,11 +674,17 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       </div><!-- /card-body -->
     </div>
 
-    <!-- Zoom pair, top-left. Replaces Leaflet's default zoom UI. -->
+    <!-- Zoom pair + locate, top-left. Replaces Leaflet's default zoom UI. -->
     <div class="zoom-card" id="zoomCard">
       <div class="zoom-row">
         <button type="button" class="zoom-btn" id="zoomIn"  aria-label="Zoom in" data-i18n-attr="aria-label:home.x.zoomIn">+</button>
         <button type="button" class="zoom-btn" id="zoomOut" aria-label="Zoom out" data-i18n-attr="aria-label:home.x.zoomOut">−</button>
+      </div>
+      <div class="locate-row">
+        <button type="button" class="zoom-btn locate-btn" id="locateBtn" aria-label="Show my location" data-i18n-attr="aria-label:home.x.locate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7-6.2 7-11.5a7 7 0 1 0-14 0c0 5.3 7 11.5 7 11.5Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+        </button>
+        <span class="locate-msg" id="locateMsg" role="status" aria-live="polite" hidden></span>
       </div>
     </div>
 
@@ -871,9 +899,17 @@ const map = L.map('map-leaflet',{
   maxBoundsViscosity:1.0,
   zoomControl:true
 });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+// Tiles come from our own origin (functions/tiles/[[path]].js), which fetches
+// them from CARTO server-side. Previously the browser hit *.basemaps.cartocdn.com
+// directly, so every reader's IP reached CARTO alongside the exact tiles they
+// panned over — a quantised record of where they were looking. Now CARTO sees
+// Cloudflare. Attribution is unchanged and stays: proxying does not alter the
+// OSM/CARTO licence obligation. {r} still expands to @2x on retina screens; the
+// proxy serves that variant. No {s} because there is one origin now, and the
+// proxy only serves z9-16 over the Bali bbox — the same range the map allows.
+L.tileLayer('/tiles/{z}/{x}/{y}{r}.png',{
   attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> · © <a href="https://carto.com/attributions">CARTO</a> · <a href="https://mdg-bali.github.io/makingsensebali/" target="_blank" rel="noopener">Reports: Making Sense Bali</a> (CC BY 4.0)',
-  subdomains:'abcd', maxZoom:19
+  maxZoom:16
 }).addTo(map);
 map.fitBounds(BALI,{padding:[20,20]});
 
@@ -2384,13 +2420,140 @@ table.roll th.c, table.roll td.c{text-align:center}
   }
 
   // 4. LOCATE ME.
-  //    PRIVACY: the coordinate returned here is held in a local variable for
-  //    the length of one map.setView() call and one marker, and nothing else.
-  //    It is never written to storage of any kind, never put in a URL, never
-  //    sent to any endpoint (the CSP's connect-src 'self' would not permit it
-  //    anyway), and never logged. This site's whole proposition is that it
-  //    watches the air, not the people looking at it — a "where am I" button
-  //    that quietly kept the answer would break that.
+  //
+  //    PRIVACY — what is true, and what is only mostly true.
+  //    The coordinate itself is held in two local variables for the length of
+  //    one setView() call and one marker, and nothing else. It is not written
+  //    to storage of any kind (no cookie, no localStorage, no sessionStorage),
+  //    not put in a URL or a query string, not sent to any endpoint (the CSP's
+  //    connect-src 'self' would not permit it anyway), and not logged.
+  //
+  //    What is NOT claimed, because the last version of this button claimed it
+  //    and was wrong: that nothing derived from the fix leaves the browser.
+  //    Two things still do, and both are worth stating plainly.
+  //      (a) Moving the map makes Leaflet fetch basemap tiles for the new view.
+  //          The view is snapped to the CENTRE of the containing z13 tile
+  //          before it moves, so every visitor within that ~5 km cell issues an
+  //          identical set of requests and the log reveals the cell, not the
+  //          person. Without that snap the rectangle would be symmetric about
+  //          the fix and its midpoint would give the exact tile back. This is
+  //          precisely why the
+  //          button was pulled in bfbb99c: the tiles were then going to
+  //          basemaps.cartocdn.com, so a third party received that quantised
+  //          position next to the visitor's IP. Tiles now come from /tiles/* on
+  //          our own origin, so the request is first-party and CARTO sees only
+  //          Cloudflare fetching a tile. It is still a request that exists,
+  //          visible to our own edge in whatever Cloudflare records for the
+  //          zone, and the proxy's failure path console.errors the tile index.
+  //          It is the same kind of request any visitor who navigates there by
+  //          hand produces, and this site adds no analytics on top of it.
+  //          Reduced to first-party, not eliminated.
+  //      (b) The browser's own geolocation stack resolves the fix, and on a
+  //          device without a satellite fix it does that by sending nearby
+  //          Wi-Fi/cell observations to the vendor's location service (Google,
+  //          Apple, Mozilla). That exchange is the operating system's, not this
+  //          page's — we cannot see it, route it or prevent it. maximumAge
+  //          below is set so a fix the browser already has can answer without
+  //          triggering a fresh one.
+  const locateBtn = document.getElementById('locateBtn');
+  const locateMsg = document.getElementById('locateMsg');
+
+  //    WHICH BOUNDS COUNT AS "IN BALI".
+  //    Not the lat -9.2..-8.0 / lon 114.4..115.8 envelope the first version
+  //    used. That box disagreed with the map in both directions: it accepted
+  //    ~30 km of open Indian Ocean south of the island, where setView() would
+  //    have been hauled straight back by maxBoundsViscosity:1.0 — the map would
+  //    not have moved and the marker would have sat off-screen, immediately
+  //    after telling the visitor we had found them — and it rejected a strip of
+  //    the Bali Strait the map does display. The only honest reading of "we can
+  //    show you where you are" is the area the map can actually show, so the
+  //    gate is the map's own maxBounds (BALI.pad(0.02)), read off the map
+  //    rather than copied, so the two cannot drift apart. It is also exactly
+  //    the area functions/tiles/[[path]].js will serve, so a view inside the
+  //    gate is a view that has tiles instead of grey holes.
+  const locateBounds =
+    (LMAP && LMAP.options && LMAP.options.maxBounds) ? LMAP.options.maxBounds :
+    (typeof BALI !== 'undefined' && BALI && BALI.pad) ? BALI.pad(0.02) : null;
+
+  let locateTimer = null, locateWatchdog = null, meMarker = null;
+
+  // Message text comes from our own locale files and is written with
+  // textContent, never innerHTML — no markup path, nothing to escape.
+  function locateSay(key, fallback){
+    if (!locateMsg) return;
+    locateMsg.textContent = (window.I18N && window.I18N.t) ? window.I18N.t(key, fallback) : fallback;
+    locateMsg.hidden = false;
+    clearTimeout(locateTimer);
+    locateTimer = setTimeout(() => { locateMsg.hidden = true; locateMsg.textContent = ''; }, 5000);
+  }
+  function locateDone(){ clearTimeout(locateWatchdog); locateWatchdog = null; locateBtn.disabled = false; }
+
+  if (locateBtn) locateBtn.onclick = function(){
+    if (!navigator.geolocation) {
+      locateSay('home.x.locateUnsupported', 'Location is unavailable in this browser');
+      return;
+    }
+    locateBtn.disabled = true;
+    // A permission prompt the visitor dismisses rather than answers calls
+    // NEITHER callback, and the `timeout` option below only starts once
+    // permission is granted — it does not cover the prompt. Without this
+    // watchdog the button would stay disabled for the rest of the session.
+    clearTimeout(locateWatchdog);
+    locateWatchdog = setTimeout(() => { locateBtn.disabled = false; }, 12000);
+    // getCurrentPosition, one shot. Never watchPosition: that is continuous
+    // tracking, and a button that says "show me where I am" has no business
+    // opening a subscription to the visitor's movements.
+    navigator.geolocation.getCurrentPosition(function(pos){
+      locateDone();
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      if (!locateBounds || !LMAP) {
+        // Map chrome did not resolve; say so rather than sit there silently.
+        locateSay('home.x.locateFailed', 'Could not find your location');
+        return;
+      }
+      if (!locateBounds.contains(L.latLng(lat, lon))) {
+        // Leave the view alone. Flying somebody in Jakarta or Berlin to an
+        // empty patch of sea is worse than simply telling them.
+        locateSay('home.x.locateOutside', 'Your location is outside Bali');
+        return;
+      }
+      if (meMarker) { try { LMAP.removeLayer(meMarker); } catch(_){} }
+      meMarker = L.marker([lat, lon], {
+        icon: L.divIcon({ className:'', html:'<div class="me-dot"></div>', iconSize:[20,20], iconAnchor:[10,10] }),
+        interactive:false, keyboard:false
+      }).addTo(LMAP);
+      // Centre on the CENTRE OF THE CONTAINING TILE, not on the fix itself.
+      // Centring on the exact position makes the requested tile rectangle
+      // symmetric about the visitor, so the midpoint of the x and y ranges in
+      // the request log gives their tile back exactly — and the boundary tiles
+      // flip at sub-tile offsets, narrowing it further. Snapping the view first
+      // means every visitor inside the same ~5 km tile issues an identical
+      // request set, which is the difference between a coordinate and a cell.
+      // The marker below stays at the true position: it is a divIcon, pure DOM,
+      // and costs no request.
+      const Z = 13, n = Math.pow(2, Z);
+      const latRad = lat * Math.PI / 180;
+      const tx = Math.floor((lon + 180) / 360 * n);
+      const ty = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+      const cLon = (tx + 0.5) / n * 360 - 180;
+      const cLat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (ty + 0.5) / n))) * 180 / Math.PI;
+      LMAP.setView([cLat, cLon], Z);
+    }, function(err){
+      locateDone();
+      if (err && err.code === 1) locateSay('home.x.locateDenied', 'Location permission is off');
+      else                       locateSay('home.x.locateFailed', 'Could not find your location');
+    }, {
+      // Coarse is enough for a map view and avoids waking the GPS.
+      enableHighAccuracy:false,
+      // Covers a granted-but-slow fix. Does NOT cover a dismissed prompt —
+      // that is the watchdog's job, and the watchdog is deliberately longer.
+      timeout:10000,
+      // Accept a fix up to a minute old. At walking or driving speed that is
+      // well inside one z13 tile, and it lets the browser answer from what it
+      // already has instead of starting a fresh Wi-Fi/cell scan and lookup.
+      maximumAge:60000
+    });
+  };
 
   // (Island Average pointer removed in Edition III — air quality is local; an
   //  island-wide mean was conceptually misleading. Original ticker preserved.)

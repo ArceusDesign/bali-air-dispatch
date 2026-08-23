@@ -8,7 +8,8 @@
 <meta name="referrer" content="no-referrer">
 <link rel="preload" as="style" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Vendored — see the note in index.html. -->
+<script src="/vendor/chart.umd.min.js"></script>
 <style>
 :root{
   --paper:#f3ece0; --paper-2:#ebe1ce; --paper-3:#dcd2be;
@@ -354,6 +355,9 @@ const OFFLINE_HISTORY = {"ubud_rozendal":{"name":"Ubud (Rozendal)","lat":-8.5303
 const OFFLINE_OTHER = [];
 
 // Dispatch palette for chart series — distinguishable across many overlays
+// station_id -> swatch colour, authored by renderRow() as the sidebar renders
+// and read by the chart and the WHO-hours table so all three always agree.
+const STN_COLOUR = new Map();
 const PALETTE = [
   '#8b1a1a', '#2d5e6f', '#5a2d6e', '#a7742e', '#355e3b',
   '#b85a1f', '#3a4cb4', '#7d3ea8', '#9a4f1e', '#1e6b53'
@@ -503,6 +507,99 @@ function isStale(stn){
   return !!(stn && (stn.stale === true || +stn.staleAgeHours > 24));
 }
 
+/* ---------- how old is a station's DATA? ---------- */
+// Parse one freshness candidate into epoch ms; null when unusable.
+// Numbers (or all-digit strings) are unix timestamps: guard SECONDS against
+// MILLISECONDS at 1e11, which is unambiguous — 1e11 seconds is the year 5138
+// and 1e11 milliseconds is 1973, so no real stamp can sit on the wrong side.
+function _epochMsOf(v){
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(v))){
+    let n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    if (n < 1e11) n *= 1000;
+    return n;
+  }
+  // "YYYY-MM-DD" parses as UTC midnight; full ISO-8601 as an exact instant.
+  // Nafas sends "YYYY-MM-DD HH:MM:SS" with no zone, which parses as
+  // viewer-local — at most a day out, irrelevant against a 30-day threshold.
+  const t = Date.parse(String(v));
+  return Number.isFinite(t) ? t : null;
+}
+
+// Sanity floor. No station in this archive has data older than 2023, so a
+// resolved stamp before 2000 is a malformed field, not a very old sensor.
+// Discarding it makes the age UNKNOWN rather than ancient — which leaves the
+// station in its current group instead of burying it in Silenced.
+const _EPOCH_FLOOR_MS = Date.UTC(2000, 0, 1);
+
+// Days since the newest evidence that this station actually produced DATA.
+// Takes either an /api/live station or a D1 universal-catalog row, and
+// cross-references the universal catalog by id so a live row also gets the
+// benefit of its archived last_date.
+//
+// The age field is NOT uniform across station families — every one of these is
+// a real shape in the current payload, which is why the ladder exists:
+//   sc-19600           last_date "2026-06-18" · last_seen 1781720121 (unix SECONDS)
+//   sc-19618           last_date "2026-07-13" · last_seen 1783929627
+//   iqs-rock-n-love-3  last_date  null        · last_seen "2026-06-15T07:00:00.000Z" (ISO)
+//   nafas-*            lastSeen  "2026-08-23 12:39:52" (space-separated, WITA)
+// and iqs-* stations carry stale:true with staleAgeHours UNDEFINED — that is
+// exactly why last_seen has to be in the ladder at all.
+//
+// TRUST TIERS. `last_seen` on the D1 catalogs is the worker's "I probed this"
+// watermark, not a reading time: it advances every tick for anything /api/live
+// lists, including frozen sensors whose snapshots the worker deliberately skips
+// (the same trap documented on relayedDupes below — right now it runs as much
+// as 365 days ahead of last_date). Trusting it would mask a dead feed, so it is
+// consulted ONLY when nothing better resolves. That fallback is not academic:
+// iqs-* rows have no last_date at all.
+//
+// Takes the NEWEST candidate, so a lagging daily rollup can never outvote a
+// current live reading (Tonja today: last_date 13 days back, lastSeen minutes
+// back). Returns null when nothing resolves — callers MUST read null as "age
+// unknown", never as "old", so a missing field can't bury a live station.
+// Future stamps clamp to 0: clock skew and WITA day-stamps running ahead of
+// UTC must not read as "old".
+function daysSinceData(stn){
+  if (!stn) return null;
+  const uni = (stn.id && Array.isArray(universalCatalog))
+    ? universalCatalog.find(u => u && u.station_id === stn.id)
+    : null;
+
+  // Tier 1 — timestamps that describe the DATA itself.
+  const dated = [
+    _epochMsOf(stn.lastSeen),           // /api/live — the provider's reading time
+    _epochMsOf(stn.offlineSince),       // /api/live tombstone — day the feed went dark
+    _epochMsOf(stn.last_date),          // a D1 catalog row passed in directly
+    _epochMsOf(uni && uni.last_date)    // …or the D1 rollup for a live station
+  ];
+  // staleAgeHours is an AGE in hours, not a timestamp — convert before comparing.
+  const sah = Number(stn.staleAgeHours);
+  if (Number.isFinite(sah) && sah >= 0) dated.push(Date.now() - sah * 3600000);
+
+  let newest = null;
+  const take = (t) => { if (t !== null && t >= _EPOCH_FLOOR_MS && (newest === null || t > newest)) newest = t; };
+  for (const t of dated) take(t);
+
+  // Tier 2 — the probe watermark, only if tier 1 said nothing at all.
+  if (newest === null){
+    take(_epochMsOf(stn.last_seen));
+    take(_epochMsOf(uni && uni.last_seen));
+  }
+
+  if (newest === null) return null;
+  return Math.max(0, (Date.now() - newest) / 86400000);
+}
+
+// Over a month with no data → Silenced, whichever group it would otherwise
+// land in. Unknown age (null) is deliberately NOT old.
+const SILENCE_AFTER_DAYS = 30;
+function isLongSilent(stn){
+  const d = daysSinceData(stn);
+  return d !== null && d > SILENCE_AFTER_DAYS;
+}
+
 /* ---------- station list (sidebar) ---------- */
 // Metres between two lat/lon points (equirectangular — ample at these scales).
 function metresApart(aLat, aLon, bLat, bLon){
@@ -515,37 +612,56 @@ function buildStationList(){
   const tgt = document.getElementById('stationList');
   if (!tgt) return;
 
-  // Grouping order:
+  // Grouping / render order:
   //   1. Live · archived           — has D1 daily rollup, readings fresh
   //   2. Live · archive starting   — captured snapshots but no daily yet
-  //   3. Stale                     — has D1 daily rollup but reading > 24h old
-  //   4. Silenced                  — historical-only / known offline
+  //   3. Stale                     — reading > 24h old
+  //   4. Recently offline          — off:true tombstone, silent under a month
+  //   5. Suspected indoor          — see INDOOR_IDS
+  //   6. Relayed duplicate         — still archiving, hidden behind a better twin
+  //   7. Silenced                  — dark for good / no data in over a month
   //
   // A station from the live feed lands in 1 or 2 if it's fresh, and 3 if
   // it's stale. The "no archive yet" tail (2) is genuinely transient —
   // 15-min worker run + rollup brings it to (1) within an hour or so.
-  // Stations confirmed permanently SILENCED (dark for good) even though an
-  // upstream API may still echo a stale reading. Pull them out of the live/stale
-  // groups and show them under "Silenced" with their full D1 history. Matched by
-  // name (case-insensitive), and sourced from the live feed AND the persistent
-  // archive catalogs so they appear here even on the frequent ticks when Nafas
-  // drops them from /api/live entirely.
+  //
+  // SILENCED is the catch-all and it OUTRANKS every other predicate: whatever
+  // else a station looks like, if isSilenced() says yes it is pulled out of
+  // 1-6 and shown under 7 with its full D1 history. Two rules feed it:
+  //
+  //   • a name list — stations confirmed permanently dark even though an
+  //     upstream API may still echo a stale reading. Matched by name
+  //     (case-insensitive) and sourced from the live feed AND the persistent
+  //     archive catalogs, so they appear here even on the frequent ticks when
+  //     Nafas drops them from /api/live entirely.
+  //   • the general age rule — no data for over SILENCE_AFTER_DAYS days. This
+  //     is what catches sensors an upstream feed keeps listing with a months-old
+  //     reading attached (Rock'n love 3 was sitting in "Stale" with a 69-day-old
+  //     value; the two Jimbaran Smart Citizen kits were in "Recently offline"
+  //     41 and 66 days after their last reading).
   const SILENCED_NAMES = new Set([
     'dauh puri kauh', 'ketewel', 'padangsambian kaja'
   ]);
   const normName = s => (s && s.name ? String(s.name) : '').trim().toLowerCase();
   const isForcedSilenced = s => SILENCED_NAMES.has(normName(s));
+  // The single "belongs in Silenced" test. Every group below excludes it and
+  // the Silenced group itself is built from it, so a station it matches leaves
+  // exactly one group and lands in exactly one — it can neither be listed twice
+  // nor disappear from the sidebar altogether.
+  const isSilenced = s => isForcedSilenced(s) || isLongSilent(s);
 
-  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id) && !s.off);
-  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isForcedSilenced(s) && !isIndoorId(s.id) && !s.off);
+  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isSilenced(s) && !isIndoorId(s.id) && !s.off);
+  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isSilenced(s) && !isIndoorId(s.id) && !s.off);
   const liveArchived = liveFresh.filter(s =>  isArchived(s));
   const liveNoArch   = liveFresh.filter(s => !isArchived(s));
   // Suspected-indoor monitors — pulled out of the live groups into their own group.
-  const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isForcedSilenced(s) && !s.off);
+  const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isSilenced(s) && !s.off);
   // Recently-offline tombstones (off:true from /api/live): dead or
   // indoor-retagged units whose archived record stays selectable. Always
   // chartable — the server only emits a tombstone when D1 daily history exists.
-  const recentOffline = liveCatalog.filter(s => s.off && !isForcedSilenced(s))
+  // "Recently" is now literal: once a tombstone passes SILENCE_AFTER_DAYS it
+  // falls through to Silenced.
+  const recentOffline = liveCatalog.filter(s => s.off && !isSilenced(s))
     .map(s => ({ ...s, offline: true, archived: true }));
 
   // Relayed duplicates — stations STILL being archived every tick, but hidden
@@ -574,7 +690,10 @@ function buildStationList(){
   const relayedDupes = (universalCatalog || []).filter(u => {
     if (!u || !u.station_id || _liveIds.has(u.station_id)) return false;
     if (!(+u.daily_n > 0)) return false;
-    if (isForcedSilenced(u) || isIndoorId(u.station_id)) return false;
+    // Belt and braces: the last_date test below already excludes anything the
+    // age rule would catch, but keep the same predicate every other group uses
+    // so the two can't drift apart later.
+    if (isSilenced(u) || isIndoorId(u.station_id)) return false;
     if (!_fresh.has(String(u.last_date || ''))) return false;
     if (!Number.isFinite(+u.lat) || !Number.isFinite(+u.lon)) return false;
     return _liveGeo.some(s => metresApart(+u.lat, +u.lon, +s.lat, +s.lon) < 300);
@@ -584,16 +703,26 @@ function buildStationList(){
              pm25: null, lastSeen: null, archived: true, relayed: true };
   });
 
-  // Resolve the forced-silenced stations from every catalog, deduped by id.
+  // Resolve the silenced stations from every catalog, deduped by id.
+  // `archived` defaults true because the name-list stations are known to carry
+  // D1 history; the age rule passes the real answer instead, so a station that
+  // went quiet before it ever got a daily rollup renders as "no data" rather
+  // than offering a click through to an empty chart.
   const forcedSilenced = [];
   const _seenSil = new Set();
-  const _addSil = (id, name, source) => {
+  const _addSil = (id, name, source, archived = true) => {
     if (!id || _seenSil.has(id)) return;
     _seenSil.add(id);
     forcedSilenced.push({ id, name, source: source || '', pm25: null,
-      lastSeen: null, archived: true, offline: true });
+      lastSeen: null, archived, offline: true });
   };
-  liveCatalog.forEach(s => { if (isForcedSilenced(s)) _addSil(s.id, s.name, s.source); });
+  // Live feed — the source every one of groups 1-6 is built from, so this sweep
+  // is what guarantees an age-silenced station reappears under Silenced rather
+  // than dropping out of the sidebar entirely.
+  liveCatalog.forEach(s => {
+    if (isForcedSilenced(s))  _addSil(s.id, s.name, s.source);
+    else if (isLongSilent(s)) _addSil(s.id, s.name, s.source, isArchived(s));
+  });
   (archiveCatalog || []).forEach(s => { if (SILENCED_NAMES.has(normName(s))) _addSil('nafas-' + s.uuid, s.name, 'Nafas'); });
   (universalCatalog || []).forEach(s => { if (SILENCED_NAMES.has(normName(s))) _addSil(s.station_id, s.name, s.source); });
 
@@ -611,12 +740,23 @@ function buildStationList(){
   ];
 
   // Record every selectable monitor that has coordinates (for the region filter).
-  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...indoorMons, ...relayedDupes, ...recentOffline, ...silenced]
+  // ORDER MATTERS and must stay identical to the render order below: the row
+  // swatch takes its colour from render position, while a region pick seeds
+  // selectedIds straight from this array and the chart colours datasets in that
+  // order. Let the two orders drift and every swatch disagrees with the legend.
+  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...recentOffline, ...indoorMons, ...relayedDupes, ...silenced]
     .map(s => { const c = coordOf(s.id); return c ? { id: s.id, name: s.name, lat: c.lat, lon: c.lon } : null; })
     .filter(Boolean);
 
   const renderRow = (s, idx, opts = {}) => {
+    // Colour belongs to the STATION, not to a position in a list. The sidebar
+    // swatch used the global render index while the chart and the WHO-hours
+    // table each counted only the stations that returned data, so the three
+    // agreed only when the selection happened to be a prefix of the sidebar —
+    // select the 2nd and 5th rows and the legend colours were simply wrong.
+    // Recording it here, once, makes every later consumer look it up by id.
     const colour = PALETTE[idx % PALETTE.length];
+    STN_COLOUR.set(s.id, colour);
     // Archived = chartable: real live archived, offline-with-data, OR an
     // explicit override (for stale stations that still have D1 daily data).
     const chartable = opts.forceArchived || isArchived(s) || s.archived;
@@ -665,6 +805,10 @@ function buildStationList(){
       idx++;
     });
   }
+  if (recentOffline.length){
+    html += groupHeader(T('history.x.grp.recentOffline','Recently offline'));
+    recentOffline.forEach(s => { html += renderRow(s, idx, { forceArchived: true }); idx++; });
+  }
   if (indoorMons.length){
     html += groupHeader(T('history.x.grp.indoor','Suspected indoor'));
     indoorMons.forEach(s => { html += renderRow(s, idx); idx++; });
@@ -672,10 +816,6 @@ function buildStationList(){
   if (relayedDupes.length){
     html += groupHeader(T('history.x.grp.relayed','Relayed duplicate'));
     relayedDupes.forEach(s => { html += renderRow(s, idx, { forceArchived: true }); idx++; });
-  }
-  if (recentOffline.length){
-    html += groupHeader(T('history.x.grp.recentOffline','Recently offline'));
-    recentOffline.forEach(s => { html += renderRow(s, idx, { forceArchived: true }); idx++; });
   }
   if (silenced.length){
     html += groupHeader(T('history.x.grp.silenced','Silenced'));
@@ -825,7 +965,7 @@ function renderWhoHours(withData){
   // isn't unfairly diluted against the full clock.
   const fmtPct = x => (Math.round(x * 10) / 10).toFixed(1).replace(/\.0$/, '');
   const rows = withData.map((f, i) => {
-    const color = PALETTE[i % PALETTE.length];
+    const color = STN_COLOUR.get(f.id) || PALETTE[i % PALETTE.length];
     const pts = f.res.mean || [];
     const per = perPointHours(pts);
     const n = pts.length || 1;
@@ -902,7 +1042,7 @@ async function renderChart(){
   const datasets = [];
   let cidx = 0;
   for (const f of withData){
-    const colour = PALETTE[cidx % PALETTE.length];
+    const colour = STN_COLOUR.get(f.id) || PALETTE[cidx % PALETTE.length];
     // Faint MAX layer (drawn first, so the mean line sits on top). Shows the
     // peak inside each aggregation bucket so spikes aren't averaged away.
     if (showPeak && f.res.max && f.res.max.length){

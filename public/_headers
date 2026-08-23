@@ -1,15 +1,32 @@
 # Hardening headers applied to every response served by Cloudflare Pages.
 # Keeps the site privacy-respectful and limits what can be abused.
+#
+# geolocation=(self) in the Permissions-Policy below: the map's locate-me
+# button needs the API. Same-origin only and still permission-prompted by the
+# browser. What that does and does not buy is set out honestly in the PRIVACY
+# note at "4. LOCATE ME" in index.html — read that, not a summary here. In
+# short: the page keeps the coordinate in memory, but moving the map to it
+# does cause tile requests, and those now go to /tiles/* on this origin
+# instead of a third party. Cloudflare, who already serve every request, can
+# still see them. The claim is "no NEW party learns it", not "nobody does".
+#
+# script-src/style-src are 'self' only. Leaflet and Chart.js are vendored
+# under /vendor/ rather than loaded from unpkg/jsdelivr: CDN copies handed
+# those hosts every visitor's IP, and an unpinned bundle running in this
+# origin could have read a visitor's location once geolocation was enabled.
+# (Comment kept OUTSIDE the rule block on purpose: an unrecognised line inside
+# a /* block risks being read as the end of it, which would silently drop
+# every header after it.)
 
 /*
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
-  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=()
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
   Cross-Origin-Opener-Policy: same-origin
-  # Loose enough to allow inline scripts (we have no build step) but
-  # restrictive on outbound origins.
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; font-src 'self'; img-src 'self' data: https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://*.tile.openstreetmap.org; connect-src 'self'; manifest-src 'self'
+  # 'unsafe-inline' is required: no build step, so the app is inline script.
+  # Every other source is 'self' — no third-party origin can load here.
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'
 
 /api/*
   Cache-Control: public, max-age=60
