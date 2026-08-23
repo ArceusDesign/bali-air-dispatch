@@ -936,7 +936,18 @@ function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000)}
 /* =========================================================
    STATE
    ========================================================= */
-const API_BASE = (location.hostname==='baliair.pages.dev' || location.hostname.endsWith('.pages.dev')) ? '' : 'https://baliair.pages.dev';
+// API base. Same-origin everywhere the site actually runs — production
+// domain, the .pages.dev fallback, and any preview deployment all serve
+// their own Functions. The one exception is a bare static-file preview
+// (python http.server, no Functions available locally), which needs to hit
+// the real deployed API instead. Keyed on localhost specifically rather
+// than an allowlist of "known" production hostnames — the old version
+// listed only *.pages.dev, so the FIRST real custom domain the site was
+// served from would have gotten the localhost fallback instead: every
+// fetch would have gone cross-origin to baliair.pages.dev and been blocked
+// outright by connect-src 'self' in the CSP. Same-origin should be the
+// default; only local-without-Functions is the exception.
+const API_BASE = (location.hostname==='localhost' || location.hostname==='127.0.0.1') ? 'https://baliair.pages.dev' : '';
 // Escape externally-controlled strings (sensor names, source/type labels from
 // upstream feeds) before they go into innerHTML. Upstream networks let anyone
 // name a device, so an unescaped name like `<img onerror=…>` would otherwise

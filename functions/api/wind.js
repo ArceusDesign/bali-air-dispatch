@@ -72,7 +72,14 @@ export async function onRequestGet() {
         'cache-control': 'public, max-age=600, s-maxage=600',
         'x-content-type-options': 'nosniff',
         'referrer-policy': 'no-referrer',
-        'access-control-allow-origin': 'https://baliair.pages.dev'
+        // '/api/wind' is always fetched relative (see index.html), so this
+        // never gates our own site — same-origin requests ignore ACAO
+        // entirely regardless of what this header says. Omitted rather than
+        // pinned to one domain, and deliberately NOT set to the string
+        // "null" — that value matches an Origin: null header, which an
+        // attacker can trivially forge from a sandboxed iframe, so it is
+        // weaker than sending no header at all. No ACAO header means the
+        // browser refuses every cross-origin read by default.
       }
     });
   } catch (err) {
