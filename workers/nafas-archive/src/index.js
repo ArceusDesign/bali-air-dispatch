@@ -163,14 +163,37 @@ async function fetchUnifiedLive(originBase) {
   // worker kept archiving a pre-deploy payload that omitted it. Archiving a
   // cached aggregate would also silently freeze readings, which is exactly the
   // failure ?fresh=1 exists to prevent. A unique query key forces a real miss.
-  const url = (originBase || 'https://baliair.pages.dev').replace(/\/$/,'')
-            + '/api/live?fresh=1&_cb=' + Date.now();
-  const r = await fetch(url, {
-    headers: { Accept:'application/json' },
-    cf: { cacheTtl: 0, cacheEverything: false }
-  });
-  if (!r.ok) throw new Error('live HTTP '+r.status);
-  const data = await r.json();
+  //
+  // RETRIED, because a failure here is not an error page — it is a permanently
+  // missing archive tick. The aggregator runs 7 upstream networks in one
+  // invocation and has measurably brushed Cloudflare's CPU ceiling (4
+  // "Exceeded CPU Time Limits" in 24h; a 60-minute hole in the record traced
+  // to exactly that). Those failures are transient by nature — the next
+  // invocation gets a fresh CPU budget — so a single attempt turned a blip
+  // into data loss we cannot recover. Cron has minutes of wall time available
+  // and this only re-runs on failure, so the cost of retrying is nil next to
+  // the cost of a gap. Each attempt takes a fresh _cb so nothing can be served
+  // from cache, for the same reason the buster exists at all.
+  const base = (originBase || 'https://baliair.pages.dev').replace(/\/$/,'');
+  const ATTEMPTS = 3;
+  let data = null, lastErr = null;
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    try {
+      const r = await fetch(base + '/api/live?fresh=1&_cb=' + Date.now() + '-' + attempt, {
+        headers: { Accept:'application/json' },
+        cf: { cacheTtl: 0, cacheEverything: false }
+      });
+      if (!r.ok) throw new Error('live HTTP ' + r.status);
+      data = await r.json();
+      if (attempt > 1) console.log('archive: /api/live succeeded on attempt', attempt);
+      break;
+    } catch (err) {
+      lastErr = err;
+      console.error('archive: /api/live attempt', attempt, 'failed:', err && err.message);
+      if (attempt < ATTEMPTS) await new Promise(res => setTimeout(res, 3000 * attempt));
+    }
+  }
+  if (!data) throw lastErr || new Error('live fetch failed');
   // SAFEGUARD #1: belt-and-braces check — if the response somehow returns
   // the fast-path payload despite ?fresh=1, throw rather than write a loop
   // back to D1. Better to skip a tick than freeze the archive.
