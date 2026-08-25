@@ -1021,6 +1021,23 @@ function dropAirlyNearNafas(stations) {
 // unit LEAVES for good, no pair forms and the OpenAQ record stands on its own
 // again, exactly like any station we cannot pair.
 //
+// SUPPRESSION IS UNCONDITIONAL. Once a pair is established, the OpenAQ pin is
+// hidden — at any reading, on either side, fresh or stale. This used to carry a
+// set of fail-open valves that republished the relay in edge cases: an absolute
+// publish threshold, a reference-staleness escape, a ratio test that drew both
+// pins side by side, and a proportional source-outage guard. All are gone. The
+// reasoning is the one this site applies everywhere else (Smart Citizen
+// tombstones, indoor sensors excluded from ambient stats, STALE markers, the
+// correction-floor disclosure): an honest gap beats a confident-but-wrong
+// number. OpenAQ's raw figure IS wrong — measured, Nyambu relays 39.2 against a
+// corrected 25.8 — so a valve that lets it through is a valve that puts a wrong
+// number on a public-health map. The thresholds had no ground truth behind them
+// and the machinery defending them produced a shipped bug and five
+// high-severity review findings, which is a poor trade for a narrow edge case.
+// What replaces them is the placeholder: a paired location whose direct feed is
+// missing shows a muted grey "not reporting" pin, never a blank space and never
+// a number we know to be inflated.
+//
 // "LEAVES FOR GOOD" IS DECIDED BY OUR OWN ARCHIVE, NOT BY ONE TICK'S PAYLOAD.
 // Pairing used to be possible only between two stations present in the SAME
 // response, which made suppression of a relay contingent on its twin turning up
@@ -1047,18 +1064,17 @@ function dropAirlyNearNafas(stations) {
 // every Bali OpenAQ station turns out to be an AirGradient relay, and by the
 // time this was rewritten 9 of 12 pairs were double-pinned, inflating the live
 // station count and counting one physical device twice in the median and WHO
-// ratio. Two facts make discovery strictly SAFER than that 300 m rule:
-//   • the relay reports the device's coordinates unchanged — all 12 pairs match
-//     at exactly 0.000000 m, not "nearby", so TWIN_M is 1 m rather than 300;
-//   • OpenAQ names the instrument itself in provider.name, which live.js
-//     carries through as `type` ("AirGradient sensor").
-// Together these keep the blast radius to relays only: a relay of any other
-// network never matches the type check, and an unrelated AirGradient unit
-// merely nearby never matches at 1 m. Note the type test is one-sided — it is
-// a property of the OpenAQ station being suppressed, not a cross-check against
-// the AirGradient one doing the suppressing, so it distinguishes "is this a
-// relay at all" and not "is this the RIGHT device". Only the coordinate match
-// and the id tiebreak below speak to the latter.
+// ratio. What makes discovery strictly SAFER than that 300 m rule is that the
+// relay reports the device's coordinates UNCHANGED — all 12 pairs match at
+// exactly 0.000000 m, not "nearby" — so TWIN_M is 1 m rather than 300, and
+// nothing unrelated is ever within a metre. An earlier version added a second
+// test on `type` (OpenAQ names the instrument in provider.name, which this file
+// carries through), but it was one-sided — a property of the station being
+// suppressed, never a cross-check against the one doing the suppressing — so it
+// answered "is this a relay at all", not "is this the RIGHT device", and one
+// tick of renamed or missing provider metadata re-leaked the raw number. It is
+// gone. The coordinate match and the id tiebreak below are what identify the
+// device.
 const TWIN_M = 1;
 // PAIRING IS IMMEDIATE. A 24 h archive-settling gate used to stand here, so a
 // freshly-registered AirGradient unit could not claim a twin straight away.
@@ -1069,72 +1085,31 @@ const TWIN_M = 1;
 // making the correct pin unclickable. AirGradient has been adding a Bali unit
 // roughly daily, so that was close to a permanent condition on the newest
 // sensors — the ones people go looking for.
+// ── THE TIEBREAK IS NOW THE ONLY ANTI-IMPOSTOR DEFENCE ────────────────
+// Say it plainly rather than leaving it implicit. The attack is someone
+// registering an AirGradient device at the EXACT coordinates of an OpenAQ relay
+// in order to suppress that relay and put their own number in its place. There
+// used to be a second line of defence behind this tiebreak — a ratio guard that
+// refused a suppression which would hide a materially worse relay reading — and
+// it is gone (see the header: it was a threshold with no ground truth, and it
+// leaked raw figures far more often than it caught anything). So the id
+// tiebreak below is what remains, and it covers exactly one of the two cases:
+//   • THE GENUINE TWIN IS STILL LIVE — covered. Two ag-* units then sit at one
+//     coordinate, the tiebreak takes the lowest id, and ids are issued in
+//     ascending order and cannot be chosen, so an impostor can never outrank a
+//     device registered earlier. The established unit keeps the pairing and its
+//     corrected value; what gets suppressed is the duplicate we did not want.
+//   • THE GENUINE TWIN HAS DEPARTED, leaving the relay as the only record of
+//     that spot — NOT COVERED. There is no earlier device to lose to, so an
+//     impostor's unit wins the pairing unopposed, the relay is suppressed
+//     unconditionally, and the impostor's number is what the location shows.
+//     This is the residual exposure, and it is real: a relay with no live twin.
+// It is bounded by what an attacker must do to reach it — publish a device on a
+// public feed, at a coordinate they must first know is orphaned, and keep it
+// reporting — and by the fact that an impostor pin enters the published median
+// and WHO count whether or not it wins any pairing, which no de-dup rule can
+// address. Not by anything in this function. Do not weaken the tiebreak.
 //
-// What the gate defended, and what still does. The attack is an impostor
-// registering a unit at a victim relay's exact coordinates to make that relay
-// vanish. Suppression removes the OpenAQ COPY; the impostor's own ag-* pin is
-// normally drawn either way (the one exception is the blank-pin rule below,
-// which drops a value-less ag-* rather than let it bury a live reading). Note
-// that an impostor pin, like any fresh station, DOES enter the published
-// median / WHO count / worst-now — that is true with or without pairing, and
-// is not something this de-dup can address. Two cases:
-//   • the genuine AirGradient twin is present — the ordinary case for every
-//     current pair. Two ag-* units then sit at one coordinate and the tiebreak
-//     below takes the lowest id, which is the longer-established device; ids
-//     are issued in ascending order, so an impostor cannot outrank a unit
-//     registered earlier. The real pin keeps showing its corrected value and
-//     what got suppressed is the duplicate we no longer want anyway.
-//   • the genuine twin has dropped off the feed, leaving the relay as the only
-//     record of that spot. This is the case with real exposure. The
-//     anti-burying guard below is all that holds it, and it holds a narrower
-//     line than is comfortable: it caps UNDERSTATEMENT AT A RATIO, not at an
-//     absolute level. An impostor publishing a third of the relay's figure
-//     suppresses it at ANY level — 300 hidden behind a raw 100 — and anything
-//     below TWIN_HIDE_FLOOR can be hidden outright. What the guard does buy is
-//     that concealment requires publishing a roughly truthful number, so the
-//     displayed value cannot be driven to zero while real air is bad.
-// So the residual risk is: at a location whose direct feed has gone dark, an
-// impostor can understate by up to ~3x, or conceal a below-floor reading
-// entirely. Weighed against a daily, visible, wrong number sitting on top of
-// the right one, that is the better trade — but it IS a trade, and the second
-// bullet is a real hole, recorded here rather than glossed.
-//
-// THE CATALOG PAIRING DOES NOT WIDEN THAT HOLE. A pair now also forms when the
-// ag-* half is ABSENT from the payload but our own archive holds a reading for
-// it inside TWIN_CATALOG_MAX_AGE_MS. An earlier draft suppressed such a relay
-// unconditionally — jumping over both exceptions below — and review found it
-// deleting a relay reading 300 ug/m3 outright. So the guard runs on catalog
-// pairs too, measured against the twin's most recent ARCHIVED pm25_raw, which
-// knownRelayPairsFromD1 returns alongside the pair. An absolute floor was
-// considered and rejected: Villa Malaikat's relay reads 38.4 against a
-// corrected 14.7, so any floor low enough to protect a genuinely bad reading
-// re-leaks exactly the inflated numbers this fold exists to suppress. Where no
-// archived raw is available the pair FAILS OPEN — the relay is kept, un-hidden,
-// because a suppression we cannot check is not one worth making.
-// Refuse a suppression that would hide a materially WORSE relay reading.
-// One-way on purpose: showing two pins is untidy, hiding pollution is the
-// failure this site exists to prevent. Legitimate twins disagree — OpenAQ
-// relays the RAW figure while we publish the humidity-corrected one, and its
-// hourly republishing lags a fast-moving plume, so the two are often reading
-// air up to ~3.5 h apart. Measured over the ten live pairs the direct feed
-// runs 44.7%-124% of its relay; the worst case (Sogil Brew, raw 30.2 vs 67.5
-// = 2.24x) is a timing offset, not sensor disagreement. So 3x leaves only
-// ~1.34x of headroom over observed normal behaviour — thinner than is
-// comfortable, and worth re-measuring if legitimate pairs start tripping it.
-// The floor keeps the rule from firing on clean-air noise where a ratio
-// between two small numbers means nothing.
-// The guard deliberately fires even when the relay reading is STALE: a frozen
-// high number next to a suspiciously low direct pin still earns its muted
-// marker on the map (excluded from every stat, so it costs nothing), and
-// review showed relays sit stale ~42% of the time on some stations — a guard
-// that switched off with them would be off exactly when an impostor would
-// strike.
-const TWIN_HIDE_RATIO = 3;
-const TWIN_HIDE_FLOOR = 35;
-function isAirGradientRelay(s) {
-  return !!s && s.source === 'OpenAQ' &&
-    /airgradient/i.test(String(s.type || ''));
-}
 // AirGradient location ids are integers issued in ascending order, so the
 // lowest is the longest-established unit at a site — and an impostor cannot
 // choose a lower one than a device that was registered years earlier. Compared
@@ -1155,12 +1130,12 @@ function agIdNum(id) {
 // the AirGradient name is free text on a keyless feed (see fetchAirGradient),
 // so an impostor copying the relay's name beat a genuine unit whose name had
 // drifted even slightly — and `scClean` truncates at 80 chars and strips
-// punctuation, so drift happens on its own. Winning the pairing lets the
-// impostor's raw value, not the genuine unit's, become the reference the
-// anti-burying guard is measured against. Ids are issued in ascending order and
-// cannot be chosen, so ordering on id alone means the longer-established device
-// always wins. Cost is a rare mis-pick between two genuine units sharing one
-// coordinate — both AirGradient, both corrected, so the harm is nil.
+// punctuation, so drift happens on its own. Winning the pairing is what decides
+// whose pin stands at that coordinate, so handing it to free text handed it to
+// the attacker. Ids are issued in ascending order and cannot be chosen, so
+// ordering on id alone means the longer-established device always wins. Cost is
+// a rare mis-pick between two genuine units sharing one coordinate — both
+// AirGradient, both corrected, so the harm is nil.
 function nearestAgTwin(s, agList) {
   let best = null;
   for (const a of agList) {
@@ -1200,38 +1175,28 @@ function nearestAgTwin(s, agList) {
 // oq-6498140 are still published and must remain so) last produced data 7 and 5
 // DAYS ago.
 //
-// WHY 24 h, AND WHY NOT 30 MINUTES. Aligning this with the fast path's 30-minute
+// WHY 36 h, AND WHY NOT 30 MINUTES. Aligning this with the fast path's 30-minute
 // snapshot window — the window that governs whether the ag-* pin appears at all
 // — was considered and is incoherent: both tests read the SAME MAX(ts), so at
 // 30 minutes a catalog pair could only form while the twin was already in the
-// payload, i.e. never when it is needed. 24 h is instead the boundary this file
-// already uses three times over for "this feed is dead, not merely slow":
-// STALE_THRESHOLD_MS, shapeAirGradient's own timestamp cutoff, and therefore
-// the longest an in-payload pair could ever have survived a silent device. So a
-// catalog pair lasts about as long as the in-payload pair it replaces, and the
-// mismatch that made the earlier draft dangerous — pin gone AND relay hidden —
-// is gone twice over: the window now tracks data rather than polling, and a
-// suppression always leaves a placeholder behind.
+// payload, i.e. never when it is needed. The window has to outlast a real
+// outage, and it starts from the "this feed is dead, not merely slow" boundary
+// this file already uses three times over at 24 h (STALE_THRESHOLD_MS,
+// shapeAirGradient's own timestamp cutoff, and therefore the longest an
+// in-payload pair could ever have survived a silent device), with half a day of
+// margin on top — an outage that begins in the evening is still covered the
+// following morning without anyone being awake for it. Owner's call, and it
+// errs the way this fold now errs everywhere: toward a grey pin rather than an
+// uncorrected number.
 //
 // It also bounds every failure of the mechanism. Whatever goes wrong — one
 // device, our fetch, or AirGradient's whole API — the relays come back within a
-// day, and until they do the map shows honest grey "not reporting" pins rather
-// than inflated numbers. A systematic regression is loud and safe instead of
-// silent and wrong.
-const TWIN_CATALOG_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-// Catalog-only suppression stops entirely at or above this reading: see the
-// fail-open reasoning in dropOpenAQNearAirGradient. Set at EPA's "Unhealthy"
-// boundary (55.5), NOT the "Unhealthy for Sensitive Groups" one (35.5): the
-// relay figures in the reported leak were Nyambu 39.2, Villa Malaikat 31.7 and
-// Kedungu 31.2, so a 35.5 threshold would have re-published Nyambu's inflated
-// number and reopened the exact bug this mechanism exists to close. 55.5 sits
-// clear of all three while still guaranteeing the map never goes silent on air
-// that is unhealthy for everyone.
-const TWIN_CATALOG_PUBLISH_PM25 = 55.5;
-// ...and only while the archived reference is recent enough to bound current
-// air. Three archive ticks; beyond that the reference is a historical fact
-// about the site, not evidence about right now.
-const TWIN_CATALOG_REF_MAX_AGE_MS = 45 * 60 * 1000;
+// day and a half, and until they do the map shows honest grey "not reporting"
+// pins rather than inflated numbers. A systematic regression is loud and safe
+// instead of silent and wrong. Above this the device is treated as DEPARTED and
+// its relay stands on its own again, which is the only route by which an OpenAQ
+// number reaches the map at a location that ever had a twin.
+const TWIN_CATALOG_MAX_AGE_MS = 36 * 60 * 60 * 1000;
 // Upper sanity bound on an archived timestamp. Snapshot `ts` is written by our
 // own worker as unix SECONDS, so anything meaningfully in the future is corrupt
 // — review found a millisecond-valued watermark making a 9-day-dead device look
@@ -1243,8 +1208,13 @@ const TWIN_CATALOG_FUTURE_SLACK_MS = 60 * 60 * 1000;
 // oq id → its ag twin, as recorded in OUR OWN D1 catalog, whether or not either
 // station is in the current payload. Values carry everything a suppression
 // needs without the twin present: id, name and coordinates for the placeholder,
-// and the twin's most recent archived pm25_raw as the anti-burying guard's
-// reference value.
+// and the timestamp of the twin's last archived reading, which is both the
+// departure test and the placeholder's "last seen".
+//
+// It does NOT carry a reference reading. It used to return the twin's most
+// recent archived pm25_raw for the anti-burying ratio guard to measure against;
+// with that guard gone nothing consumes it, and dropping it removes a
+// correlated subquery from the statement below.
 //
 // WHAT IT PAIRS ON. Coordinates matching within TWIN_M, and `source` — the
 // literal strings 'AirGradient' and 'OpenAQ' that THIS file writes into every
@@ -1254,8 +1224,7 @@ const TWIN_CATALOG_FUTURE_SLACK_MS = 60 * 60 * 1000;
 // rewritten in the catalog every tick: one tick where OpenAQ renames or omits
 // the provider poisoned the payload, the fast path and the catalog at once, and
 // re-leaked the raw number — the single-point failure the catalog exists to
-// remove. The type test survives only where it is harmless: choosing an
-// IN-PAYLOAD pair, where a wrong answer merely means two pins instead of one.
+// remove. Nothing tests `type` anywhere in this fold now.
 //
 // VALIDATED LIKE PAYLOAD ROWS, because catalog rows are not more trustworthy
 // than payload rows. Coordinates are bbox-filtered through AG_BALI in SQL and
@@ -1273,22 +1242,17 @@ async function knownRelayPairsFromD1(db) {
     const nowMs = Date.now();
     const floorSec = Math.floor((nowMs - TWIN_CATALOG_MAX_AGE_MS) / 1000);
     const ceilSec  = Math.floor((nowMs + TWIN_CATALOG_FUTURE_SLACK_MS) / 1000);
-    // Both subqueries are bounded on ts, so idx_ssnap_id_ts (station_id, ts
-    // DESC) answers each with a short range scan rather than a table walk, and
-    // the CASE keeps them off the OpenAQ rows, which never need them. The outer
-    // scan is the station catalog — dozens of rows.
+    // ONE correlated subquery, bounded on ts at both ends, so idx_ssnap_id_ts
+    // (station_id, ts DESC) answers it with a short range scan rather than a
+    // table walk — MAX(ts) over a leading-column equality plus a range is the
+    // first row of that scan. The CASE keeps it off the OpenAQ rows, which never
+    // need it. The outer scan is the station catalog — dozens of rows.
     const rows = await db.prepare(`
       SELECT s.station_id, s.source, s.name, s.lat, s.lon, s.type,
              CASE WHEN s.source = 'AirGradient' THEN (
                SELECT MAX(x.ts) FROM station_snapshots x
                 WHERE x.station_id = s.station_id AND x.ts >= ?1 AND x.ts <= ?2
-             ) END AS data_ts,
-             CASE WHEN s.source = 'AirGradient' THEN (
-               SELECT x.pm25_raw FROM station_snapshots x
-                WHERE x.station_id = s.station_id AND x.ts >= ?1 AND x.ts <= ?2
-                  AND x.pm25_raw IS NOT NULL
-                ORDER BY x.ts DESC LIMIT 1
-             ) END AS ref_raw
+             ) END AS data_ts
       FROM stations s
       WHERE s.source IN ('AirGradient', 'OpenAQ')
         AND s.lat BETWEEN ?3 AND ?4
@@ -1310,14 +1274,11 @@ async function knownRelayPairsFromD1(db) {
       if (r.source === 'AirGradient') {
         const ts = r.data_ts == null ? NaN : +r.data_ts;
         if (!Number.isFinite(ts) || ts < floorSec || ts > ceilSec) continue;  // departed / corrupt
-        const raw = r.ref_raw == null ? NaN : +r.ref_raw;
         ag.push({
           id, lat, lon,
           name: r.name || id,
           type: r.type || null,
           dataMs: ts * 1000,
-          // The guard's reference. Absent → the caller fails open.
-          raw: Number.isFinite(raw) ? raw : null,
         });
       } else if (r.source === 'OpenAQ') {
         oq.push({ id, lat, lon });
@@ -1331,7 +1292,16 @@ async function knownRelayPairsFromD1(db) {
     }
     return pairs;
   } catch (_) {
-    return new Map();   // the catalog is corroboration, never a dependency
+    // Fail open — the catalog is corroboration, never a dependency — but mark
+    // the failure. Swallowing it made the caller's "catalog read failed" error
+    // unreachable dead code: this function never rejected, so the flag it set
+    // was permanently false, and a D1 outage silently reverted the map to
+    // publishing uncorrected relay figures with nothing in the response to say
+    // so. A non-enumerable flag keeps the Map's shape unchanged for callers
+    // that only iterate it.
+    const empty = new Map();
+    Object.defineProperty(empty, 'failed', { value: true, enumerable: false });
+    return empty;
   }
 }
 
@@ -1340,55 +1310,59 @@ async function knownRelayPairsFromD1(db) {
 // tie-break between units actually present — then `knownRelays`, the durable
 // catalog pairing above, for a relay whose twin is missing from this payload.
 //
-// THE CATALOG IS CONSULTED ONLY IF AIRGRADIENT IS REPRESENTED AT ALL. With zero
-// ag-* stations in the payload the correct reading is "our AirGradient source
-// failed", not "fifteen devices departed at once" — fetchAirGradient returns []
-// on any upstream failure, and on the fast path a single missing archive tick
-// drops every ag-* out of the 30-minute window. Review measured the earlier
-// draft in exactly that state: 32 pins fell to 20, all 12 OpenAQ pins removed,
-// and the network median moved. One quiet device is an anomaly worth covering
-// for; every device at once is a fault in us, and the relays are then the only
-// picture of Bali's air we have.
-function pairAirGradientRelays(stations, knownRelays) {
+// A TOTAL AIRGRADIENT OUTAGE IS NOT SPECIAL-CASED. With zero ag-* stations in
+// the payload the honest reading is "our AirGradient source failed" —
+// fetchAirGradient returns [] on any upstream failure, and on the fast path a
+// single missing archive tick drops every ag-* out of the 30-minute window — and
+// the map then goes grey at every relay location at once. A proportional guard
+// used to stand here (below half the known roster present, abandon all pairing
+// and republish the relays) on the reasoning that the relays were then the only
+// picture of Bali's air we had. It is gone with the rest of the fail-open
+// valves: what it republished was uncorrected raw figures, dressed as readings,
+// at exactly the moment we had least ability to check them. A dozen honest grey
+// "not reporting" pins is the correct picture of a source outage.
+//
+// It must not be SILENT, though, which is a different thing from being
+// special-cased. When the payload holds no ag-* at all and the catalog knows of
+// twins, `errors` (optional; the caller's results.errors array) gets an entry so
+// the outage is visible in the response and not only in the map's appearance.
+function pairAirGradientRelays(stations, knownRelays, errors) {
   const pairs = new Map();
   const ag = stations.filter(s =>
     s && s.source === 'AirGradient' && !s.off &&
     Number.isFinite(s.lat) && Number.isFinite(s.lon));
-  // Is this a per-device absence, or a fault in us? A boolean test on
-  // `ag.length` was a cliff: ONE unrelated AirGradient unit 20 km away with no
-  // relay of its own was enough to vouch for thirteen pairs in Canggu, and
-  // removing it flipped the map from 13 grey placeholders to 15 relays
-  // publishing raw figures, moving the network median 9 -> 14.9. A one-device
-  // difference cannot be allowed to decide the correctness of thirteen pins.
-  //
-  // So compare what arrived against what the catalog says SHOULD have arrived.
-  // Below half the known roster this is our fault, not thirteen simultaneous
-  // departures, and the relays are then the only picture of Bali's air we have
-  // — publish them rather than covering the island in grey.
   const catalog = (knownRelays && knownRelays.size) ? knownRelays : null;
-  if (catalog) {
-    const expected = new Set();
-    for (const row of catalog.values()) if (row && row.id) expected.add(row.id);
-    if (expected.size) {
-      let present = 0;
-      for (const a of ag) if (expected.has(a.id)) present++;
-      if (present * 2 < expected.size) return pairs;   // roster mostly missing → our fault
+  // Alarm only — never a behaviour switch. Measured against the roster the
+  // catalog knows about rather than a bare "is any ag-* present" test, because
+  // that test was a cliff: ONE surviving unit with no relay of its own, far
+  // from every pair, silenced the alarm while the map outcome was identical.
+  if (catalog && Array.isArray(errors)) {
+    const known = new Set();
+    for (const row of catalog.values()) if (row && row.id) known.add(row.id);
+    let present = 0;
+    for (const a of ag) if (known.has(a.id)) present++;
+    if (known.size && present * 2 < known.size) {
+      errors.push({
+        source: 'airgradient-outage',
+        error: `only ${present} of ${known.size} known AirGradient relay twin(s) ` +
+               `present in this payload; their relays are suppressed and shown ` +
+               `as "not reporting" placeholders`,
+      });
     }
   }
   if (!ag.length && !catalog) return pairs;
   for (const s of stations) {
     // Gate on `source`, our own literal, so the catalog lookup is reachable for
-    // every OpenAQ station. `type` decides in-payload pairing only (see above).
+    // every OpenAQ station.
     if (!s || s.off || s.source !== 'OpenAQ') continue;
     if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) continue;
-    // No `type` test here any more. It was /airgradient/i over OpenAQ's
-    // free-text provider name, and a device registered less than one archive
-    // tick ago has no catalog row to fall back on — so one poisoned or renamed
-    // provider field put the raw number straight back on the map, which is the
-    // original bug class. TWIN_M is 1 m precisely because a relay reports the
-    // same hardware's coordinates unchanged, so proximity alone is conclusive;
-    // nothing unrelated sits within a metre. The anti-burying guard below still
-    // protects anything wrongly paired.
+    // No `type` test here. It was /airgradient/i over OpenAQ's free-text
+    // provider name, and a device registered less than one archive tick ago has
+    // no catalog row to fall back on — so one poisoned or renamed provider field
+    // put the raw number straight back on the map, which is the original bug
+    // class. TWIN_M is 1 m precisely because a relay reports the same hardware's
+    // coordinates unchanged, so proximity alone is conclusive; nothing unrelated
+    // sits within a metre.
     const twin = nearestAgTwin(s, ag);
     if (twin) { pairs.set(s.id, { agId: twin.id, catalogRow: null }); continue; }
     if (!catalog) continue;
@@ -1416,8 +1390,13 @@ function pairAirGradientRelays(stations, knownRelays) {
 function agAbsentPlaceholder(row) {
   const nowMs = Date.now();
   // Clamp: a device whose last archived reading is stamped now would otherwise
-  // report a future lastSeen and a negative age.
-  const seenMs = Math.min(row.dataMs, nowMs);
+  // report a future lastSeen and a negative age. The isFinite fallback is belt
+  // and braces — knownRelayPairsFromD1 validates `ts` before it ever builds a
+  // row, so dataMs cannot be NaN here — but the caller no longer re-checks it
+  // (that check lived inside a fail-open valve that is gone), and a NaN would
+  // otherwise reach `new Date(NaN).toISOString()`, which THROWS. Nothing in
+  // this fold may throw: it runs on the visitor's response path.
+  const seenMs = Math.min(Number.isFinite(row.dataMs) ? row.dataMs : nowMs, nowMs);
   return {
     id: row.id,
     name: row.name || row.id,
@@ -1449,25 +1428,29 @@ function agAbsentPlaceholder(row) {
 // Collapse each discovered pair to the direct AirGradient pin, whether that pin
 // is fresh or stale — a stale pin renders muted ("STALE") and is excluded from
 // every published figure, which is the honest state for a paused sensor. The
-// relay's number is never swapped in for it. Two exceptions, both erring toward
-// showing MORE, never less:
-//   • a blank AirGradient pin (no reading at all — fastPathFromD1 has no
-//     `pm25 IS NOT NULL` filter) never buries a live OpenAQ value: the relay is
-//     kept instead, since an empty pin standing in front of a reading serves
-//     nobody;
-//   • the anti-burying guard above: a relay reading materially worse than the
-//     direct feed's raw figure keeps both pins on the map, fresh or stale.
+// relay's number is never swapped in for it, and never republished alongside
+// it: once a pair exists the relay is dropped, at any reading, on either side.
 //
 // A pair whose ag-* half is MISSING FROM THIS PAYLOAD but known to the catalog
-// (see knownRelayPairsFromD1) takes the same two exceptions, measured against
-// the twin's most recent archived raw instead of a live one, and additionally
-// leaves a grey placeholder where the twin would have been. Both exceptions
-// matter here: without them an earlier draft deleted a relay reading
-// 300 ug/m3, and without the placeholder a dozen locations went blank on a
-// source outage. Where the archive holds no raw to measure against, the pair is
-// abandoned and the relay simply stands, unmodified.
-function dropOpenAQNearAirGradient(stations, knownRelays) {
-  const pairs = pairAirGradientRelays(stations, knownRelays);
+// (see knownRelayPairsFromD1) is dropped just the same, and leaves a grey
+// "not reporting" placeholder where the twin would have been so the location is
+// never blank and never carries a number we know to be uncorrected. The pair
+// itself expires on TWIN_CATALOG_MAX_AGE_MS — a twin with no archived reading
+// for 36 h has DEPARTED, no pair forms, and the relay stands on its own again.
+// That expiry is the whole of the "when does an OpenAQ number publish" rule.
+//
+// ONE EXCEPTION SURVIVES, and it is about which of two pins to draw rather than
+// about thresholds: a blank AirGradient pin (no reading at all — fastPathFromD1
+// has no `pm25 IS NOT NULL` filter) does not bury a live OpenAQ value. The ag-*
+// pin is dropped and the relay kept, since an empty pin standing in front of a
+// reading serves nobody. NOTE this is the one remaining path by which a raw
+// OpenAQ figure reaches a PAIRED location; it needs a paired ag-* that is
+// present but value-less, which is rare, and it errs toward showing something
+// rather than nothing. It was not part of the fail-open machinery removed above
+// and is left alone deliberately — if it should go too, the fix is to delete
+// these three lines and the relay disappears behind a numberless ag-* pin.
+function dropOpenAQNearAirGradient(stations, knownRelays, errors) {
+  const pairs = pairAirGradientRelays(stations, knownRelays, errors);
   if (!pairs.size) return stations;
   const byId = new Map();
   for (const s of stations) {
@@ -1477,17 +1460,6 @@ function dropOpenAQNearAirGradient(stations, knownRelays) {
     if (byId.has(s.id)) { byId.set(s.id, null); continue; }
     byId.set(s.id, s);
   }
-  // OpenAQ republishes the sensor's raw figure, so compare like with like.
-  const rawOf = (s) => Number.isFinite(s && s.pm25_raw) ? s.pm25_raw
-                     : (Number.isFinite(s && s.pm25) ? s.pm25 : null);
-  // Would suppressing `oq` hide air materially worse than `agRaw` reports?
-  // See TWIN_HIDE_RATIO/FLOOR. Fires in every state: fresh-vs-fresh (the
-  // impostor case), stale direct pin (live much-worse air must not hide behind
-  // a quiet sensor's muted marker), and stale relay (a frozen high number still
-  // earns its marker — see the constant's note).
-  const wouldBury = (oq, agRaw) =>
-    Number.isFinite(oq.pm25) && oq.pm25 >= TWIN_HIDE_FLOOR &&
-    Number.isFinite(agRaw) && agRaw * TWIN_HIDE_RATIO < oq.pm25;
   const drop = new Set();
   const placeholders = new Map();   // agId → grey pin, deduped across relays
   for (const [oqId, pair] of pairs) {
@@ -1497,51 +1469,28 @@ function dropOpenAQNearAirGradient(stations, knownRelays) {
     if (byId.has(agId)) {
       const ag = byId.get(agId);
       if (!ag) continue;   // duplicated ag id upstream (byId sentinel) — decide nothing
-      // A pin with no visible reading must never bury one that has one — keyed
-      // on pm25, the field the visitor actually sees, not the raw audit field.
-      if (!Number.isFinite(ag.pm25) && Number.isFinite(oq.pm25)) { drop.add(agId); continue; }
-      if (wouldBury(oq, rawOf(ag))) {
-        // Show both, decide nothing — and TELL THE FRONTEND, because "both" at
-        // 0.000000 m means one marker painted exactly on top of the other. The
-        // relay is the smaller pin when stale (38 px inside a 42-58 px disc), so
-        // without an offset the guard would fire, produce a DOM node nobody can
-        // see or click, and the pollution it exists to surface would stay hidden
-        // just the same. The frontend draws a flagged pin beside its twin.
-        oq.twinConflict = true;
-        continue;
-      }
+      // NO EXCEPTION for a value-less twin. This used to drop the ag-* pin and
+      // publish the relay when ag.pm25 was null, on the reasoning that a blank
+      // pin should not bury a reading. Under the AirGradient-only rule that is
+      // backwards: a present-but-blank ag-* is still an AirGradient sensor at
+      // that location, and the relay's number is uncorrected, so publishing it
+      // was the one remaining path by which a raw figure reached a paired spot.
+      // The location now shows the direct pin with no number, which is the
+      // honest statement — the sensor is there and is not reporting a value.
       drop.add(oqId);
       continue;
     }
     // ── Twin absent from this payload: catalog-only pair ──────────────
-    // This branch is held to a HIGHER bar than the in-payload one, because the
-    // outcome is worse when it is wrong. In-payload, a mistaken suppression
-    // still leaves the twin's own pin and its number. Here the twin is gone, so
-    // a mistaken suppression leaves a grey pin carrying NO number at all — the
-    // map goes silent on that location instead of merely understating it. On a
-    // public-health map, silence during a burning event is the worst outcome
-    // available, worse than an inflated number, so this branch fails open on
-    // any doubt.
+    // Suppress and stand a placeholder in the twin's place. This branch used to
+    // be held to a higher bar than the in-payload one — three fail-open tests
+    // and a ratio guard — on the reasoning that a mistaken suppression here
+    // leaves NO number at that location rather than merely a different one. The
+    // owner's decision is that a grey "not reporting" pin IS the right answer
+    // when the only figure available is an uncorrected relay: it is a gap the
+    // visitor can see and interpret, where the relay's number is a wrong answer
+    // they cannot. So: no thresholds, no reference reading, no ratio.
     const row = pair.catalogRow;
-    if (!row) continue;                       // in-payload pair with a vanished twin: impossible, but never suppress blind
-    // FAIL OPEN. No archived raw means the guard cannot run, and an unchecked
-    // suppression is not worth making — the relay keeps its pin and its number.
-    if (!Number.isFinite(row.raw)) continue;
-    // FAIL OPEN on genuinely bad air, whatever the ratio says. wouldBury alone
-    // is a RELATIVE test, so a high archived raw licenses hiding an even higher
-    // live one: measured on today's pairs the suppression ceiling ran to 140
-    // ug/m3 at Nyambu and 127 at Kedungu — "Very Unhealthy" readings rendered
-    // as a blank grey pin. Above this threshold the relay publishes even though
-    // it is uncorrected, because an inflated number that says "the air is bad"
-    // is closer to the truth than no number at all. See the constant for why
-    // the line sits at Unhealthy (55.5) and not one band lower.
-    if (Number.isFinite(oq.pm25) && oq.pm25 >= TWIN_CATALOG_PUBLISH_PM25) continue;
-    // FAIL OPEN on a stale reference. A reading from many hours ago cannot
-    // bound what the air is doing now, and the ratio test silently pretends it
-    // can — TWIN_CATALOG_MAX_AGE_MS admits references up to a day old.
-    if (!Number.isFinite(row.dataMs) ||
-        (Date.now() - row.dataMs) > TWIN_CATALOG_REF_MAX_AGE_MS) continue;
-    if (wouldBury(oq, row.raw)) continue;     // no twinConflict: nothing is painted over it
+    if (!row) continue;   // in-payload pair with a vanished twin: impossible, but never suppress blind
     drop.add(oqId);
     // Never blank the location. One placeholder per twin even if two relays
     // resolve to it.
@@ -1771,7 +1720,7 @@ export async function onRequest(context) {
     if (!relayPairsP) return new Map();
     try {
       const m = await relayPairsP;
-      if (m && m.size) return m;
+      if (m && m.failed) relayPairsFailed = true;   // see knownRelayPairsFromD1
       return m || new Map();
     } catch (_) { relayPairsFailed = true; return new Map(); }
   };
@@ -1797,9 +1746,24 @@ export async function onRequest(context) {
         // (fresher, 15-min, un-aggregated, and the one we humidity-correct).
         // AG-only: if AirGradient goes quiet the pin shows muted STALE rather
         // than borrowing the relay's uncorrected number; the relay returns on
-        // its own only once the AG unit has produced no archived reading for a
-        // day, and until then a grey placeholder holds its spot.
-        fast.stations = dropOpenAQNearAirGradient(fast.stations, await relayPairs());
+        // its own only once the AG unit has produced no archived reading for
+        // 36 h, and until then a grey placeholder holds its spot.
+        //
+        // The fold reports source outages into `foldErrors`. The fast path had
+        // no errors array at all, so a total AirGradient outage — the state
+        // where every relay location goes grey at once — was visible only in
+        // the map's appearance. It is the path most visitors are served and the
+        // one where the outage is most likely (a single missing archive tick
+        // empties the 30-minute window), so it is exactly where the signal has
+        // to exist. Attached only when non-empty, so the normal response shape
+        // is unchanged; nothing in public/ reads this field either way.
+        const foldErrors = [];
+        fast.stations = dropOpenAQNearAirGradient(fast.stations, await relayPairs(), foldErrors);
+        if (relayPairsFailed) {
+          foldErrors.push({ source: 'relay-catalog',
+            error: 'known-relay catalog read failed; relays fall back to publishing raw figures' });
+        }
+        if (foldErrors.length) fast.errors = foldErrors;
         // Fold in Smart Citizen OFFLINE tombstones (off:true) — dead or
         // indoor-retagged units keep a grey pin + reachable history. Added
         // after the live folds so live pins act as the de-dup anchors.
@@ -1908,7 +1872,10 @@ export async function onRequest(context) {
   // falls back to in-payload pairs, exactly as it behaved before.
   if (!noFast) {
     results.stations = dropAirlyNearNafas(results.stations);
-    results.stations = dropOpenAQNearAirGradient(results.stations, await relayPairs());
+    // results.errors is the fold's outage sink: a payload with zero ag-* while
+    // the catalog knows of twins is our own fetch failing, and the map going
+    // grey at every relay location is the correct outcome — but not a silent one.
+    results.stations = dropOpenAQNearAirGradient(results.stations, await relayPairs(), results.errors);
     results.sources = new Set(results.stations.filter(s => !s.off).map(s => s.source)).size;
   }
   if (relayPairsFailed) {

@@ -1370,16 +1370,17 @@ function renderAll(ts){
         }
       }
     }
-    // A relay flagged twinConflict sits at EXACTLY its twin's coordinates, so
-    // drawn normally it would be painted underneath and be neither visible nor
-    // clickable — the anti-burying guard (functions/api/live.js) would fire and
-    // surface nothing. Shifting the anchor moves the pin ~54 px clear of its
-    // twin on screen at every zoom, without moving the station's real position:
-    // the two readings that disagree end up side by side, which is the whole
-    // point of the guard. No z-index games — those cannot help when one disc is
-    // drawn entirely inside another.
-    const anchorX = s.twinConflict ? size/2 - 54 : size/2;
-    const icon = L.divIcon({ className:'', html, iconSize:[size,size], iconAnchor:[anchorX,size/2] });
+    // Plain centre anchor. This used to shift ~54 px for a relay the API had
+    // flagged as conflicting with its twin — one it had decided to draw
+    // ALONGSIDE its AirGradient twin rather than suppress, which at 0.000000 m
+    // apart meant one marker painted exactly inside the other, neither visible
+    // nor clickable.
+    // That "show both pins" case no longer exists: functions/api/live.js now
+    // suppresses a paired relay unconditionally, so no two pins share a
+    // coordinate and there is nothing to offset. (Co-located stations from
+    // different sources are collapsed upstream by the de-dup folds; anything
+    // that survives them is metres apart, not centimetres.)
+    const icon = L.divIcon({ className:'', html, iconSize:[size,size], iconAnchor:[size/2,size/2] });
     const mk = L.marker([s.lat,s.lon],{icon, riseOnHover:true});
     mk.on('click',()=>openPanel(s.id));
     // Stale stations look offline (dashed-ring "STALE" pin) and should
@@ -1389,7 +1390,13 @@ function renderAll(ts){
     // Add to the layer GROUP only. Whether that group is on the map is decided
     // by applyLayerVisibility() below, from the toggle rows — adding it here
     // would override a visitor's choice on every refresh.
-    mk.addTo(goesOffline ? offLayer : liveLayer);
+    // `absent` placeholders ride the LIVE layer: they mark a live location
+    // whose feed is missing from this update, not a sensor that has gone dark.
+    // On offLayer, a visitor toggling "Offline" off — a normal action meaning
+    // "show me only live sensors" — saw nothing at all there, which is the one
+    // thing this placeholder exists to prevent. They carry pm25:null and
+    // off:true, so they still cannot reach any published statistic.
+    mk.addTo((goesOffline && !s.absent) ? offLayer : liveLayer);
     markers[s.id] = mk;
   });
   applyLayerVisibility();
@@ -1497,11 +1504,20 @@ function renderRollTable(){
   tb.innerHTML = combined.map(s=>{
     if(s.offline){
       const dl = daysBetween(s.last, new Date());
+      const _t = (k, fb) => (window.I18N && window.I18N.t) ? window.I18N.t(k, fb) : fb;
+      // An `absent` pin stands in for a sensor missing from THIS update, not a
+      // dead one. Labelling it "Offline · 0d" — "Mati" (dead) in Indonesian —
+      // states the opposite of the truth about a device reporting normally, and
+      // contradicts the panel copy two lines down. Age in hours, not days,
+      // because these gaps are measured in ticks.
+      const _badge = s.absent
+        ? `${_t('roll.notReporting','Not reporting')} · ${Math.max(1, Math.round(s.staleAgeHours || 0))}${_t('roll.hoursShort','h')}`
+        : `${_t('roll.offline','Offline')} · ${dl}${_t('roll.daysShort','d')}`;
       return `<tr class="offline" data-sid="${esc(s.id)}">
         <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
         <td>${esc(s.source)}</td>
         <td class="r">—</td>
-        <td><span class="badge off">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.offline','Offline') : 'Offline'} · ${dl}${(window.I18N && window.I18N.t) ? window.I18N.t('roll.daysShort','d') : 'd'}</span></td>
+        <td><span class="badge off">${_badge}</span></td>
         <td class="c">${historyCell(s)}</td>
         <td class="r">${fmtDate(s.last)}</td>
       </tr>`;
@@ -1540,7 +1556,7 @@ function renderRollTable(){
       </tr>`;
     }
     return `<tr data-sid="${esc(s.id)}">
-      <td><b>${esc((s.name||'').split(' (')[0])}</b>${s.pm25_estimated?' <em style="color:var(--ink-faint);font-size:11px">· est.</em>':''}${s.pm25_corrected?' <em style="color:var(--ink-faint);font-size:11px" title="'+esc(t('roll.correctedTip','US-EPA humidity-corrected — see appendix'))+'">'+esc(t('roll.corrected','· corr.'))+'</em>':''}</td>
+      <td><b>${esc((s.name||'').split(' (')[0])}</b>${s.pm25_estimated?' <em style="color:var(--ink-faint);font-size:11px">· est.</em>':''}${s.pm25_corrected?' <em style="color:var(--ink-faint);font-size:11px" title="'+esc(t('roll.correctedTip','US-EPA humidity-corrected — see appendix'))+'">'+esc(t('roll.corrected','· corr.'))+'</em>':''}${(!s.pm25_corrected&&s.source==='OpenAQ')?' <em style="color:var(--ink-faint);font-size:11px" title="'+esc(t('roll.uncorrectedTip','Relayed by OpenAQ as supplied — not humidity-corrected, so it reads high in Bali\u2019s humidity. Shown only because no direct feed exists here.'))+'">'+esc(t('roll.uncorrected','· raw'))+'</em>':''}</td>
       <td>${esc(s.source)}</td>
       <td class="r"><span class="pm-cell">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
       <td><span class="badge ${c.cls}">${c.label}</span></td>
@@ -1778,7 +1794,7 @@ function panelLive(s){
     <div class="side-big">
       <div>
         <div class="side-big-val ${c.cls}">${s.pm25!=null?s.pm25.toFixed(1):'—'}</div>
-        <div class="side-unit">µg/m³ · PM2.5${s.pm25_estimated?' (est.)':''}${s.pm25_corrected?' '+t('panel.corrected','· corrected'):''}</div>
+        <div class="side-unit">µg/m³ · PM2.5${s.pm25_estimated?' (est.)':''}${s.pm25_corrected?' '+t('panel.corrected','· corrected'):''}${(!s.pm25_corrected&&s.source==='OpenAQ')?' '+t('panel.uncorrected','· raw, not corrected'):''}</div>
       </div>
       <div>
         <div class="side-cat" style="color:var(--aqi-${c.cls})">${c.label}</div>
@@ -1832,9 +1848,11 @@ function panelOffline(s){
   }
   return `
     <div class="side-hero">
-      <div class="side-kicker"><span class="tag gone">${t('panel.tagOffline','Offline')}</span> ${esc(s.source)}${s.type?' · '+esc(s.type):''}</div>
+      <div class="side-kicker"><span class="tag gone">${s.absent ? t('panel.tagAbsent','Not reporting') : t('panel.tagOffline','Offline')}</span> ${esc(s.source)}${s.type?' · '+esc(s.type):''}</div>
       <div class="side-name">${esc(s.name)}</div>
-      <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.lastReported','last reported')} ${fmtDate(s.last)} · ${t('panel.silentFor','silent for')} <b style="color:var(--crimson)">${days} ${t('panel.days','days')}</b></div>
+      <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)}${s.absent
+        ? ` — ${t('panel.lastArchived','last archived reading')} ${fmtDate(s.last)}`
+        : ` — ${t('panel.lastReported','last reported')} ${fmtDate(s.last)} · ${t('panel.silentFor','silent for')} <b style="color:var(--crimson)">${days} ${t('panel.days','days')}</b>`}</div>
     </div>
     <div class="side-big">
       <div>

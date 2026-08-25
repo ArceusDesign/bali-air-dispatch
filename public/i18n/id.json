@@ -1260,5 +1260,11 @@
   "report.mostRecent": "Terbaru",
   "panel.contributed": "Kontribusi warga · penempatan belum diverifikasi",
   "panel.sensorAbsent": "Tidak ada dalam pembaruan ini",
-  "panel.absentSub": "Umpan langsung tidak ada dalam pembaruan ini. Relai yang berlokasi sama ditahan selama umpan itu absen, karena relai menerbitkan angka tanpa koreksi. Data historis tetap tersimpan di bawah."
+  "panel.absentSub": "Umpan langsung tidak ada dalam pembaruan ini. Relai yang berlokasi sama ditahan selama umpan itu absen, karena relai menerbitkan angka tanpa koreksi. Data historis tetap tersimpan di bawah.",
+  "roll.notReporting": "Tidak melapor",
+  "panel.tagAbsent": "Tidak melapor",
+  "panel.lastArchived": "pembacaan terarsip terakhir",
+  "roll.uncorrected": "· mentah",
+  "roll.uncorrectedTip": "Direlai oleh OpenAQ apa adanya — tanpa koreksi kelembapan, sehingga terbaca tinggi dalam kelembapan Bali. Ditampilkan hanya karena tidak ada umpan langsung di sini.",
+  "panel.uncorrected": "· mentah, tanpa koreksi"
 }

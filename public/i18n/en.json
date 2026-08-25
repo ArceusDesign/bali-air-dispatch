@@ -648,5 +648,11 @@
   "report.mostRecent": "Most recent",
   "panel.contributed": "Community-contributed · unverified siting",
   "panel.sensorAbsent": "Not in this update",
-  "panel.absentSub": "The direct feed is missing from this update. Its co-located relay is held back while it is out, because the relay publishes an uncorrected figure. Historical data is preserved below."
+  "panel.absentSub": "The direct feed is missing from this update. Its co-located relay is held back while it is out, because the relay publishes an uncorrected figure. Historical data is preserved below.",
+  "roll.notReporting": "Not reporting",
+  "panel.tagAbsent": "Not reporting",
+  "panel.lastArchived": "last archived reading",
+  "roll.uncorrected": "· raw",
+  "roll.uncorrectedTip": "Relayed by OpenAQ as supplied — not humidity-corrected, so it reads high in Bali’s humidity. Shown only because no direct feed exists here.",
+  "panel.uncorrected": "· raw, not corrected"
 }
