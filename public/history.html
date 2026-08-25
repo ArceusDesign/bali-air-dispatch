@@ -695,7 +695,26 @@ function buildStationList(){
   //   • within 300 m of a station that IS displayed — i.e. the same site
   relayedSources = new Map();
   const _liveIds = new Set(liveCatalog.map(s => s.id));
-  const _liveGeo = liveCatalog.filter(s => !s.off && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  // Anchors INCLUDE off:true pins. The anchor test asks "is some station of
+  // ours displayed at this site", and a grey tombstone is displayed — it is a
+  // pin on the map and a row in this sidebar. Excluding them opened a hole the
+  // moment /api/live started emitting a placeholder for an AirGradient twin
+  // that is missing from the payload while its OpenAQ relay stays suppressed:
+  // the relay is absent from _liveIds, its only co-located neighbour is that
+  // off:true placeholder, and with off pins excluded it matched no anchor, fell
+  // out of EVERY group, and became unreachable here. There is no slack to
+  // absorb it either — measured, the nearest OTHER live station to each
+  // affected relay is 588 m (Kedungu), 1281 m (Nyambu), 1644 m (Pererenan) and
+  // 2202 m (Villa Malaikat), all far outside the 300 m radius.
+  //
+  // Nothing else is wrongly admitted, because this is the WEAKER of the two
+  // tests. The one that does the real work is `_fresh.has(u.last_date)` above:
+  // a candidate must still be producing data today or yesterday while being
+  // absent from /api/live, and the only way to be in both states is to have
+  // been suppressed by a display fold — which is exactly what this group is
+  // for. Widening the corroborating radius test cannot pull in a quiet sensor;
+  // those fail on last_date and land in Silenced / Recently offline as before.
+  const _liveGeo = liveCatalog.filter(s => Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
   const _witaDay = (back) => new Date(Date.now() + 8*3600*1000 - back*86400000).toISOString().slice(0, 10);
   const _fresh = new Set([_witaDay(0), _witaDay(1)]);
   const relayedDupes = (universalCatalog || []).filter(u => {

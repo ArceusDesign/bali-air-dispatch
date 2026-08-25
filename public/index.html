@@ -1842,8 +1842,8 @@ function panelOffline(s){
         <div class="side-unit">${t('panel.noReading','No current reading')}</div>
       </div>
       <div>
-        <div class="side-cat" style="color:var(--crimson)">${t('panel.sensorDark','Sensor is dark')}</div>
-        <div class="side-cat-sub">${s.reason || t('panel.darkSub','Device has stopped reporting; cause unknown. Historical data preserved below.')}</div>
+        <div class="side-cat" style="color:var(--crimson)">${s.absent ? t('panel.sensorAbsent','Not in this update') : t('panel.sensorDark','Sensor is dark')}</div>
+        <div class="side-cat-sub">${s.absent ? t(s.reasonKey || 'panel.absentSub', s.reason || '') : (s.reason || t('panel.darkSub','Device has stopped reporting; cause unknown. Historical data preserved below.'))}</div>
       </div>
     </div>
 

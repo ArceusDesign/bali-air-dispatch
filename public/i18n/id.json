@@ -1258,5 +1258,7 @@
   "report.areaOnly": "di mana saja dalam desa — bukan alamat tertentu",
   "report.area": "Wilayah",
   "report.mostRecent": "Terbaru",
-  "panel.contributed": "Kontribusi warga · penempatan belum diverifikasi"
+  "panel.contributed": "Kontribusi warga · penempatan belum diverifikasi",
+  "panel.sensorAbsent": "Tidak ada dalam pembaruan ini",
+  "panel.absentSub": "Umpan langsung tidak ada dalam pembaruan ini. Relai yang berlokasi sama ditahan selama umpan itu absen, karena relai menerbitkan angka tanpa koreksi. Data historis tetap tersimpan di bawah."
 }
