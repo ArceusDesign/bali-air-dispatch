@@ -705,23 +705,38 @@ function dedupSmartCitizen(scStations, existing) {
 // like Smart Citizen names.
 const AG_BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
 // AirGradient publishes one WORLD feed — 1.4 MB, ~2,700 devices — and Bali is
-// 14 of them. Parsing all of it cost ~8-10 ms of CPU per call, measured, on a
-// slow path whose total was 35 ms mean / 50 ms max against a ceiling it was
-// already hitting: 4 CPU-limit failures a day, each one an archive tick lost
-// (a 60-minute hole in the record was traced to exactly this). So the world
-// feed is now used only to DISCOVER which device ids are in Bali, and that
-// answer is cached; between refreshes each known device is read from
-// /world/locations/{id}/measures/current, which is ~500 bytes and carries an
-// identical field set (verified against the world-feed shape).
+// about 15 of them. Parsing all of it to keep 15 is wasteful, and on
+// 2026-08-24 it was optimised away: the feed was used only to DISCOVER Bali
+// device ids, that list cached for 6 h, and each device then read from
+// /world/locations/{id}/measures/current. That optimisation is REVERTED, and
+// the reason is worth keeping so nobody rebuilds it.
 //
-// The trade is subrequests for CPU: one 1.4 MB fetch becomes ~14 tiny ones.
-// That is the right way round here — the invocation was CPU-bound, not
-// request-bound, and the small fetches run concurrently so wall time barely
-// moves. AG_DISCOVERY_TTL_S is deliberately long: a new Bali unit appears
-// every few days at most, and a missed one simply joins at the next refresh.
-const AG_DISCOVERY_TTL_S = 6 * 60 * 60;
-const AG_DISCOVERY_KEY = 'https://internal.baliair/ag-bali-ids';
-const AG_MAX_DEVICES = 40;   // bounds subrequests if the feed ever balloons
+// A cached id list cannot see a device that did not exist when it was built.
+// AirGradient has been adding Bali units every few days, and each new one was
+// invisible here for up to 6 h — and caches.default is PER-COLO, so different
+// datacentres held lists of different ages and the symptom moved around. That
+// alone would only have meant a missing pin. What made it serious is what sits
+// downstream: an OpenAQ relay is suppressed only while its ag-* twin is in the
+// same payload (see dropOpenAQNearAirGradient). No ag-* pin meant no pair,
+// meant the relay rendered — and OpenAQ carries the sensor's RAW figure while
+// we publish the humidity-corrected one. So the map showed materially inflated
+// numbers, on exactly the newest sensors, intermittently. Measured on
+// production before the revert: three consecutive /api/live?fresh=1 calls
+// returned 14, 10 and 10 AirGradient stations against 15 upstream.
+//
+// The optimisation was bought for real reasons — /api/live?fresh=1 was hitting
+// Cloudflare's CPU ceiling (4 failures in 24 h, one 60-minute hole in the
+// archive); measured 42-57 ms on this path against 18-32 ms per-device. But it
+// traded a BOUNDED, RETRIED failure for an UNBOUNDED, SILENT one. A dropped
+// archive tick is now retried three times by the archive worker
+// (workers/nafas-archive fetchUnifiedLive); a wrong number on the map is not
+// caught by anything and is the one thing this site cannot afford. Correctness
+// outranks the CPU saving.
+//
+// If CPU needs addressing again, the fix is to move the archive tick off the
+// request path — not to cache the roster. Any scheme that reads devices
+// individually needs a current id list, which means fetching and parsing this
+// feed anyway, which leaves the small reads as pure overhead.
 
 // Shared shaping for one raw AirGradient device record, used by both paths so
 // the world feed and the per-device endpoint can never drift apart.
@@ -783,82 +798,22 @@ function shapeAirGradient(d) {
 
 // The two ways to get Bali's AirGradient devices.
 async function fetchAirGradient() {
-  const cache = caches.default;
-  const key = new Request(AG_DISCOVERY_KEY, { method: 'GET' });
-
-  let ids = null;
+  let list;
   try {
-    const hit = await cache.match(key);
-    if (hit) {
-      const parsed = await hit.json();
-      if (Array.isArray(parsed) && parsed.length) ids = parsed.slice(0, AG_MAX_DEVICES);
-    }
-  } catch (_) { /* a bad cache entry just means rediscovery */ }
-
-  // No usable id list: parse the world feed once, serve from it, and remember
-  // which ids mattered. This is the expensive branch, now ~1 call in 24.
-  if (!ids) {
-    let list;
-    try {
-      const r = await fetch(
-        'https://api.airgradient.com/public/api/v1/world/locations/measures/current',
-        { headers: { Accept: 'application/json' }, cf: { cacheTtl: 300, cacheEverything: true } }
-      );
-      if (!r.ok) return [];
-      list = await r.json();
-    } catch (_) { return []; }
-    if (!Array.isArray(list)) return [];
-
-    // Discovery must NOT inherit the liveness filters in shapeAirGradient — a
-    // unit that is merely offline or briefly blank right now is still a Bali
-    // device and must stay on the list, or it could never come back.
-    const discovered = [];
-    for (const d of list) {
-      const lat = +d?.latitude, lon = +d?.longitude;
-      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-      if (lat < AG_BALI.latMin || lat > AG_BALI.latMax ||
-          lon < AG_BALI.lonMin || lon > AG_BALI.lonMax) continue;
-      const devId = Number.parseInt(d.locationId, 10);
-      if (!Number.isFinite(devId) || String(devId) !== String(d.locationId)) continue;
-      discovered.push(devId);
-    }
-    if (discovered.length) {
-      try {
-        await cache.put(key, new Response(JSON.stringify(discovered.slice(0, AG_MAX_DEVICES)), {
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': `public, max-age=${AG_DISCOVERY_TTL_S}`,
-          },
-        }));
-      } catch (_) { /* caching is best effort */ }
-    }
-    const out = [];
-    for (const d of list) {
-      const shaped = shapeAirGradient(d);
-      if (shaped) out.push(shaped);
-    }
-    return out;
+    const r = await fetch(
+      'https://api.airgradient.com/public/api/v1/world/locations/measures/current',
+      { headers: { Accept: 'application/json' }, cf: { cacheTtl: 300, cacheEverything: true } }
+    );
+    if (!r.ok) return [];
+    list = await r.json();
+  } catch (_) { return []; }
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const d of list) {
+    const shaped = shapeAirGradient(d);
+    if (shaped) out.push(shaped);
   }
-
-  // Normal branch: a handful of ~500-byte reads, run concurrently.
-  const settled = await Promise.all(ids.map(async (devId) => {
-    try {
-      const r = await fetch(
-        `https://api.airgradient.com/public/api/v1/world/locations/${devId}/measures/current`,
-        { headers: { Accept: 'application/json' }, cf: { cacheTtl: 60, cacheEverything: true } }
-      );
-      if (!r.ok) return null;
-      return shapeAirGradient(await r.json());
-    } catch (_) { return null; }   // one dead device never sinks the rest
-  }));
-  const live = settled.filter(Boolean);
-  // If EVERY per-device read failed, the list is probably stale or the endpoint
-  // changed shape. Drop it so the next call rediscovers, rather than silently
-  // reporting that Bali has no AirGradient sensors at all.
-  if (!live.length) {
-    try { await cache.delete(key); } catch (_) { /* nothing to undo */ }
-  }
-  return live;
+  return out;
 }
 
 // Drop AirGradient pins within 300 m of an already-present DIFFERENT-source
