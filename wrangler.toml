@@ -20,5 +20,13 @@ binding = "ARCHIVE_DB"
 database_name = "bali-air-archive"
 database_id = "REPLACE_WITH_REAL_D1_ID"
 
+# R2 — the self-hosted basemap tileset served by functions/tiles/[[path]].js.
+# Holds our own OSM-derived raster tiles (Voyager style) for the Bali bbox at
+# z9-16, base + @2x. Replaced CARTO on 27 Aug 2026 after they ended keyless
+# access AND forbade server-side proxying; see the header of that file.
+[[r2_buckets]]
+binding = "TILES"
+bucket_name = "baliair-tiles"
+
 # Pages Functions do NOT run cron (that's what workers/nafas-archive is for).
 # Keep this Pages project lean: serve HTML + /api/live + /api/wind + /api/history.

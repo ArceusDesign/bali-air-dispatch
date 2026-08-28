@@ -10,36 +10,47 @@
 // for — which is a quantised copy of wherever that person is looking. On a site
 // whose whole promise is "no trackers, no accounts, circulated anonymously",
 // that was the one remaining place a reader's location leaked to a third party.
-// Routed through here, CARTO sees Cloudflare fetching a tile and nothing else:
-// no IP, no User-Agent, no Referer, no cookies, no Accept-Language.
+// This proxy removed that leak by fetching tiles server-side.
+//
+// WHY IT NOW READS FROM R2 INSTEAD OF CARTO
+// On 26 Aug 2026 CARTO ended keyless access to basemaps.cartocdn.com: every
+// anonymous tile request began returning a 200 PNG reading "API KEY REQUIRED",
+// cached at their edge for 180 days. Their Basemap T&C §9(c) also explicitly
+// forbids "proxying or caching the content on the server side" — i.e. this
+// file — so obtaining a free key would not have made the architecture
+// compliant, and a key is revocable at their sole discretion without notice.
+//
+// The basemap is therefore now OURS: OpenStreetMap data (ODbL), rendered to
+// raster PNGs with CARTO's own open-source Voyager style (BSD-3 code /
+// CC-BY design — the STYLE is open even though their tile SERVICE is not),
+// via Planetiler + MapLibre GL Native, and stored in R2 as ~68k tiles /
+// ~136k objects. See scripts/basemap/ in this repo for the build pipeline.
+//
+// The privacy property is now absolute rather than merely mediated: there is
+// no third party in the request path at all, so there is no upstream that
+// could log, rate-limit, gate, or withdraw anything. Attribution for OSM,
+// OpenMapTiles and CARTO's design is carried in the page UI, per those licences.
 //
 // THE RISK THIS FILE HAS TO MANAGE
-// A tile proxy is a URL builder driven by strangers, i.e. an SSRF/open-proxy
-// waiting to happen. The rule enforced below is absolute: the upstream URL is
-// assembled from two JavaScript integers, one integer and one boolean — never
-// from any string the caller supplied. A caller cannot influence the host, the
-// scheme, the path prefix or the extension; they can only nudge three numbers,
-// and those numbers are range-checked against the area the map can actually
-// display. So this is not a proxy for CARTO; it is a proxy for ~68k specific
-// tiles (136k URLs — every tile also has an @2x variant with its own cache key
-// and its own upstream fetch, and Leaflet requests @2x on retina screens)
-// tiles covering Bali, and nothing else on Earth is reachable through it.
+// A tile endpoint is a key builder driven by strangers. The rule enforced below
+// is absolute and unchanged from the CARTO era: the object key is assembled
+// from three JavaScript integers and one boolean — never from any string the
+// caller supplied. A caller cannot influence the bucket, the prefix or the
+// extension; they can only nudge three numbers, and those numbers are
+// range-checked against the area the map can actually display. Serving from R2
+// strictly shrinks this surface — there is no longer any outbound fetch, so
+// SSRF is not merely blocked but structurally impossible — while the same
+// validation still bounds which of our own ~136k objects are reachable.
 //
 // CACHING
 // Pages Functions responses do NOT pass through the CDN cache on their own
 // (see the long note in functions/api/v1/[[path]].js — measured: no response
 // ever carried cf-cache-status, so Cache-Control alone is decorative). Without
-// an explicit cache every pan of every visitor would be a fresh CARTO fetch,
-// which is both slow and rude to a free basemap. caches.default is used
-// directly, keyed on a canonical path we rebuild ourselves.
+// an explicit cache every pan of every visitor would be a fresh R2 read: still
+// correct, but a Class B operation per tile per visitor when one edge-cached
+// copy would serve the whole colo. caches.default is used directly, keyed on a
+// canonical path we rebuild ourselves.
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Upstream. Bare host rather than the {s}.basemaps… sharded form: subdomain
-// sharding exists to work around HTTP/1.1 connection limits in browsers and is
-// pointless for a server-side fetch over HTTP/2. Verified 200 + image/png with
-// zero redirects on both the plain and the @2x path.
-const UPSTREAM_ORIGIN = 'https://basemaps.cartocdn.com';
-const UPSTREAM_STYLE = '/rastertiles/voyager';
 
 // The map's real zoom range — public/index.html: L.map(..., minZoom:9, maxZoom:16).
 // Anything outside this is not a tile our own map can ever request.
@@ -116,9 +127,8 @@ const ALLOWED = (() => {
   return table;
 })();
 
-const UPSTREAM_TIMEOUT_MS = 6000;
 // A voyager tile is ~10-70 KB (@2x). A megabyte is far past anything real and
-// stops a surprise upstream response from being buffered into memory wholesale.
+// stops a surprise object from being buffered into memory wholesale.
 const MAX_TILE_BYTES = 1024 * 1024;
 
 // Canonical decimal integer, no leading zeros, no sign, no whitespace, no
@@ -129,15 +139,15 @@ const MAX_TILE_BYTES = 1024 * 1024;
 const INT_RE = /^(?:0|[1-9][0-9]{0,6})$/;
 const toInt = (s) => (INT_RE.test(s) ? Number(s) : null);
 
-// Errors are cached at the EDGE for a minute — long enough that a CARTO outage
-// or a scripted sweep of unservable tiles collapses into roughly one upstream
-// request per tile per colo per minute instead of one per visitor request, and
+// Errors are cached at the EDGE for a minute — long enough that an R2 incident
+// or a scripted sweep of unservable tiles collapses into roughly one origin
+// read per tile per colo per minute instead of one per visitor request, and
 // short enough that a recovered tile appears almost immediately. max-age=0
 // keeps it out of browser caches, so a visitor who retries is never the one
 // holding the stale failure. Not applied to 405/404-shaped *validation*
-// rejections, which never touch upstream and cost nothing to recompute.
+// rejections, which never touch R2 and cost nothing to recompute.
 const NEGATIVE_TTL_S = 60;
-function upstreamFail(status, message) {
+function originFail(status, message) {
   return textFail(status, message, {
     'Cache-Control': `public, max-age=0, s-maxage=${NEGATIVE_TTL_S}`,
   });
@@ -158,7 +168,7 @@ function textFail(status, message, extraHeaders) {
 }
 
 export async function onRequest(context) {
-  const { request, params, waitUntil } = context;
+  const { request, params, waitUntil, env } = context;
 
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     return textFail(405, 'Method not allowed. Tiles are read-only.', { Allow: 'GET, HEAD' });
@@ -203,8 +213,20 @@ export async function onRequest(context) {
   // Key rebuilt from the validated numbers rather than taken from request.url.
   // That drops the query string, which matters: `?bust=1`, `?bust=2`, … would
   // otherwise be unlimited distinct keys for one image, turning a cache into an
-  // amplifier that forwards every one of those misses to CARTO.
-  const canonical = `/tiles/${z}/${x}/${y}${retina ? '@2x' : ''}.png`;
+  // amplifier that forwards every one of those misses to the origin.
+  //
+  // TILESET_EPOCH participates in the cache key ONLY (never in a public URL or
+  // an R2 key). Tiles are served `immutable` with s-maxage=30d, so when the
+  // BYTES behind a coordinate change, every previously-cached entry is a stale
+  // wrong answer that no amount of waiting for a deploy will clear. That is not
+  // hypothetical: the CARTO→R2 cutover left "API KEY REQUIRED" placeholders
+  // pinned at the edge for precisely the tiles readers look at most, since
+  // those are the ones that were cached. Bumping this orphans every old entry
+  // atomically and costs one re-read per tile per colo.
+  //
+  // BUMP THIS whenever the tileset is re-rendered (see scripts/basemap/).
+  const TILESET_EPOCH = '2026-08-27';
+  const canonical = `/tiles/${TILESET_EPOCH}/${z}/${x}/${y}${retina ? '@2x' : ''}.png`;
   const cacheUrl = new URL(request.url).origin + canonical;
   const cacheKey = new Request(cacheUrl, { method: 'GET' });
   const cache = caches.default;
@@ -223,94 +245,67 @@ export async function onRequest(context) {
     return new Response(request.method === 'HEAD' ? null : hit.body, { status: hit.status, headers });
   }
 
-  // ── fetch upstream ─────────────────────────────────────────────────────────
+  // ── read from R2 ───────────────────────────────────────────────────────────
   // Assembled from numbers and a boolean only. There is no interpolation of
-  // caller-supplied text anywhere in this string, so no traversal, no host
-  // switch, no protocol switch is expressible.
-  const upstream = `${UPSTREAM_ORIGIN}${UPSTREAM_STYLE}/${z}/${x}/${y}${retina ? '@2x' : ''}.png`;
+  // caller-supplied text anywhere in this key, so no traversal and no prefix
+  // escape is expressible. No network fetch happens here at all: the bytes
+  // come from our own bucket over Cloudflare's internal binding, so there is
+  // no upstream that could observe the request, and nothing to time out on a
+  // third party's behalf.
+  const key = `${z}/${x}/${y}${retina ? '@2x' : ''}.png`;
 
-  const abort = new AbortController();
-  const timer = setTimeout(() => abort.abort(), UPSTREAM_TIMEOUT_MS);
-  let res;
+  const bucket = env && env.TILES;
+  if (!bucket) {
+    // Misconfiguration (binding absent), not a caller error — and emphatically
+    // not cacheable, or one bad deploy pins a blank map at the edge.
+    console.error('tiles: R2 binding TILES missing');
+    return textFail(500, 'Basemap temporarily unavailable.');
+  }
+
+  let obj;
   try {
-    res = await fetch(upstream, {
-      method: 'GET',
-      // Constructed header set, NOT a copy of the visitor's request. This is
-      // the privacy guarantee of the whole file: no IP, no User-Agent from the
-      // browser, no Referer, no Cookie, no Accept-Language, no Sec-CH-* hints.
-      //
-      // No project-identifying User-Agent either. A named UA would have been
-      // the courteous choice, but the site is published anonymously and the
-      // browser already sends Referrer-Policy: no-referrer, so before this
-      // proxy existed CARTO could not attribute the traffic to the project at
-      // all. Naming ourselves here from a stable egress would have handed them
-      // a durable, volume-measurable record of it — moving operator anonymity
-      // backwards in the same change that improved visitor privacy.
-      headers: { 'Accept': 'image/png' },
-      // Never chase a 3xx: a redirect is the one way an upstream could still
-      // point this fetch at a host we never authorised. A redirect is treated
-      // as a failure instead.
-      redirect: 'manual',
-      signal: abort.signal,
-    });
+    obj = await bucket.get(key);
   } catch (err) {
-    clearTimeout(timer);
-    console.error('tiles: upstream fetch failed', z, x, y, err && err.message);
-    return upstreamFail(504, 'Basemap tile temporarily unavailable.');
-  }
-  clearTimeout(timer);
-
-  if (res.status !== 200) {
-    console.error('tiles: upstream status', res.status, z, x, y);
-    // 404 from CARTO stays a 404 (a real hole in their coverage); anything
-    // else — including a redirect we refused to follow — is our problem, 502.
-    return upstreamFail(res.status === 404 ? 404 : 502, 'Basemap tile unavailable.');
+    console.error('tiles: R2 get failed', z, x, y, err && err.message);
+    return originFail(502, 'Basemap tile unavailable.');
   }
 
-  const type = (res.headers.get('Content-Type') || '').toLowerCase();
-  // PNG specifically, not image/* — this endpoint only ever asks for .png, and
-  // image/svg+xml passes an "image/" test while being a scriptable document.
-  // Served from our own origin, an SVG carrying inline script would execute as
-  // baliair.pages.dev and our CSP allows 'unsafe-inline', so the prefix test
-  // would have been an XSS vector rather than a safety net.
-  if (type !== 'image/png' && !type.startsWith('image/png;')) {
-    console.error('tiles: upstream content-type', type, z, x, y);
-    return upstreamFail(502, 'Basemap tile unavailable.');
+  if (!obj) {
+    // A key inside the authorised window that has no object behind it means an
+    // incomplete upload, not a hostile request — 404 so the map shows a hole
+    // rather than an error, and log it so the gap is findable.
+    console.error('tiles: R2 object missing', key);
+    return originFail(404, 'Basemap tile unavailable.');
   }
 
-  const declared = Number(res.headers.get('Content-Length'));
-  if (Number.isFinite(declared) && declared > MAX_TILE_BYTES) {
-    return upstreamFail(502, 'Basemap tile unavailable.');
+  // R2 reports the stored length up front, so an implausible object is
+  // rejected before its body is pulled into memory.
+  if (Number.isFinite(obj.size) && obj.size > MAX_TILE_BYTES) {
+    console.error('tiles: R2 object too large', key, obj.size);
+    return originFail(502, 'Basemap tile unavailable.');
   }
-  // Inside try/catch: headers can arrive and the body still fail — a reset or
-  // a truncated HTTP/2 stream mid-tile is an ordinary upstream event. Left
-  // unguarded the rejection escapes onRequest and Pages serves its generic 500,
-  // which carries none of textFail()'s no-store/nosniff guarantees.
+
   let body;
   try {
-    body = await res.arrayBuffer();
+    body = await obj.arrayBuffer();
   } catch (err) {
-    console.error('tiles: upstream body read failed', z, x, y, err && err.message);
-    return upstreamFail(502, 'Basemap tile unavailable.');
+    console.error('tiles: R2 body read failed', z, x, y, err && err.message);
+    return originFail(502, 'Basemap tile unavailable.');
   }
   if (body.byteLength > MAX_TILE_BYTES) {
-    return upstreamFail(502, 'Basemap tile unavailable.');
+    return originFail(502, 'Basemap tile unavailable.');
   }
-  // A 200 with an empty or truncated body is not a tile. Without this a clean
-  // END_STREAM after a partial write — which does not throw — got cached under
-  // `immutable` for a month, pinning a broken square on the map long after
-  // upstream recovered. Check the PNG signature rather than just the length.
+  // Kept from the CARTO-era code even though we now write these objects
+  // ourselves: it is the check that stops a truncated or half-written upload
+  // being cached under `immutable` for a month, pinning a broken square on the
+  // map. Cheap, and the failure it guards against is one we can actually cause.
   const sig = new Uint8Array(body, 0, Math.min(8, body.byteLength));
   const isPng = sig.length >= 8 && sig[0] === 0x89 && sig[1] === 0x50 &&
                 sig[2] === 0x4e && sig[3] === 0x47 && sig[4] === 0x0d &&
                 sig[5] === 0x0a && sig[6] === 0x1a && sig[7] === 0x0a;
   if (!isPng || body.byteLength < 67) {
-    console.error('tiles: upstream body not a PNG', z, x, y, body.byteLength);
-    return upstreamFail(502, 'Basemap tile unavailable.');
-  }
-  if (Number.isFinite(declared) && declared > 0 && declared !== body.byteLength) {
-    console.error('tiles: upstream length mismatch', z, x, y, declared, body.byteLength);
-    return upstreamFail(502, 'Basemap tile unavailable.');
+    console.error('tiles: R2 object not a PNG', key, body.byteLength);
+    return originFail(502, 'Basemap tile unavailable.');
   }
 
   // Buffered rather than streamed on purpose: a tile is tens of kilobytes, and

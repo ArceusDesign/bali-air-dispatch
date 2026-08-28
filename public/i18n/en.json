@@ -96,7 +96,7 @@
   "foot.rights.label": "Rights.",
   "foot.rights.body": "Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.",
   "foot.sources.label": "Sources.",
-  "foot.sources.body": "AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · wind © Open-Meteo",
+  "foot.sources.body": "AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · basemap © OpenStreetMap contributors (ODbL) · © OpenMapTiles · style © CARTO (CC BY 4.0) · wind © Open-Meteo",
   "foot.disp.1": "I — The daily guideline, exceeded.",
   "foot.disp.2": "II — One government sensor.",
   "foot.disp.3": "III — Seven tons of river waste.",

@@ -96,7 +96,7 @@
   "foot.rights.label": "Hak.",
   "foot.rights.body": "Riset untuk kepentingan publik. Independen dari instansi pemerintah maupun komersial. Penyebaran ulang dianjurkan dengan mencantumkan sumber data asli.",
   "foot.sources.label": "Sumber.",
-  "foot.sources.body": "AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · © OpenStreetMap · CARTO · angin © Open-Meteo",
+  "foot.sources.body": "AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · basemap © OpenStreetMap contributors (ODbL) · © OpenMapTiles · style © CARTO (CC BY 4.0) · angin © Open-Meteo",
   "foot.disp.1": "I — Pedoman harian, terlampaui.",
   "foot.disp.2": "II — Satu sensor pemerintah.",
   "foot.disp.3": "III — Tujuh ton sampah sungai.",
