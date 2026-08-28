@@ -89,7 +89,7 @@ const LICENCE = {
     'Aggregated archive published for public-interest research. Free to use, ' +
     'redistribute and build on, with attribution.',
   attribution:
-    'Attribute both this archive (Bali Air Dispatch, baliair.pages.dev) and the ' +
+    'Attribute both this archive (Bali Air Dispatch, baliairdispatch.com) and the ' +
     'originating network named in each row\'s `source` field.',
   upstream:
     'Readings originate from independent networks (Nafas, IQAir, PurpleAir, ' +
