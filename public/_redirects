@@ -1,6 +1,3 @@
-# Old domain → new canonical domain (path-preserving)
-https://baliair.pages.dev/*  https://baliairdispatch.com/:splat  301
-
 # /monitor used to be the live map page. The map is now the homepage.
 /monitor  /  301
 /monitor.html  /  301
