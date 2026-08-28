@@ -11,3 +11,13 @@ node_modules/
 .claude/
 # local-only wrangler config with real D1 id (see D1-SETUP.md)
 wrangler.local.toml
+
+# Site favicons are real deliverables, not working images — the blanket *.png
+# rule above would otherwise keep them out of the repo while wrangler still
+# deploys them from public/, so the tree would not rebuild the live site.
+!public/favicon.ico
+!public/favicon-16x16.png
+!public/favicon-32x32.png
+!public/apple-touch-icon.png
+!public/icon-192.png
+!public/icon-512.png

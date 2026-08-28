@@ -6,6 +6,22 @@
 <title>Dispatch III — Seven tons of river waste a day, and no air data to match. · Bali Air Dispatch</title>
 <meta name="description" content="Dispatch III of the Bali Air Dispatch — seven tons of river waste.">
 <meta name="referrer" content="no-referrer">
+<!-- Favicons. Tab icons (favicon.ico + the two PNGs) carry the PAGODA MARK
+     ALONE, redrawn onto a fresh circular badge — no wordmark (owner decision,
+     28 Aug 2026, superseding the full-roundel version shipped a day earlier).
+     At 16-32px "Bali Air Dispatch" is illegible and the original artwork's
+     ring anti-aliases to nothing; scripts/generate-favicons.py redraws a
+     thicker ring and re-centers the mark on its own content bbox rather than
+     naively cropping+scaling the source. apple-touch-icon.png below keeps the
+     COMPLETE logo (wordmark included) — it renders at 180px+, where the full
+     lockup is legible. Cream background matches the logo's own, so the icon
+     reads as a solid badge on light and dark browser chrome alike.
+     Before 27 Aug 2026 the site shipped NO favicon: /favicon.ico fell through
+     to the SPA HTML, which is why browsers showed a blank page icon. -->
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="preload" as="style" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
@@ -320,7 +336,10 @@ body::before{
 
 /* ===== FOOTER ===== */
 .foot{padding:34px 0 60px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.65;color:var(--ink-soft);text-transform:none;letter-spacing:.02em;border-top:3px double var(--rule);margin-top:50px}
-.foot-grid{display:grid;grid-template-columns:1.2fr 1.6fr 1fr;gap:36px;margin-bottom:30px}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1.5fr 1fr 1.15fr;gap:30px;margin-bottom:30px}
+/* Four columns needs an intermediate tier: at ~800-1000px four tracks squeeze the
+   Dispatches titles into three-line wraps, so drop to two before dropping to one. */
+@media(max-width:1000px){.foot-grid{grid-template-columns:repeat(2,1fr);gap:26px}}
 @media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:22px}}
 .foot-col h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
 .foot-col a{display:block;color:var(--ink);text-decoration:none;padding:3px 0;border-bottom:none;letter-spacing:.02em}
@@ -506,6 +525,13 @@ body::before{
         <span class="email" tabindex="0" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;color:var(--ink);user-select:all;-webkit-user-select:all;cursor:text;border-bottom:1px dotted var(--hairline);padding:1px 4px;display:inline-block">baliair@protonmail.com</span>
         <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="foot.community">Join the WhatsApp community</a>
       </div>
+    <div class="foot-col">
+      <h4 data-i18n="foot.h.collab">Collaborators</h4>
+      <a href="https://www.fablabbali.com/" target="_blank" rel="noopener noreferrer">Fab Lab Bali</a>
+      <a href="https://koalisibaliemisinolbersih.org/" target="_blank" rel="noopener noreferrer" data-i18n="foot.collab.bnzc">Bali Net Zero Coalition</a>
+      <a href="https://castfoundation.id/" target="_blank" rel="noopener noreferrer">CAST Foundation</a>
+      <a href="https://www.meaningful-design.org/" target="_blank" rel="noopener noreferrer">Meaningful Design Group</a>
+    </div>
     </div>
     <div class="foot-strip" data-i18n="foot.strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
     <div class="foot-rights"><strong data-i18n="foot.rights.label">Rights.</strong><span data-i18n="foot.rights.body"> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</span></div>
