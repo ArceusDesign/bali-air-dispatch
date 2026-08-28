@@ -976,6 +976,35 @@ const INDOOR_IDS = new Set([
   // in the archive and is self-evidently bad data; nothing was rewritten.
 ]);
 const isIndoor = (s) => INDOOR_IDS.has(typeof s === 'string' ? s : (s && s.id));
+// Monitors we believe are MALFUNCTIONING — reporting values that cannot be
+// reconciled with every other sensor around them. Same treatment as indoor
+// (gray pin, no AQI colour, no vote on ambient figures, own History group),
+// different label, because the reason a visitor should discount the number is
+// different and the site should say which one it means.
+//
+// NOTE ON DIRECTION OF ERROR. Indoor units are excluded because they read far
+// too LOW and made the island look cleaner than it is. This list is the mirror
+// image: it excludes a reading that is far too HIGH. That is the more delicate
+// exclusion, because dropping a big number is exactly what a site like this one
+// would be accused of doing, so the bar for adding an id here is: the sensor
+// disagrees with its own neighbours by a margin no real air mass can explain.
+// Nothing is deleted — the pin stays on the map, the row stays in the roll, the
+// full series stays chartable in History and downloadable from /api/v1. The
+// number is shown and labelled, not hidden.
+const MALFUNCTION_IDS = new Set([
+  // Kopernik (Mas, Ubud), IQAir. Flagged 27 Aug 2026. Running 70-215 µg/m³
+  // around the clock while every sensor near it sits in the teens and twenties:
+  // at flagging it read 151.5 against a 22.0 median for the nine stations
+  // within 15 km, and 16.1 at Villa Malaikat 2.2 km away. Sustained 7x local
+  // divergence is a hardware/siting fault, not an air mass.
+  'iq-kopernik',
+]);
+const isMalfunctioning = (s) => MALFUNCTION_IDS.has(typeof s === 'string' ? s : (s && s.id));
+// THE ONE TEST for "this device is not reporting trustworthy ambient air".
+// Every gray-out, every exclusion and every flag below asks this, never the two
+// sets separately — so adding a third category later cannot leave one code path
+// still colouring a discredited sensor green.
+const isDiscredited = (s) => isIndoor(s) || isMalfunctioning(s);
 // Community-contributed sensors (cs-*, source "Community") — residents running
 // their own hardware, pushed via /api/ingest. We did not site the device,
 // cannot inspect it and cannot audit its firmware.
@@ -993,9 +1022,12 @@ const isContributed = (s) => !!(s && (s.contributed || String((typeof s === 'str
 // filter with this predicate rather than rewriting the condition.
 //   • stale      → pm25 is a frozen cached value, not a current measurement
 //   • indoor     → measures a room, not the air outside
+//   • malfunctioning → disagrees with every neighbour by a margin no real air
+//                  mass explains; the number is displayed and labelled, but a
+//                  broken device does not get to move an island-wide figure
 //   • contributed→ unverified siting; visible on the map and in the API, but no
 //                  vote on a published health figure until siting is settled
-const isAmbient = (s) => s && !s.stale && !isIndoor(s) && !isContributed(s);
+const isAmbient = (s) => s && !s.stale && !isDiscredited(s) && !isContributed(s);
 let liveStations = [];
 let scTombstones = []; // server-driven OFFLINE tombstones (off:true) — dead /
                        // indoor-retagged Smart Citizen units kept visible with
@@ -1328,8 +1360,11 @@ function renderAll(ts){
       if (s.stale) {
         size = 38;
         html = `<div class="pin offline" data-sid="${esc(s.id)}"><span class="pm" style="font-size:9px;font-weight:600;letter-spacing:.06em">STALE</span></div>`;
-      } else if (isIndoor(s)) {
-        // Suspected indoor monitor: gray + faint, no AQI colour coding.
+      } else if (isDiscredited(s)) {
+        // Suspected indoor OR suspected malfunctioning: gray + faint, no AQI
+        // colour coding. Same pin for both — the number is still shown, it just
+        // must never be rendered as a trustworthy ambient reading. Which of the
+        // two it is gets named in the roll badge and the detail panel.
         html = `<div class="pin indoor" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${esc(s.id)}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
       } else {
         html = `<div class="pin ${c.cls}${pulse}" style="width:${size}px;height:${size}px;font-size:${size>=52?14:12}px" data-sid="${esc(s.id)}"><span class="pm">${s.pm25!=null?Math.round(s.pm25):'·'}</span></div>`;
@@ -1543,14 +1578,18 @@ function renderRollTable(){
         <td class="r">${s.lastSeen?new Date(s.lastSeen).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</td>
       </tr>`;
     }
-    if (isIndoor(s)) {
-      // Suspected indoor: gray the whole row + a gray "Suspected indoor" badge in
-      // place of the AQI category, so it's never read as clean outdoor air.
+    if (isDiscredited(s)) {
+      // Suspected indoor / malfunctioning: gray the whole row + a gray badge in
+      // place of the AQI category, so an indoor reading is never read as clean
+      // outdoor air and a broken one is never read as a real pollution event.
+      const flagLabel = isMalfunctioning(s)
+        ? ((window.I18N && window.I18N.t) ? window.I18N.t('roll.suspectedMalfunction','Suspected malfunctioning') : 'Suspected malfunctioning')
+        : ((window.I18N && window.I18N.t) ? window.I18N.t('roll.suspectedIndoor','Suspected indoor') : 'Suspected indoor');
       return `<tr class="indoor-row" data-sid="${esc(s.id)}">
         <td><b>${esc((s.name||'').split(' (')[0])}</b></td>
         <td>${esc(s.source)}</td>
         <td class="r"><span class="pm-cell">${s.pm25!=null?s.pm25.toFixed(1):'—'}</span></td>
-        <td><span class="badge indoor">${(window.I18N && window.I18N.t) ? window.I18N.t('roll.suspectedIndoor','Suspected indoor') : 'Suspected indoor'}</span></td>
+        <td><span class="badge indoor">${flagLabel}</span></td>
         <td class="c">${historyCell(s)}</td>
         <td class="r">${s.lastSeen?new Date(s.lastSeen).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' WITA':'—'}</td>
       </tr>`;
@@ -1787,6 +1826,7 @@ function panelLive(s){
     <div class="side-hero">
       <div class="side-kicker"><span class="tag">${t('panel.tagLive','Live')}</span> ${esc(s.source)}${s.type?' · '+esc(s.type):''}</div>
       <div class="side-name">${esc(s.name)||t('panel.unnamed','Unnamed station')}</div>
+      ${isMalfunctioning(s) ? `<div class="indoor-flag">${t('panel.suspectedMalfunction','Suspected malfunctioning monitor')}</div>` : ''}
       ${isIndoor(s) ? `<div class="indoor-flag">${t('panel.suspectedIndoor','Suspected indoor monitor')}</div>` : ''}
       ${isContributed(s) ? `<div class="contrib-flag">${t('panel.contributed','Community-contributed · unverified siting')}</div>` : ''}
       <div class="side-byline">${s.lat?.toFixed(4)}, ${s.lon?.toFixed(4)} — ${t('panel.reporting','reporting')} ${s.lastSeen?t('panel.at','at')+' '+new Date(s.lastSeen).toLocaleTimeString('en-GB'):t('panel.now','now')}</div>

@@ -407,6 +407,21 @@ const INDOOR_IDS = new Set([
   // of zeros stays in the archive, visibly bad rather than quietly deleted.
 ]);
 const isIndoorId = (id) => INDOOR_IDS.has(id);
+// Suspected-MALFUNCTIONING monitors: reporting values no neighbouring sensor
+// can corroborate. Own group between "Suspected indoor" and "Relayed duplicate",
+// and tagged in the chart legend. Kept as a SEPARATE set from INDOOR_IDS rather
+// than folded in, because the two say different things to a reader — one is
+// measuring the wrong air, the other is measuring it wrong — and the History
+// page is where someone goes to judge a sensor's record for themselves.
+// Mirrors MALFUNCTION_IDS in public/index.html + functions/api/v1.
+const MALFUNCTION_IDS = new Set([
+  // Kopernik (Mas, Ubud), IQAir — flagged 27 Aug 2026, sustained ~7x its own
+  // neighbours (151.5 vs a 22.0 local median). Series stays fully chartable.
+  'iq-kopernik',
+]);
+const isMalfunctionId = (id) => MALFUNCTION_IDS.has(id);
+// One test for "flagged, and pulled out of the ordinary live groups".
+const isDiscreditedId = (id) => isIndoorId(id) || isMalfunctionId(id);
 
 /* ---------- date helpers ---------- */
 function updateDate(){
@@ -629,8 +644,9 @@ function buildStationList(){
   //   3. Stale                     — reading > 24h old
   //   4. Recently offline          — off:true tombstone, silent under a month
   //   5. Suspected indoor          — see INDOOR_IDS
-  //   6. Relayed duplicate         — still archiving, hidden behind a better twin
-  //   7. Silenced                  — dark for good / no data in over a month
+  //   6. Suspected malfunctioning  — see MALFUNCTION_IDS
+  //   7. Relayed duplicate         — still archiving, hidden behind a better twin
+  //   8. Silenced                  — dark for good / no data in over a month
   //
   // A station from the live feed lands in 1 or 2 if it's fresh, and 3 if
   // it's stale. The "no archive yet" tail (2) is genuinely transient —
@@ -661,12 +677,14 @@ function buildStationList(){
   // nor disappear from the sidebar altogether.
   const isSilenced = s => isForcedSilenced(s) || isLongSilent(s);
 
-  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isSilenced(s) && !isIndoorId(s.id) && !s.off);
-  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isSilenced(s) && !isIndoorId(s.id) && !s.off);
+  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isSilenced(s) && !isDiscreditedId(s.id) && !s.off);
+  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isSilenced(s) && !isDiscreditedId(s.id) && !s.off);
   const liveArchived = liveFresh.filter(s =>  isArchived(s));
   const liveNoArch   = liveFresh.filter(s => !isArchived(s));
   // Suspected-indoor monitors — pulled out of the live groups into their own group.
   const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isSilenced(s) && !s.off);
+  // Suspected-malfunctioning monitors — same treatment, separate group + label.
+  const brokenMons   = liveCatalog.filter(s => isMalfunctionId(s.id) && !isSilenced(s) && !s.off);
   // Recently-offline tombstones (off:true from /api/live): dead or
   // indoor-retagged units whose archived record stays selectable. Always
   // chartable — the server only emits a tombstone when D1 daily history exists.
@@ -723,7 +741,7 @@ function buildStationList(){
     // Belt and braces: the last_date test below already excludes anything the
     // age rule would catch, but keep the same predicate every other group uses
     // so the two can't drift apart later.
-    if (isSilenced(u) || isIndoorId(u.station_id)) return false;
+    if (isSilenced(u) || isDiscreditedId(u.station_id)) return false;
     if (!_fresh.has(String(u.last_date || ''))) return false;
     if (!Number.isFinite(+u.lat) || !Number.isFinite(+u.lon)) return false;
     return _liveGeo.some(s => metresApart(+u.lat, +u.lon, +s.lat, +s.lon) < 300);
@@ -774,7 +792,7 @@ function buildStationList(){
   // swatch takes its colour from render position, while a region pick seeds
   // selectedIds straight from this array and the chart colours datasets in that
   // order. Let the two orders drift and every swatch disagrees with the legend.
-  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...recentOffline, ...indoorMons, ...relayedDupes, ...silenced]
+  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...recentOffline, ...indoorMons, ...brokenMons, ...relayedDupes, ...silenced]
     .map(s => { const c = coordOf(s.id); return c ? { id: s.id, name: s.name, lat: c.lat, lon: c.lon } : null; })
     .filter(Boolean);
 
@@ -842,6 +860,10 @@ function buildStationList(){
   if (indoorMons.length){
     html += groupHeader(T('history.x.grp.indoor','Suspected indoor'));
     indoorMons.forEach(s => { html += renderRow(s, idx); idx++; });
+  }
+  if (brokenMons.length){
+    html += groupHeader(T('history.x.grp.malfunction','Suspected malfunctioning'));
+    brokenMons.forEach(s => { html += renderRow(s, idx); idx++; });
   }
   if (relayedDupes.length){
     html += groupHeader(T('history.x.grp.relayed','Relayed duplicate'));
@@ -1226,7 +1248,8 @@ function nameFor(id){
   // its place (both Kuwum units are "Kuwum, Bali"), so name the relay explicitly
   // or the chart legend shows two indistinguishable entries.
   const relaySrc = relayedSources.get(id);
-  const tag = isIndoorId(id) ? ' ' + T('history.x.indoorTag', '(SUSPECTED INDOOR)')
+  const tag = isIndoorId(id)      ? ' ' + T('history.x.indoorTag', '(SUSPECTED INDOOR)')
+            : isMalfunctionId(id) ? ' ' + T('history.x.malfunctionTag', '(SUSPECTED MALFUNCTIONING)')
             : isOffId        ? ' ' + T('history.x.offlineTag', '(OFFLINE)')
             : relaySrc       ? ' ' + T('history.x.relayTag', '(VIA {src})')
                                        .replace('{src}', String(relaySrc).toUpperCase())

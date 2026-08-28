@@ -48,6 +48,19 @@ const INDOOR_IDS = new Set([
   'iqs-jimbaran-s',                               // Jimbaran (IQAir mirror of pa-36601)
 ]);
 
+// Suspected-MALFUNCTIONING monitors: reporting values that cannot be reconciled
+// with any neighbouring sensor. Same contract as INDOOR_IDS — flagged, never
+// hidden, every row still served — but a distinct field, because "measuring the
+// wrong air" and "measuring it wrong" are different caveats and a researcher
+// filtering for one should not silently lose the other.
+// Kept in sync by hand with MALFUNCTION_IDS in public/index.html + history.html.
+const MALFUNCTION_IDS = new Set([
+  // Kopernik (Mas, Ubud), IQAir. Flagged 27 Aug 2026: sustained 70-215 µg/m³
+  // while all nine stations within 15 km read 10-35 (151.5 against a 22.0
+  // local median at flagging; 16.1 at Villa Malaikat, 2.2 km away).
+  'iq-kopernik',
+]);
+
 // Networks whose PM2.5 we humidity-correct before publishing (US-EPA 2021).
 // See /appendix#methodology. `pm25_raw` carries the uncorrected figure.
 const CORRECTED_SOURCES = new Set(['AirGradient', 'PurpleAir']);
@@ -277,6 +290,13 @@ function routeIndex(origin) {
         'Stations flagged `suspected_indoor` measure a room, not ambient air. ' +
         'They are published for completeness and excluded from every island-wide ' +
         'statistic on the site. Filter them out for ambient analysis.',
+      suspected_malfunctioning:
+        'Stations flagged `suspected_malfunctioning` report values that cannot be ' +
+        'reconciled with any neighbouring sensor — sustained divergence far beyond ' +
+        'what a real air mass explains. Like `suspected_indoor` they are published ' +
+        'in full and excluded from every island-wide statistic on the site. The ' +
+        'flag is a judgement about the device, not a correction to the data: every ' +
+        'reading is served exactly as recorded.',
       gaps:
         'Gaps are real. A sensor that went silent has no rows for that period ' +
         'rather than carried-forward values.',
@@ -335,6 +355,7 @@ async function routeStations(db, url) {
     last_date: r.last_date ? String(r.last_date).slice(0, 10) : null,
     days_of_data: +r.daily_n || 0,
     suspected_indoor: INDOOR_IDS.has(r.station_id),
+    suspected_malfunctioning: MALFUNCTION_IDS.has(r.station_id),
     // Network POLICY, not a per-row claim: rows archived before 2026-07-21
     // are uncorrected even for these networks. Per-row truth is pm25_raw
     // being present on a /measurements or /latest row.
@@ -349,7 +370,7 @@ async function routeStations(db, url) {
   if (format === 'csv') {
     return csvResponse(rows, [
       'station_id', 'name', 'source', 'latitude', 'longitude', 'type',
-      'first_date', 'last_date', 'days_of_data', 'suspected_indoor',
+      'first_date', 'last_date', 'days_of_data', 'suspected_indoor', 'suspected_malfunctioning',
       // Must track the property name emitted by shape() above — when this said
       // 'pm25_corrected' after the field was renamed, the CSV carried a header
       // that was blank on every row, which reads as "false" to anyone loading it.
@@ -427,6 +448,7 @@ async function routeLatest(db, url) {
     temperature: num(r.temperature),
     humidity: num(r.humidity),
     suspected_indoor: INDOOR_IDS.has(r.station_id),
+    suspected_malfunctioning: MALFUNCTION_IDS.has(r.station_id),
     pm25_corrected: r.pm25_raw != null,
   });
 
@@ -438,7 +460,7 @@ async function routeLatest(db, url) {
     return csvResponse(rows, [
       'station_id', 'name', 'source', 'latitude', 'longitude', 'observed_at',
       'age_hours', 'stale', 'pm25', 'pm25_raw', 'pm10', 'pm1', 'aqi',
-      'temperature', 'humidity', 'suspected_indoor', 'pm25_corrected',
+      'temperature', 'humidity', 'suspected_indoor', 'suspected_malfunctioning', 'pm25_corrected',
     ], 'baliair-latest.csv', 300);
   }
   return json({
@@ -680,6 +702,7 @@ async function routeMeasurements(db, url) {
       station_id: r.station_id,
       source: r.source || null,
       suspected_indoor: INDOOR_IDS.has(r.station_id),
+      suspected_malfunctioning: MALFUNCTION_IDS.has(r.station_id),
     };
     if (keyIsDate) base.date = String(r.key).slice(0, 10);
     else base.observed_at = isoFromUnix(Number(r.key));
@@ -710,10 +733,10 @@ async function routeMeasurements(db, url) {
 
   if (format === 'csv') {
     const columns = interval === 'raw'
-      ? ['station_id', 'source', 'observed_at', 'pm25', 'pm25_raw', 'pm25_corrected', 'pm10', 'pm1', 'aqi', 'temperature', 'humidity', 'suspected_indoor']
+      ? ['station_id', 'source', 'observed_at', 'pm25', 'pm25_raw', 'pm25_corrected', 'pm10', 'pm1', 'aqi', 'temperature', 'humidity', 'suspected_indoor', 'suspected_malfunctioning']
       : keyIsDate
-        ? ['station_id', 'source', 'date', 'pm25', 'pm25_min', 'pm25_max', 'aqi_max', 'samples', 'suspected_indoor']
-        : ['station_id', 'source', 'observed_at', 'pm25', 'pm25_min', 'pm25_max', 'aqi_max', 'samples', 'suspected_indoor'];
+        ? ['station_id', 'source', 'date', 'pm25', 'pm25_min', 'pm25_max', 'aqi_max', 'samples', 'suspected_indoor', 'suspected_malfunctioning']
+        : ['station_id', 'source', 'observed_at', 'pm25', 'pm25_min', 'pm25_max', 'aqi_max', 'samples', 'suspected_indoor', 'suspected_malfunctioning'];
     const res = csvResponse(shaped, columns,
       `baliair-${interval}${station ? '-' + station.replace(/[^A-Za-z0-9._-]/g, '_') : ''}.csv`, 600);
     if (nextCursor) res.headers.set('X-Next-Cursor', nextCursor);
