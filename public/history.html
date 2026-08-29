@@ -446,8 +446,14 @@ const MALFUNCTION_IDS = new Set([
   'iq-kopernik',
 ]);
 const isMalfunctionId = (id) => MALFUNCTION_IDS.has(id);
+// Community-contributed sensors (cs-*): residents running their own hardware,
+// pushed via /api/ingest — unverified siting, not counted in any island-wide
+// figure. Structural (id prefix), not a hardcoded list like INDOOR_IDS/
+// MALFUNCTION_IDS, because every cs-* id is contributed by definition; there
+// is no separate roster to keep in sync. Mirrors isContributed in index.html.
+const isContributedId = (id) => typeof id === 'string' && id.startsWith('cs-');
 // One test for "flagged, and pulled out of the ordinary live groups".
-const isDiscreditedId = (id) => isIndoorId(id) || isMalfunctionId(id);
+const isDiscreditedId = (id) => isIndoorId(id) || isMalfunctionId(id) || isContributedId(id);
 
 /* ---------- date helpers ---------- */
 function updateDate(){
@@ -671,8 +677,9 @@ function buildStationList(){
   //   4. Recently offline          — off:true tombstone, silent under a month
   //   5. Suspected indoor          — see INDOOR_IDS
   //   6. Suspected malfunctioning  — see MALFUNCTION_IDS
-  //   7. Relayed duplicate         — still archiving, hidden behind a better twin
-  //   8. Silenced                  — dark for good / no data in over a month
+  //   7. Community-contributed     — see isContributedId; unverified siting
+  //   8. Relayed duplicate         — still archiving, hidden behind a better twin
+  //   9. Silenced                  — dark for good / no data in over a month
   //
   // A station from the live feed lands in 1 or 2 if it's fresh, and 3 if
   // it's stale. The "no archive yet" tail (2) is genuinely transient —
@@ -680,7 +687,7 @@ function buildStationList(){
   //
   // SILENCED is the catch-all and it OUTRANKS every other predicate: whatever
   // else a station looks like, if isSilenced() says yes it is pulled out of
-  // 1-6 and shown under 7 with its full D1 history. Two rules feed it:
+  // 1-8 and shown under 9 with its full D1 history. Two rules feed it:
   //
   //   • a name list — stations confirmed permanently dark even though an
   //     upstream API may still echo a stale reading. Matched by name
@@ -711,6 +718,10 @@ function buildStationList(){
   const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isSilenced(s) && !s.off);
   // Suspected-malfunctioning monitors — same treatment, separate group + label.
   const brokenMons   = liveCatalog.filter(s => isMalfunctionId(s.id) && !isSilenced(s) && !s.off);
+  // Community-contributed monitors — same treatment, own group + label. Kept
+  // separate from indoor/malfunctioning: those say something is wrong with the
+  // reading, this says only that we didn't site the device ourselves.
+  const contributedMons = liveCatalog.filter(s => isContributedId(s.id) && !isSilenced(s) && !s.off);
   // Recently-offline tombstones (off:true from /api/live): dead or
   // indoor-retagged units whose archived record stays selectable. Always
   // chartable — the server only emits a tombstone when D1 daily history exists.
@@ -818,7 +829,7 @@ function buildStationList(){
   // swatch takes its colour from render position, while a region pick seeds
   // selectedIds straight from this array and the chart colours datasets in that
   // order. Let the two orders drift and every swatch disagrees with the legend.
-  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...recentOffline, ...indoorMons, ...brokenMons, ...relayedDupes, ...silenced]
+  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...recentOffline, ...indoorMons, ...brokenMons, ...contributedMons, ...relayedDupes, ...silenced]
     .map(s => { const c = coordOf(s.id); return c ? { id: s.id, name: s.name, lat: c.lat, lon: c.lon } : null; })
     .filter(Boolean);
 
@@ -890,6 +901,10 @@ function buildStationList(){
   if (brokenMons.length){
     html += groupHeader(T('history.x.grp.malfunction','Suspected malfunctioning'));
     brokenMons.forEach(s => { html += renderRow(s, idx); idx++; });
+  }
+  if (contributedMons.length){
+    html += groupHeader(T('history.x.grp.contributed','Community-contributed · unverified siting'));
+    contributedMons.forEach(s => { html += renderRow(s, idx); idx++; });
   }
   if (relayedDupes.length){
     html += groupHeader(T('history.x.grp.relayed','Relayed duplicate'));
@@ -1276,6 +1291,7 @@ function nameFor(id){
   const relaySrc = relayedSources.get(id);
   const tag = isIndoorId(id)      ? ' ' + T('history.x.indoorTag', '(SUSPECTED INDOOR)')
             : isMalfunctionId(id) ? ' ' + T('history.x.malfunctionTag', '(SUSPECTED MALFUNCTIONING)')
+            : isContributedId(id) ? ' ' + T('history.x.contributedTag', '(COMMUNITY-CONTRIBUTED)')
             : isOffId        ? ' ' + T('history.x.offlineTag', '(OFFLINE)')
             : relaySrc       ? ' ' + T('history.x.relayTag', '(VIA {src})')
                                        .replace('{src}', String(relaySrc).toUpperCase())
