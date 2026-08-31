@@ -294,11 +294,53 @@ async function runAll(env, opts = {}) {
   return { ran: nowSec, count: summary.length, ok: okCount, fail: failCount, skip: skipCount, durationMs, stations: summary };
 }
 
+// Reciprocal watchdog: revive nafas-archive if ITS cron has gone quiet.
+//
+// nafas-archive has revived THIS worker for a while; the relationship was
+// one-way, so nothing watched the watcher. On 2026-08-30 nafas-archive's cron
+// stopped firing for 25 hours and the only reason it surfaced was a contributor
+// noticing his sensor's history had flatlined.
+//
+// The two crons are deliberately offset (this one at :07/:22/:37/:52, that one
+// at :00/:15/:30/:45), so a failure confined to one worker is visible from the
+// other. Be honest about the limit: both run on Cloudflare cron, so a
+// platform-wide cron outage takes out watcher and watched together. This closes
+// the per-worker case, which is the one that has actually bitten twice.
+//
+// 90 minutes = 6 consecutive missed 15-min ticks: long enough that a single
+// slow or skipped tick never fires this, short enough to catch a real death
+// within the hour rather than the day.
+const ARCHIVE_STALE_MIN = 90;
+async function reviveArchiveIfStale(env) {
+  if (!env.NAFAS_ARCHIVE || !env.ARCHIVE_WATCHDOG_KEY) return null;
+  try {
+    const row = await env.ARCHIVE_DB.prepare(
+      `SELECT MAX(ts) AS last_ts FROM archive_runs`
+    ).first();
+    if (!row || !row.last_ts) return null;
+    const ageMin = (Math.floor(Date.now() / 1000) - row.last_ts) / 60;
+    if (ageMin <= ARCHIVE_STALE_MIN) return null;
+    const r = await env.NAFAS_ARCHIVE.fetch('https://nafas-archive.internal/watchdog', {
+      method: 'POST',
+      headers: { 'X-Watchdog-Key': env.ARCHIVE_WATCHDOG_KEY },
+    });
+    const note = `archive_watchdog_fired (last run ${Math.round(ageMin)}m ago, HTTP ${r.status})`;
+    console.warn(note);
+    return note;
+  } catch (e) {
+    console.warn('archive_watchdog_error: ' + (e.message || String(e)));
+    return null;
+  }
+}
+
 export default {
   async scheduled(event, env, ctx) {
     // Each 15-min tick scrapes one rotating group (≤3 stations), so a single
     // invocation stays small and can't be killed mid-batch by a slow window.
     ctx.waitUntil(runAll(env, { group: groupForScheduledTime(event && event.scheduledTime) }));
+    // Runs alongside, not inside, the scrape: a hung or CPU-killed scrape must
+    // not also disable the archive's only automatic recovery path.
+    ctx.waitUntil(reviveArchiveIfStale(env));
   },
   async fetch(request, env) {
     const url = new URL(request.url);

@@ -714,6 +714,33 @@ export default {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    // ── RECIPROCAL WATCHDOG ────────────────────────────────────────────────
+    // Called by iqair-scrape when THIS worker's cron looks dead, mirroring the
+    // /watchdog route iqair-scrape already exposes for the opposite direction.
+    // Until now the watchdog relationship was one-way: nafas-archive revived
+    // iqair-scrape, and nothing revived nafas-archive. On 2026-08-30 its cron
+    // stopped firing for 25 hours (07:00 UTC -> 08-31 07:00) and the outage was
+    // found only because a contributor noticed his sensor's history had gone
+    // flat.
+    //
+    // This is a recovery path, not just an alarm, and that is deliberate: the
+    // comment on iqair-scrape's own /watchdog records that Cloudflare CPU-kills
+    // its SCHEDULED invocations while identical work over an HTTP invocation
+    // succeeds. If that is what kills this worker's cron too, then simply being
+    // invoked over HTTP is the fix, not merely the notification.
+    //
+    // Reached ONLY over a service binding (no public DNS), and still key-gated
+    // as defence in depth — same posture as the route it mirrors.
+    if (url.pathname === '/watchdog') {
+      const want = env.ARCHIVE_WATCHDOG_KEY;
+      if (!want || request.headers.get('X-Watchdog-Key') !== want) {
+        return new Response('forbidden', { status: 403 });
+      }
+      const result = await archiveOnce(env);
+      return new Response(JSON.stringify({ via: 'watchdog', ...result }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     return new Response('not found', { status: 404 });
   },
 };

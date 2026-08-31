@@ -25,5 +25,15 @@ binding = "ARCHIVE_DB"
 database_name = "bali-air-archive"
 database_id = "0a3c2a5d-6c11-40d6-ac01-7ca2a5a6c600"
 
+# Service binding -> nafas-archive, for the reciprocal watchdog. Mirrors the
+# nafas-archive -> iqair-scrape binding that already exists in the other
+# direction, so each worker can revive the other when its cron dies. Routes
+# through the runtime, never public DNS: a same-account Worker-to-Worker
+# subrequest over a workers.dev hostname is intercepted by the edge and 404s
+# (documented at length in nafas-archive's wrangler.toml).
+[[services]]
+binding = "NAFAS_ARCHIVE"
+service = "nafas-archive"
+
 [triggers]
 crons = ["7,22,37,52 * * * *"]   # every 15 min at :07/:22/:37/:52 (offset from the *:00/15/30/45 nafas cron); one rotating station group per tick
