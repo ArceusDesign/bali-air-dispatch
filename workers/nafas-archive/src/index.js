@@ -301,16 +301,32 @@ async function snapshotUniversal(db, live, nowSec) {
 
 // Roll up the last 3 days of station_snapshots into station_daily.
 // Re-runs every tick are safe (INSERT OR REPLACE keyed on (station_id,date)),
-// and 3-day window keeps today/yesterday accurate as late snapshots arrive
+// and the 3-day window keeps today/yesterday accurate as late snapshots arrive
 // and snapshots cross midnight WITA. Dates are computed in Asia/Makassar
 // (UTC+8) to match nafas_daily and the site's display timezone.
+//
+// THE CUTOFF MUST LAND ON A WITA MIDNIGHT. It used to be a bare
+// `nowSec - 3*86400`, which silently destroyed the daily archive: that instant
+// falls in the MIDDLE of the oldest day in the window, so the GROUP BY saw only
+// the tail slice of that day — and INSERT OR REPLACE then overwrote a complete,
+// correct row with an aggregate over those few rows. As the cutoff advanced
+// each tick the slice shrank, so every day converged on sample_n = 1 with
+// pm25_mean = pm25_min = pm25_max = one arbitrary reading, roughly three days
+// after the fact. Measured before the fix: every station had exactly 1 sample
+// for every day from 2026-08-20 to 2026-08-28, against ~95 real snapshots each,
+// which is what flatlined the history charts.
+//
+// Snapping the cutoff back to the start of that WITA day means the window only
+// ever contains WHOLE days, so a day is either fully recomputed or not touched
+// at all. Today is the sole partial day, and it is legitimately still filling.
 //
 // Stale-station guard: snapshots where the upstream `station_till` is more
 // than 24h older than fetch `ts` (or >1h in the future) are EXCLUDED. This
 // keeps frozen-upstream sensors (e.g. AQICN Lumintang's 2025-08-09 readings)
 // from polluting today's row with fake means.
+const witaDayStartSec = (t) => Math.floor((t + 28800) / 86400) * 86400 - 28800;
 async function rollupDaily(db, nowSec) {
-  const cutoffSec = nowSec - 3 * 86400;
+  const cutoffSec = witaDayStartSec(nowSec - 3 * 86400);
   try {
     const r = await db.prepare(`
       INSERT OR REPLACE INTO station_daily
@@ -510,7 +526,19 @@ async function archiveOnce(env) {
       console.warn(universalWarning);
     }
   } catch (e) {
-    // Non-fatal — Nafas-specific path below still runs. Record the failure.
+    // The Nafas-specific path below still runs, so this is not fatal to the
+    // invocation — but it IS a failed run, and must be recorded as one.
+    //
+    // This used to leave `ok` at 1. The universal pass is where 57 of the ~64
+    // stations are archived, so a run that lost it wrote a handful of rows and
+    // still logged itself a success. That is exactly how the 2026-08-29 outage
+    // stayed invisible: from 19:15 UTC /api/live?fresh=1 returned HTTP 503 on
+    // every tick for hours, stations_seen fell 64 -> 7, and every one of those
+    // ticks is recorded ok=1. The only reason it surfaced at all is that a
+    // contributor noticed his sensor's history had gone flat. Monitoring that
+    // reports success while the archive silently stops is worse than no
+    // monitoring, because it is actively trusted.
+    ok = 0;
     universalWarning = 'universal_fetch_failed: ' + (e.message || String(e));
     console.warn(universalWarning);
   }
