@@ -14,6 +14,29 @@
 //   3. CACHE. Edge cache 1 h, stale-while-revalidate 24 h: subsequent
 //      visitors get an instant cached response while we revalidate quietly.
 
+// ── UPSTREAM TIMEOUT GUARD ────────────────────────────────────────────
+// Every upstream fetch in this file goes through here. A module-scope function
+// declaration named `fetch` shadows the global for this module, so all call
+// sites — and any added later — inherit the timeout without being touched.
+//
+// Why this exists: this endpoint fans out to 8 independent networks under
+// Promise.allSettled, which means the SLOWEST source dictates total time.
+// Before this guard there was not a single AbortSignal in the file, so one
+// upstream hanging had no bound at all — it held the invocation open until
+// Cloudflare killed it, which surfaces to callers as a 503 and (for the
+// archive worker's ?fresh=1 call) as a permanently missing archive tick.
+// A source that times out is simply absent from this response; that is the
+// intended outcome and every call site already tolerates a rejection, either
+// via Promise.allSettled or its own try/catch. Honest partial data beats a
+// dead endpoint.
+const UPSTREAM_TIMEOUT_MS = 8000;
+const _rawFetch = globalThis.fetch.bind(globalThis);
+function fetch(input, init) {
+  // Respect a caller-supplied signal rather than silently replacing it.
+  if (init && init.signal) return _rawFetch(input, init);
+  return _rawFetch(input, { ...(init || {}), signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────
 function aqiToPm25(aqi) {
   if (aqi <= 50) return +(aqi * 12.0 / 50).toFixed(1);
@@ -142,12 +165,25 @@ const SOURCE_STALE_MS = Object.assign(Object.create(null), {
   OpenAQ: 6 * 60 * 60 * 1000,
   AirGradient: 6 * 60 * 60 * 1000,
 });
-function flagStale(station) {
+// observedAtMs (optional) — when WE recorded this reading. A reading cannot be
+// fresher than the moment we observed it, so this acts as a floor on the age.
+// It matters because `lastSeen` (the upstream "till") is the primary signal and
+// some sources do not send one at all: with a NULL till this function used to
+// return early and the station rendered as current no matter how old the row
+// was. That was harmless while the fast path only ever served rows < 30 min
+// old, but the widening ladder in fastPathFromD1 can now serve rows up to 12 h
+// old, which would have turned that latent hole into stale readings presented
+// as live. Taking the MAX of the two ages keeps the honest-gap principle:
+// where the two disagree, believe the older one.
+function flagStale(station, observedAtMs) {
   const ms = parseLastSeenMs(station.lastSeen);
-  if (ms == null) return station;
+  const ages = [];
+  if (ms != null) ages.push(Date.now() - ms);
+  if (observedAtMs != null) ages.push(Date.now() - observedAtMs);
+  if (!ages.length) return station;
   // ?? not ||, so a future 0 ("always stale") cannot silently become 24 h.
   const limit = SOURCE_STALE_MS[station.source] ?? STALE_THRESHOLD_MS;
-  const age = Date.now() - ms;
+  const age = Math.max(...ages);
   if (age > limit) {
     station.stale = true;
     station.staleAgeHours = Math.round(age / 3600000);
@@ -171,12 +207,41 @@ function jsonResponse(body, extraHeaders = {}) {
 }
 
 // ── D1 FAST PATH ──────────────────────────────────────────────────────
-// One SQL: every station catalog row joined to its most-recent snapshot
-// (within the last 30 min — the worker writes every 15 min so this catches
-// every station between cron ticks). If we get ≥ 5 fresh rows back, this
-// is good enough to serve immediately.
+// One SQL: every station catalog row joined to its most-recent snapshot.
+// The 30-min rung is the normal one (the worker writes every 15 min, so this
+// catches every station between cron ticks). If we get ≥ 5 rows back, serve
+// immediately.
+//
+// WIDENING LADDER — this is an outage circuit-breaker, not a nicety.
+// Until 2026-08-31 this was a single 30-min window with a hard `return null`
+// below 5 rows, and that cliff turned a blip into a 36-hour outage:
+//
+//   archive worker stalls → after 30 min < 5 stations are fresh → fast path
+//   returns null → EVERY visitor request falls through to the full 8-network
+//   upstream fan-out → p99 CPU triples (12–27 ms → 51–85 ms, measured) →
+//   Cloudflare kills invocations with `exceededResources` → /api/live 503s →
+//   the archive worker's own ?fresh=1 call 503s too, so it cannot write the
+//   snapshots that would make the fast path cheap again → the loop sustains
+//   itself until the platform lets go.
+//
+// A contributed sensor pushing every 60 s kept exactly ONE station fresh
+// throughout, so the table was never empty — just permanently under the
+// threshold of 5. Widening instead of falling through breaks the cycle: a
+// stalled worker now degrades to older-but-cheap data rather than melting the
+// endpoint down. Rows served past the first rung are OLDER, never faked —
+// flagStale() below marks each station from its own upstream timestamp, so a
+// stale reading renders as stale. The widest rung still failing means D1 is
+// genuinely empty (cold start), which is the one case worth paying full price
+// for. The archive worker is unaffected either way: it always passes ?fresh=1,
+// which bypasses this function entirely.
+//
+// Single query, widest window — the subquery pins one row per station, so a
+// wider window admits more STATIONS, not more rows per station (~65 max).
+const FAST_PATH_FRESH_SEC = 30 * 60;
+const FAST_PATH_WIDEST_SEC = 12 * 60 * 60;
 async function fastPathFromD1(db) {
-  const cutoff = Math.floor(Date.now() / 1000) - 30 * 60;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const cutoff = nowSec - FAST_PATH_WIDEST_SEC;
   const rows = await db.prepare(`
     SELECT s.station_id, s.source, s.name, s.lat, s.lon, s.type,
            sn.pm25, sn.pm10, sn.pm1, sn.aqi, sn.temperature, sn.humidity,
@@ -196,8 +261,18 @@ async function fastPathFromD1(db) {
     AND s.station_id NOT LIKE 'iqs-%'
     ORDER BY s.source, s.name
   `).bind(cutoff).all();
-  const results = rows.results || [];
-  if (results.length < 5) return null;  // not enough fresh data, fall through
+  const all = rows.results || [];
+  const fresh = all.filter(r => r.ts >= nowSec - FAST_PATH_FRESH_SEC);
+  let results, degraded;
+  if (fresh.length >= 5)    { results = fresh; degraded = false; }
+  else if (all.length >= 5) { results = all;   degraded = true;  }
+  else return null;         // genuinely empty (cold start) — pay for upstream
+  if (degraded) {
+    const oldestMin = Math.round((nowSec - Math.min(...results.map(r => r.ts))) / 60);
+    console.warn(`live: fast path DEGRADED — only ${fresh.length} station(s) fresh ` +
+                 `within ${FAST_PATH_FRESH_SEC / 60}min; serving ${results.length} ` +
+                 `station(s), oldest ${oldestMin}min old. Archive worker likely stalled.`);
+  }
 
   const stations = results.map(r => {
     const pm25 = r.pm25 != null ? +(+r.pm25).toFixed(1) : null;
@@ -229,7 +304,7 @@ async function fastPathFromD1(db) {
       category: cat,
       cls,
       lastSeen: r.station_till || null,
-    });
+    }, r.ts != null ? r.ts * 1000 : null);
   });
 
   const sources = new Set(stations.map(s => s.source)).size;
@@ -238,6 +313,12 @@ async function fastPathFromD1(db) {
     sources,
     stations,
     fast_path: true,            // signals to debug we served from D1
+    // Surfaced so a stalled archive worker is visible from the outside without
+    // reading logs: `degraded` true means the 30-min rung came up short and
+    // this response was assembled from older snapshots. The per-station stale
+    // flags are still authoritative for display.
+    degraded,
+    freshest_count: fresh.length,
   };
 }
 
