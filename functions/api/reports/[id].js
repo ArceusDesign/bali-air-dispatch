@@ -3,7 +3,7 @@
 // or every popup-open on our anonymous map leaks that visitor's IP to a third
 // party this project doesn't control. See functions/api/reports.js for the
 // feed this serves and why the two validation layers below exist.
-const MSB_BASE = 'https://mdg-bali.github.io/makingsensebali/data/';
+const MSB_BASE = 'https://makingsense.fablabbali.com/data/';
 // Shape-tolerant by design — see the matching note in functions/api/reports.js.
 // Upstream re-keyed every filename once already (v3, 15 Aug 2026); what matters
 // for safety is that the id cannot escape the URL path, not its exact layout.

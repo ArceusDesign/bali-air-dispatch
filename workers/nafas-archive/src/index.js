@@ -373,7 +373,7 @@ async function rollupDaily(db, nowSec) {
 // Liveness is judged against the upstream index, NOT against /api/reports:
 // /api/reports only returns the last 30 days, so a still-published older
 // report is absent from it and would otherwise be mistaken for a revocation.
-const MSB_INDEX = 'https://mdg-bali.github.io/makingsensebali/data/reports/index.json';
+const MSB_INDEX = 'https://makingsense.fablabbali.com/data/reports/index.json';
 const REPORTS_TIMEOUT_MS = 10000;
 
 async function reportsArchive(db, originBase, nowSec) {
@@ -619,6 +619,43 @@ async function archiveOnce(env) {
     console.warn(reportsNote);
   }
 
+  // ── RUN LOG — written BEFORE the watchdog, deliberately ───────────────
+  // This used to be written AFTER the IQAir watchdog below, which awaits a
+  // service-binding call that blocks for tens of seconds. That ordering meant
+  // the runs most likely to be killed mid-flight were exactly the runs that
+  // never got logged, so this table silently under-reported its own failures.
+  // On 2026-08-30 four consecutive ticks wrote a full set of station snapshots
+  // and left no run row at all; reconstructing the outage from archive_runs
+  // therefore made it look ~11 h shorter than it really was. Every data write
+  // above has already completed by this point, so logging here records what
+  // actually happened. The watchdog's outcome is appended afterwards as a
+  // best-effort re-stamp: a run row with no watchdog note is strictly more
+  // useful than no run row at all.
+  const duration = Date.now() - t0;
+  const logRun = async (extraNote, dur) => {
+    try {
+      // archive_runs schema only knows about Nafas counters; encode universal
+      // counts into the higher columns via simple addition for visibility.
+      // Combine errors: Nafas-specific failure + universal-pass warning.
+      const combinedErr = [errMsg, universalWarning, reportsNote, extraNote]
+        .filter(Boolean).join(' | ') || null;
+      await db.prepare(`
+        INSERT OR REPLACE INTO archive_runs
+          (ts, stations_seen, snapshots_written, hourly_upserts, daily_upserts, duration_ms, ok, error)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+      `).bind(
+        nowSec,
+        stationsSeen + universalStations,
+        snapshots + universalSnaps,
+        hourly,
+        // daily = Nafas-specific upserts + universal-rollup rows touched this tick
+        daily + universalDailyRows,
+        dur, ok, combinedErr
+      ).run();
+    } catch (_) { /* never fail on log write */ }
+  };
+  await logRun(null, duration);
+
   // ── IQAir-scrape watchdog ─────────────────────────────────────────────
   // The iqair-scrape worker's SCHEDULED invocations get killed platform-side
   // ("Exceeded CPU Limit" before writing anything) while its HTTP/binding
@@ -663,33 +700,19 @@ async function archiveOnce(env) {
     watchdogNote = 'iqair_watchdog_error: ' + (e.message || String(e));
   }
 
-  const duration = Date.now() - t0;
-  try {
-    // archive_runs schema only knows about Nafas counters; encode universal
-    // counts into the higher columns via simple addition for visibility.
-    // Combine errors: Nafas-specific failure + universal-pass warning.
-    const combinedErr = [errMsg, universalWarning, reportsNote, watchdogNote].filter(Boolean).join(' | ') || null;
-    await db.prepare(`
-      INSERT OR REPLACE INTO archive_runs
-        (ts, stations_seen, snapshots_written, hourly_upserts, daily_upserts, duration_ms, ok, error)
-      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-    `).bind(
-      nowSec,
-      stationsSeen + universalStations,
-      snapshots + universalSnaps,
-      hourly,
-      // daily = Nafas-specific upserts + universal-rollup rows touched this tick
-      daily + universalDailyRows,
-      duration, ok, combinedErr
-    ).run();
-  } catch (_) { /* never fail on log write */ }
+
+  // Re-stamp the row with the watchdog outcome and the true end-to-end
+  // duration. Best effort by design: if the worker is killed during the
+  // watchdog above, the row written before it still stands.
+  if (watchdogNote) await logRun(watchdogNote, Date.now() - t0);
 
   return {
     ok: !!ok, ts: nowSec,
     nafasStations: stationsSeen, nafasSnapshots: snapshots,
     universalStations, universalSnapshots: universalSnaps,
     universalDailyRows,
-    hourly, daily, duration, error: errMsg,
+    // true end-to-end time; `duration` above is stamped before the watchdog
+    hourly, daily, duration: Date.now() - t0, error: errMsg,
     reports: reportsNote
   };
 }

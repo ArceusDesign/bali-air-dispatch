@@ -1,6 +1,6 @@
 // Cloudflare Pages Function — proxies Making Sense Bali's community air-quality
 // reports feed (github.io static JSON) for the map's burning-event overlay.
-// Third-party feed: https://mdg-bali.github.io/makingsensebali/data/
+// Third-party feed: https://makingsense.fablabbali.com/data/
 // Contact: Tomas Diez — tomas@fab.city. Licence: CC BY 4.0, attribution required
 // ("Data: Making Sense Bali", linked). See public/index.html attribution control.
 //
@@ -31,7 +31,7 @@
 //     model-generated `ai_analysis.description` instead, which is scene text
 //     ("smoke rising from a pile of trash") and carries no addresses or names.
 //     If upstream ever scrubs descriptions properly this can be revisited.
-const MSB_BASE = 'https://mdg-bali.github.io/makingsensebali/data/';
+const MSB_BASE = 'https://makingsense.fablabbali.com/data/';
 const REPORT_MAX_AGE_DAYS = 30;
 const GRID_DEG = 0.0025; // ~275 m at Bali's latitude — collapses exact points
                          // to a neighbourhood cell, and usefully re-clusters
@@ -97,7 +97,52 @@ function ymdFromId(id) {
   return id.slice(3, 11);
 }
 
-export async function onRequestGet({ request, waitUntil }) {
+// Rows we have already archived, keyed by report id. This is the BASELINE the
+// response is built from; upstream is only consulted for what is missing.
+//
+// Why: the feed grew from 46 profiles to 117 in two weeks, and 82 of those now
+// fall inside the 30-day window. Fetching every one on a cache miss would be 83
+// subrequests, over Cloudflare's 50-per-invocation limit on the Free plan, so
+// MAX_FETCH capped it at 40 — which silently returned 31 of the 64 burning
+// reports actually in window, and reported partial:false while doing it. The
+// archive already held 61 of them, because the worker has been accumulating
+// them a tick at a time. Reading D1 first turns a truncation problem into a
+// completeness guarantee, and drops steady-state fan-out to the handful of ids
+// we have genuinely never seen.
+//
+// It also means the layer survives upstream being unreachable: if the index
+// fetch fails we serve what we have, flagged partial, instead of an empty map.
+async function archivedInWindow(db, cutoffIso) {
+  const rows = await db.prepare(`
+    SELECT report_id, lat, lon, desa, kecamatan, kabupaten,
+           date_added, ai_description, has_photo, location_precision
+      FROM community_reports
+     WHERE revoked_at IS NULL
+       AND category = 'burning'
+       AND date_added >= ?1
+  `).bind(cutoffIso).all();
+  const out = new Map();
+  for (const r of (rows.results || [])) {
+    if (r.lat == null || r.lon == null || !r.date_added) continue;
+    out.set(r.report_id, {
+      id: r.report_id,
+      // Already snapped on the way in — never re-snap, and never trust a raw
+      // upstream coordinate to have reached this table unsnapped.
+      lat: r.lat,
+      lon: r.lon,
+      date_added: r.date_added,
+      desa: r.desa || null,
+      kecamatan: r.kecamatan || null,
+      kabupaten: r.kabupaten || null,
+      location_precision: r.location_precision || null,
+      ai_description: r.ai_description || null,
+      has_photo: !!r.has_photo,
+    });
+  }
+  return out;
+}
+
+export async function onRequestGet({ request, env, waitUntil }) {
   // Cache key is a CONSTANT internal URL, not request.url: this endpoint
   // ignores query strings entirely, so keying on them would let anyone bypass
   // the cache with ?x=1,2,3… and force an unbounded upstream fan-out per hit.
@@ -112,11 +157,21 @@ export async function onRequestGet({ request, waitUntil }) {
 
   const nowMs = Date.now();
   const cutoffMs = nowMs - REPORT_MAX_AGE_DAYS * 86400000;
-  let reports = [];
+  const cutoffIso = new Date(cutoffMs).toISOString();
   let failed = 0;
   let attempted = 0;
   let indexOk = false;
   let indexProfiles = 0;
+  let truncated = 0;
+
+  // Baseline from our own archive. Never fatal: if D1 is unreachable we fall
+  // through to a pure upstream read, which is the old behaviour.
+  let archived = new Map();
+  try {
+    if (env.ARCHIVE_DB) archived = await archivedInWindow(env.ARCHIVE_DB, cutoffIso);
+  } catch (_) { archived = new Map(); }
+
+  const byId = new Map();
 
   try {
     const idx = await fetchJSON(MSB_BASE + 'reports/index.json');
@@ -127,15 +182,27 @@ export async function onRequestGet({ request, waitUntil }) {
     if (indexOk) {
       const padMs = 2 * 86400000;
       const cutoffYmd = new Date(cutoffMs - padMs).toISOString().slice(0, 10).replace(/-/g, '');
-      const ids = profiles
+      const inWindow = profiles
         .map((p) => String(p).replace(/\.json$/, ''))
-        .filter((id) => ID_RE.test(id) && ymdFromId(id) >= cutoffYmd)
-        // Newest first, so if the cap ever bites it drops the STALEST rows.
-        // The upstream index is append-only ascending, so without this a
-        // truncation would silently delete exactly the freshest reports.
+        .filter((id) => ID_RE.test(id) && ymdFromId(id) >= cutoffYmd);
+
+      // The index is authoritative on what is still PUBLISHED. An archived row
+      // whose id has left the index was withdrawn upstream; drop it now rather
+      // than waiting for the worker's revocation sweep to catch up.
+      const published = new Set(inWindow);
+      for (const [id, row] of archived) {
+        if (published.has(id)) byId.set(id, row);
+      }
+
+      // Fetch only what we have never seen. Newest first so that if the cap
+      // ever bites it defers the OLDEST unseen reports, which the next tick
+      // picks up — the shortfall is temporary rather than permanent.
+      const missing = inWindow
+        .filter((id) => !archived.has(id))
         .sort()
-        .reverse()
-        .slice(0, MAX_FETCH);
+        .reverse();
+      truncated = Math.max(0, missing.length - MAX_FETCH);
+      const ids = missing.slice(0, MAX_FETCH);
       attempted = ids.length;
 
       const settled = await Promise.all(
@@ -163,12 +230,11 @@ export async function onRequestGet({ request, waitUntil }) {
           // desa and fall back only if it is absent.
           const desa = typeof admin.desa === 'string' ? admin.desa
                      : (typeof r.locality === 'string' ? r.locality : null);
-          reports.push({
+          byId.set(id, {
             id,
             lat: snap(lat),
             lon: snap(lon),
             date_added: r.date_added,
-            age_days: Math.max(0, Math.floor((nowMs - addedMs) / 86400000)),
             desa,
             kecamatan: typeof admin.kecamatan === 'string' ? admin.kecamatan : null,
             kabupaten: typeof admin.kabupaten === 'string' ? admin.kabupaten : null,
@@ -186,11 +252,27 @@ export async function onRequestGet({ request, waitUntil }) {
           failed++;
         }
       }
-      reports.sort((a, b) => b.date_added.localeCompare(a.date_added));
     }
   } catch (_) {
     indexOk = false;
   }
+
+  // Upstream unreachable: serve the archive rather than an empty map. Flagged
+  // partial below, so the worker will not treat it as an authoritative record.
+  if (!indexOk && archived.size) {
+    for (const [id, row] of archived) byId.set(id, row);
+  }
+
+  // age_days is computed here, once, for both sources — it is a function of
+  // now, not a stored property, so deriving it per-source would let the two
+  // paths drift.
+  const reports = [...byId.values()]
+    .map((r) => {
+      const addedMs = Date.parse(r.date_added);
+      return { ...r, age_days: Math.max(0, Math.floor((nowMs - addedMs) / 86400000)) };
+    })
+    .filter((r) => Number.isFinite(Date.parse(r.date_added)))
+    .sort((a, b) => b.date_added.localeCompare(a.date_added));
 
   // `rejectedAll` is the lesson from the v3 cutover: upstream re-keyed every
   // filename, our id regex matched none of them, and the endpoint returned
@@ -198,11 +280,18 @@ export async function onRequestGet({ request, waitUntil }) {
   // anywhere in Bali" with total confidence, and the map went blank with no
   // signal anywhere. An index that lists reports but yields nothing to fetch is
   // a fault on OUR side, and must be reported as one.
-  const rejectedAll = indexOk && indexProfiles > 0 && attempted === 0;
-  const partial = !indexOk || rejectedAll || failed > 0;
+  // rejectedAll only fires when the archive is ALSO empty — with a populated
+  // archive, fetching nothing new is the normal steady state, not a fault.
+  const rejectedAll = indexOk && indexProfiles > 0 && attempted === 0 && byId.size === 0;
+  // `truncated` closes a gap this endpoint shipped with: MAX_FETCH capped the
+  // fan-out, but nothing reported the cap being hit, so it returned 31 of 64
+  // in-window reports with partial:false — silently incomplete, exactly the
+  // failure mode `partial` exists to prevent. A deliberate cap is still a
+  // shortfall and must be declared.
+  const partial = !indexOk || rejectedAll || failed > 0 || truncated > 0;
   const body = {
     source: 'Making Sense Bali',
-    licence: 'CC BY 4.0 — attribute "Data: Making Sense Bali", linked to https://mdg-bali.github.io/makingsensebali/',
+    licence: 'CC BY 4.0 — attribute "Data: Making Sense Bali", linked to https://makingsense.fablabbali.com/',
     category: 'burning',
     max_age_days: REPORT_MAX_AGE_DAYS,
     // Consumers (notably the archive worker) must be able to tell "no burning
@@ -211,6 +300,11 @@ export async function onRequestGet({ request, waitUntil }) {
     partial,
     fetched: attempted - failed,
     attempted,
+    // Reports served from our own archive without an upstream fetch. In steady
+    // state this is nearly all of them.
+    from_archive: archived.size,
+    // In-window reports we knew about but deferred to a later tick.
+    deferred: truncated,
     index_profiles: indexProfiles,
     generated_at: new Date(nowMs).toISOString(),
     reports,

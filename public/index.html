@@ -939,7 +939,7 @@ const map = L.map('map-leaflet',{
 // All three ask for visible credit on a browsable map, so all three are named.
 // {r} still expands to @2x on retina screens; the tileset holds that variant.
 L.tileLayer('/tiles/{z}/{x}/{y}{r}.png',{
-  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://openmaptiles.org/">OpenMapTiles</a> · style © <a href="https://carto.com/attributions">CARTO</a> · <a href="https://mdg-bali.github.io/makingsensebali/" target="_blank" rel="noopener">Reports: Making Sense Bali</a> (CC BY 4.0)',
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://openmaptiles.org/">OpenMapTiles</a> · style © <a href="https://carto.com/attributions">CARTO</a> · <a href="https://makingsense.fablabbali.com/" target="_blank" rel="noopener">Reports: Making Sense Bali</a> (CC BY 4.0)',
   maxZoom:16
 }).addTo(map);
 map.fitBounds(BALI,{padding:[20,20]});
@@ -1309,7 +1309,7 @@ function panelReport(group){
       <p style="font-family:'Source Serif 4',serif;font-size:13px;line-height:1.6;color:var(--ink-faint);margin:0 0 10px">${t('report.aboutBody','Submitted by a resident via WhatsApp or Telegram and reviewed by a human moderator before publication. This is a citizen observation, not a sensor reading, and plays no part in any air-quality statistic on this site.')}</p>
       <div class="rows">
         <div class="r"><span class="k">${t('report.mostRecent','Most recent')}</span><span class="v">${fmtDate(head.date_added)}</span></div>
-        <div class="r"><span class="k">${t('report.source','Source')}</span><span class="v"><a href="https://mdg-bali.github.io/makingsensebali/" target="_blank" rel="noopener" style="color:var(--ink-soft)">Making Sense Bali</a></span></div>
+        <div class="r"><span class="k">${t('report.source','Source')}</span><span class="v"><a href="https://makingsense.fablabbali.com/" target="_blank" rel="noopener" style="color:var(--ink-soft)">Making Sense Bali</a></span></div>
       </div>
     </div>`;
 }

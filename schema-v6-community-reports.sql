@@ -4,7 +4,7 @@
 -- additive, replayable, and safe to re-run (IF NOT EXISTS throughout).
 --
 -- WHY. Making Sense Bali publishes moderated citizen reports of air-pollution
--- events (https://mdg-bali.github.io/makingsensebali/, CC BY 4.0, contact
+-- events (https://makingsense.fablabbali.com/, CC BY 4.0, contact
 -- tomas@fab.city). We display only `pollution_category = "burning"` on the map.
 -- The upstream feed is a rolling publication, not an archive: reports are
 -- REMOVED when a resident revokes consent, and there is no historical endpoint.
