@@ -241,8 +241,18 @@ const FAST_PATH_FRESH_SEC = 30 * 60;
 const FAST_PATH_WIDEST_SEC = 12 * 60 * 60;
 async function fastPathFromD1(db) {
   const nowSec = Math.floor(Date.now() / 1000);
-  const cutoff = nowSec - FAST_PATH_WIDEST_SEC;
-  const rows = await db.prepare(`
+  // NARROW FIRST, widen only on a shortfall. This ordering is load-bearing and
+  // was got wrong once: fetching the widest window every time and filtering in
+  // JS looked tidier (one round trip) but drives the plan off idx_ssnap_ts
+  // (ts > ?), so the rows SCANNED are every snapshot inside the window, each
+  // one paying a correlated MAX(ts) subquery. Measured against real data:
+  // 111 rows for 30 min versus 2,034 for 12 h — an 18x read amplification on
+  // the single hottest query in the project, which on D1's row-metered pricing
+  // is the difference between comfortable and over quota. The healthy path
+  // must stay one cheap query; the wide one is an outage measure and only runs
+  // when the narrow window has already come up short.
+  const runWindow = async (cutoff) => {
+    const rows = await db.prepare(`
     SELECT s.station_id, s.source, s.name, s.lat, s.lon, s.type,
            sn.pm25, sn.pm10, sn.pm1, sn.aqi, sn.temperature, sn.humidity,
            sn.station_till, sn.ts, sn.pm25_raw
@@ -260,14 +270,17 @@ async function fastPathFromD1(db) {
     -- so each scraped station appears exactly once (fresh).
     AND s.station_id NOT LIKE 'iqs-%'
     ORDER BY s.source, s.name
-  `).bind(cutoff).all();
-  const all = rows.results || [];
-  const fresh = all.filter(r => r.ts >= nowSec - FAST_PATH_FRESH_SEC);
-  let results, degraded;
-  if (fresh.length >= 5)    { results = fresh; degraded = false; }
-  else if (all.length >= 5) { results = all;   degraded = true;  }
-  else return null;         // genuinely empty (cold start) — pay for upstream
-  if (degraded) {
+    `).bind(cutoff).all();
+    return rows.results || [];
+  };
+
+  const fresh = await runWindow(nowSec - FAST_PATH_FRESH_SEC);
+  let results = fresh, degraded = false;
+  if (fresh.length < 5) {
+    const wide = await runWindow(nowSec - FAST_PATH_WIDEST_SEC);
+    if (wide.length < 5) return null;   // genuinely empty (cold start)
+    results = wide;
+    degraded = true;
     const oldestMin = Math.round((nowSec - Math.min(...results.map(r => r.ts))) / 60);
     console.warn(`live: fast path DEGRADED — only ${fresh.length} station(s) fresh ` +
                  `within ${FAST_PATH_FRESH_SEC / 60}min; serving ${results.length} ` +
