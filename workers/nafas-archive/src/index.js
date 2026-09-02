@@ -681,18 +681,29 @@ async function archiveOnce(env) {
   // directly through the runtime (reliable, no DNS/edge, stays inside CF's
   // network). The /watchdog route stays secret-gated as defense-in-depth.
   // Healthy periods: never fires, zero extra Firecrawl spend.
+  //
+  // SIGNAL: "when did the scraper last complete a run" (MAX ts in
+  // iq_scrape_runs), which is the question this watchdog exists to answer —
+  // is the iqair-scrape CRON alive. It used to ask "how old is the stalest
+  // active station" (MIN last_scrape_ts), which answers a different question
+  // and answers it wrongly once any station dies for good: rock-n-love-3
+  // stopped reporting on 2026-06-15 and was never re-scraped, so from 06-16 the
+  // stalest age grew without bound and this fired on EVERY tick for eleven
+  // weeks — ~96 unnecessary Firecrawl scrape groups a day, doubling scrape
+  // load, and burying any real firing in constant noise. This is now the same
+  // shape as the reciprocal watchdog in iqair-scrape (MAX ts in archive_runs).
   try {
     if (env.IQAIR_SCRAPE) {
       const st = await db.prepare(
-        `SELECT MIN(last_scrape_ts) AS stalest FROM iq_scrape_stations WHERE active = 1`
+        `SELECT MAX(ts) AS last_run FROM iq_scrape_runs`
       ).first();
-      const ageMin = st && st.stalest ? (nowSec - st.stalest) / 60 : null;
+      const ageMin = st && st.last_run ? (nowSec - st.last_run) / 60 : null;
       if (ageMin != null && ageMin > 70) {
         const r = await env.IQAIR_SCRAPE.fetch('https://iqair-scrape.internal/watchdog', {
           method: 'POST',
           headers: { 'X-Watchdog-Key': env.IQAIR_WATCHDOG_KEY || '' },
         });
-        watchdogNote = `iqair_watchdog_fired (stalest ${Math.round(ageMin)}m, HTTP ${r.status})`;
+        watchdogNote = `iqair_watchdog_fired (last scrape run ${Math.round(ageMin)}m ago, HTTP ${r.status})`;
         console.warn(watchdogNote);
       }
     }
