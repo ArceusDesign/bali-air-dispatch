@@ -50,7 +50,7 @@ function rangeToCutoffSec(range) {
   }
 }
 
-export async function onRequest(context) {
+async function handleHistory(context) {
   const { request, env } = context;
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS });
@@ -374,4 +374,48 @@ export async function onRequest(context) {
   } catch (e) {
     return json({ error: 'query_failed', message: e.message }, 500);
   }
+}
+
+// ── EDGE CACHE ────────────────────────────────────────────────────────────
+// Explicit Cache API, because Pages Functions responses never reach the CDN
+// cache on their own (every response was cf-cache-status: DYNAMIC; the
+// s-maxage in JSON_HEADERS was decorative). Same pattern as /api/v1.
+//
+// CANONICAL KEY from exactly the parameters this handler reads — uuid, id,
+// ids, range — in a fixed order. Anything else in the query string is dropped
+// from the key, so a stray or hostile parameter cannot bypass the cache and
+// force the catalog's per-station subqueries to re-run on every hit. The
+// catalog request (no params at all) is the hot one: it is fetched on every
+// history page load and costs ~4,700 row reads.
+const HISTORY_KEY_PARAMS = ['uuid', 'id', 'ids', 'range'];
+export async function onRequest(context) {
+  const { request } = context;
+  if (request.method !== 'GET') return handleHistory(context);
+  let cache = null, cacheKey = null;
+  try {
+    const url = new URL(request.url);
+    const q = HISTORY_KEY_PARAMS
+      .map(k => [k, (url.searchParams.get(k) || '').trim()])
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+      .join('&');
+    cache = caches.default;
+    cacheKey = new Request('https://history.internal/api/history' + (q ? '?' + q : ''), { method: 'GET' });
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      const r = new Response(hit.body, hit);
+      r.headers.set('X-Cache', 'HIT');
+      return r;
+    }
+  } catch (_) { cache = null; }
+  const res = await handleHistory(context);
+  if (cache && res && res.ok && context.waitUntil) {
+    try {
+      const copy = res.clone();
+      copy.headers.set('X-Cache', 'MISS');
+      context.waitUntil(cache.put(cacheKey, copy));
+    } catch (_) { /* best effort */ }
+  }
+  if (res) { try { res.headers.set('X-Cache', 'MISS'); } catch (_) {} }
+  return res;
 }

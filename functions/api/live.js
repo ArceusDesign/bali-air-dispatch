@@ -11,8 +11,13 @@
 //   2. UPSTREAM PARALLEL FALLBACK. When D1 is empty, stale, or sparse,
 //      fall through to the upstream aggregator — but every source now runs
 //      via Promise.allSettled. The slowest source dictates total time.
-//   3. CACHE. Edge cache 1 h, stale-while-revalidate 24 h: subsequent
-//      visitors get an instant cached response while we revalidate quietly.
+//   3. CACHE. Explicit Cache API (caches.default) in onRequest below, 120 s,
+//      keyed on a CONSTANT URL. Pages Functions responses do NOT pass through
+//      the CDN cache — the Cache-Control header alone was decorative for the
+//      life of this file, and every visitor page load ran this function and
+//      its D1 queries. Under load that is linear amplification with nothing
+//      in between; it is how 12-38M rows/day were being read against a 5M
+//      free-tier limit before 2026-09-02.
 
 // ── UPSTREAM TIMEOUT GUARD ────────────────────────────────────────────
 // Every upstream fetch in this file goes through here. A module-scope function
@@ -194,12 +199,13 @@ function jsonResponse(body, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     headers: {
       'Content-Type': 'application/json',
-      // Tight edge cache; stale-while-revalidate keeps hot responses warm
-      // for a full day so a single revalidation per hour serves everything.
-      // 15-min edge cache aligns with the archive worker's 15-min cron, so the
-      // station roster (sensors coming online / going dark) refreshes in step
-      // with the data instead of lagging up to an hour. swr keeps it hot.
-      'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=86400',
+      // s-maxage is what caches.default honours (see onRequest). 120 s, not
+      // the 900 s that used to be here: the archive writes every 15 min, and a
+      // 15-min TTL not aligned to that tick could serve pre-tick data for a
+      // whole further cycle. 120 s bounds staleness to two minutes while still
+      // collapsing any volume of traffic to one D1 round-trip per two minutes
+      // per colo — the damping saturates long before 900 s buys anything.
+      'Cache-Control': 'public, s-maxage=120, max-age=60',
       'Access-Control-Allow-Origin': '*',
       ...extraHeaders,
     }
@@ -1825,7 +1831,7 @@ async function fetchIQAir(env) {
 }
 
 // ── ENTRYPOINT ────────────────────────────────────────────────────────
-export async function onRequest(context) {
+async function handleLive(context) {
   const env = context.env;
   const url = new URL(context.request.url);
   const noFast = url.searchParams.get('fresh') === '1';
@@ -1912,7 +1918,12 @@ export async function onRequest(context) {
         } catch (_) { /* tombstones optional */ }
         // Source count reflects LIVE feeds only — tombstones aren't a source.
         fast.sources = new Set(fast.stations.filter(s => !s.off).map(s => s.source)).size;
-        return jsonResponse(fast);
+        return jsonResponse(fast, fast.degraded
+          // A degraded read must not be pinned for the full TTL, or recovery
+          // stays invisible behind the cache for two minutes after the archive
+          // worker is back. Same principle reports.js applies to `partial`.
+          ? { 'Cache-Control': 'public, s-maxage=30, max-age=15' }
+          : {});
       }
     } catch (e) {
       // Fall through to upstream
@@ -2023,4 +2034,52 @@ export async function onRequest(context) {
   }
   if (results.errors.length === 0) delete results.errors;
   return jsonResponse(results);
+}
+
+// ── EDGE CACHE ────────────────────────────────────────────────────────────
+// Explicit, because Cloudflare Pages Functions responses do NOT pass through
+// the CDN cache — measured: every response was cf-cache-status: DYNAMIC and
+// the Cache-Control header above was decorative. Same pattern as /api/v1 and
+// /api/reports, which already do this.
+//
+// CONSTANT KEY, like reports.js: this endpoint reads exactly one query
+// parameter (fresh), so keying on request.url would let ?x=1,2,3… bypass the
+// cache at will and force a D1 round-trip per hit. Every variant of the URL
+// maps to the one entry.
+//
+// ?fresh=1 BYPASSES THE CACHE ENTIRELY, in both directions — never served from
+// it, never stored into it. That is the archive worker's call, whose whole
+// design rests on getting a genuinely fresh upstream aggregation every tick
+// (see fetchUnifiedLive in workers/nafas-archive: a cached payload written
+// back to D1 is the stale-loop failure that ?fresh=1 exists to prevent).
+//
+// Only res.ok is stored; a 5xx must never be pinned. Every cache touch is
+// wrapped so a Cache API failure degrades to "no cache", never to an error:
+// this runs on the visitor's response path and nothing here may throw.
+export async function onRequest(context) {
+  const url = new URL(context.request.url);
+  const bypass = url.searchParams.get('fresh') === '1';
+  let cache = null, cacheKey = null;
+  if (!bypass) {
+    try {
+      cache = caches.default;
+      cacheKey = new Request('https://live.internal/api/live', { method: 'GET' });
+      const hit = await cache.match(cacheKey);
+      if (hit) {
+        const r = new Response(hit.body, hit);
+        r.headers.set('X-Cache', 'HIT');
+        return r;
+      }
+    } catch (_) { cache = null; }
+  }
+  const res = await handleLive(context);
+  if (cache && res && res.ok && context.waitUntil) {
+    try {
+      const copy = res.clone();
+      copy.headers.set('X-Cache', 'MISS');
+      context.waitUntil(cache.put(cacheKey, copy));
+    } catch (_) { /* best effort */ }
+  }
+  if (res && !bypass) { try { res.headers.set('X-Cache', 'MISS'); } catch (_) {} }
+  return res;
 }
