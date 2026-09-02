@@ -360,6 +360,28 @@ async function scrapedIQAirFromD1(db, existing = []) {
   // behind even though latest_pm25 is the page's CURRENT reading. The worker
   // scrapes hourly, so 2.5h covers one missed cron before a station is stale.
   const FRESH_MS = 2.5 * 60 * 60 * 1000;
+  // DATA age — a second, independent bound, and the reason it exists:
+  // scrape age alone has no upper limit on how dead a sensor may be. IQAir
+  // keeps serving a device's page (and its last reading) long after the device
+  // itself stops sending anything, so our scrape goes on succeeding, the tile
+  // keeps showing the last value, and the station renders LIVE forever.
+  // Observed 2026-09-02: "Bali Umalas (Villa Fusion)" was published as 17
+  // µg/m³ / "Moderate" / stale:false while its newest actual reading was
+  // 2026-08-11T22:00Z — 21 days old — and it was still counted into the island
+  // median, "worst right now" and the WHO-exceedance ratios. Our own archive
+  // had already stopped recording it (the worker's 48 h guard), so the map was
+  // the only place still asserting it.
+  //
+  // 24 h is deliberately far above the normal lag. IQAir's hourly HISTORIC
+  // series trails its live tile by a couple of hours (see FRESH_MS above);
+  // measured across the eight healthy stations the gap was under 2 h. A device
+  // silent for a full day has stopped, not lagged. Past that we publish a
+  // tombstone rather than a reading: pm25 null, off:true, which index.html
+  // splits out of liveStations at ingestion (so it touches no median, no
+  // worst-now, no WHO ratio) and shows under "Not reporting". Deliberately NOT
+  // `absent: true` — unlike a suppressed relay twin, this device really has
+  // stopped reporting, so the panel's default copy is the honest one.
+  const DATA_DEAD_MS = 24 * 60 * 60 * 1000;
   const out = [];
   for (const r of (rows.results || [])) {
     if (r.lat == null || r.lon == null) continue;
@@ -372,6 +394,29 @@ async function scrapedIQAirFromD1(db, existing = []) {
     const pm25 = r.latest_pm25 != null ? +(+r.latest_pm25).toFixed(1) : null;
     const { cat, cls } = pm25Category(pm25);
     const scrapeAgeMs = r.last_scrape_ts ? (nowMs - r.last_scrape_ts * 1000) : Infinity;
+    const dataMs = Date.parse(r.latest_ts || '');
+    const dataAgeMs = Number.isFinite(dataMs) ? nowMs - dataMs : null;
+    if (dataAgeMs != null && dataAgeMs > DATA_DEAD_MS) {
+      out.push({
+        id: `iqs-${r.slug}`,
+        name: r.name,
+        source: 'IQAir',
+        type: 'Private sensor',
+        lat: r.lat,
+        lon: r.lon,
+        pm25: null, pm10: null, pm1: null, aqi: null,
+        pm25_raw: null, pm25_corrected: false,
+        temperature: null, humidity: null,
+        category: null, cls: 'off',
+        off: true,                        // frontends: offline family, not live
+        // WITA day of the last real reading, matching scOfflineFromD1().
+        offlineSince: new Date(dataMs + 8 * 3600000).toISOString().slice(0, 10),
+        lastSeen: r.latest_ts,
+        stale: true,                      // never counted as a current reading
+        staleAgeHours: Math.max(0, Math.round(dataAgeMs / 3600000)),
+      });
+      continue;
+    }
     out.push({
       id: `iqs-${r.slug}`,
       name: r.name,

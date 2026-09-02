@@ -700,7 +700,16 @@ function buildStationList(){
   //     value; the two Jimbaran Smart Citizen kits were in "Recently offline"
   //     41 and 66 days after their last reading).
   const SILENCED_NAMES = new Set([
-    'dauh puri kauh', 'ketewel', 'padangsambian kaja'
+    'dauh puri kauh', 'ketewel', 'padangsambian kaja',
+    // Confirmed dark 2026-08-11T22:00Z. IQAir still serves the device page, so
+    // the scrape keeps succeeding and the feed kept echoing its last reading
+    // (17 µg/m³) as current — the exact "upstream API still echoes a stale
+    // reading" case this list exists for. /api/live now publishes it as an
+    // off:true tombstone, which on its own would file it under Recently
+    // offline until the 30-day age rule caught up; naming it here silences it
+    // now, with its full record intact (daily back to 2024-11-01, hourly to
+    // 2026-08-11). Remove this line if the device ever comes back.
+    'bali umalas (villa fusion)'
   ]);
   const normName = s => (s && s.name ? String(s.name) : '').trim().toLowerCase();
   const isForcedSilenced = s => SILENCED_NAMES.has(normName(s));
