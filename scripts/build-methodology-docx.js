@@ -215,6 +215,7 @@ body.push(TABLE([3400, 6200], ['Item', 'Value'], [
   ['Archive depth', 'Earliest record 27 September 2023; 4,197 station-days total; longest single station 572 days'],
   ['Collection interval', '15 minutes, continuous'],
   ['Correction applied', 'US-EPA 2021 humidity correction, on 2 of 8 networks, since 21 July 2026'],
+  ['Directly-contributed (pushed) stations', '1 — Amed, East Bali; published raw, uncorrected — see §5.6'],
   ['Published intervals', 'Raw (15-minute), hourly, daily'],
   ['Licence', 'Open, attribution requested; full archive downloadable as JSON or CSV'],
 ]));
@@ -227,15 +228,20 @@ body.push(TABLE([1450, 2750, 1750, 1650, 2000],
   ['AirGradient', 'Open community network; the densest source in Bali', 'AirGradient O-1PST (Plantower PM module)', 'Public API, no key', '19'],
   ['OpenAQ', [[ 'Aggregator. ' ], ['In Bali, every OpenAQ station is an AirGradient unit relayed onward', { bold: true }], [' — see §6']], '(relayed)', 'Public API, key', '22'],
   ['IQAir', 'Commercial network; mixture of private hosts and contributors', 'Various', 'Public station pages', '12'],
+  ['PurpleAir', 'Open community network', 'PurpleAir (Plantower PM module)', 'Public API, key', '2'],
   ['Smart Citizen', 'Open citizen-science platform (Fab Lab Barcelona)', 'SmartCitizen Kit 2.3', 'Public API', '11'],
   ['Nafas', 'Indonesian commercial network', 'Nafas Foundation sensor', 'Public JSON feed', '7'],
   ['AQICN / WAQI', [['Aggregator; carries the '], ['KLHK government reference station', { bold: true }]], 'Reference-grade (government); GAIA (community)', 'Public API, token', '2'],
   ['Airly', 'Commercial network', 'Airly sensor', 'Public API, key', '2'],
-  ['Community', 'Sensors contributed directly to this archive by residents', 'Various (e.g. Winsen ZH03B)', 'Direct push to our API', '1'],
 ]));
 body.push(SPACER(160));
 body.push(RP([['Geographic filter. ', { bold: true }], ['All networks are filtered to the same Bali bounding box: latitude −9.2 to −8.0, longitude 114.4 to 115.8. The filter is applied identically in the live aggregator and the archive worker.']], { before: 120 }));
 body.push(RP([['On the single government station. ', { bold: true }], ['Of 78 catalogued stations, exactly one is a government reference instrument: Denpasar Lumintang (KLHK), reached through AQICN. It is not enumerated by AQICN’s map endpoint and has to be probed directly by station ID. This is the principal monitoring gap in the record and is the main reason the archive exists in its present form.']]));
+
+body.push(H2('3.1  A ninth, categorically different source: direct contribution'));
+body.push(RP([['The eight networks above are all '], ['polled', { bold: true }], [' — we call a public API on our own schedule. One station reaches us the opposite way: a resident-operated sensor '], ['pushes', { bold: true }], [' its own readings directly to this project’s ingest endpoint. It is not a third-party network we ingest from, which is why it is not counted among the eight above; it is a second point of entry into the same archive, one this project itself operates.']]));
+body.push(RP([['As of this writing there is one such station: '], ['cs-amed-01', { font: MONO }], [' (“Amed (north)”), a Winsen ZH03B unit on Bali’s remote east coast, reporting since 27 August 2026. It fills a real gap — the nearest other monitor of any kind, a PurpleAir unit, is '], ['33.8 km', { bold: true }], [' away, and no multi-year record exists anywhere in East Bali. Its readings are published '], ['raw, not humidity-corrected', { bold: true }], [', for a specific and important reason set out in full in §5.6, which any use of this station’s figures should be read alongside.']]));
+body.push(P('For privacy, the contributor is not named in this document; the project’s practice throughout is that operators and contributors are not identified.'));
 
 // 4
 body.push(H1('4.  Collection schedule'));
@@ -294,6 +300,20 @@ body.push(TABLE([3200, 3200, 3200], ['Statistic', 'Raw', 'Corrected'], [
 ]));
 body.push(SPACER(160));
 body.push(RP([['The raw figure runs higher by a '], ['mean of 5.8 µg/m³', { bold: true }], [', a '], ['median ratio of 1.63×', { bold: true }], ['. In 5.1% of readings — low concentrations in dry conditions — the correction '], ['raises', { italics: true }], [' the value rather than lowering it, which is the expected behaviour of the EPA regression and not an error.']], { before: 120 }));
+
+body.push(H2('5.6  The one exception: the Amed contributed station'));
+body.push(RP([['Every correction rule above governs sources we '], ['poll', { bold: true }], [' on a fixed schedule. One station reaches us differently — see §3.1 — and its correction status needs to be stated on its own.']]));
+body.push(RP([['What is published. ', { bold: true }], ['cs-amed-01', { font: MONO }], [' (“Amed (north)”) reports its PM2.5 reading exactly as the device measures it, with no adjustment. Verified against 500 consecutive archived readings: '], ['every single one', { bold: true }], [' carries '], ['pm25_raw = null', { font: MONO }], [' and '], ['pm25_corrected = false', { font: MONO }], ['. This is not a default that happens to apply — it is enforced explicitly by the ingest endpoint at the point of storage.']]));
+body.push(RP([['Why raw, not corrected — precisely. ', { bold: true }], ['The station’s controller does report a humidity reading; every one of the 500 sampled rows carries one. So the missing ingredient is not a humidity '], ['channel', { italics: true }], [', and it is not that the correction formula in §5.3 is unsuited to this hardware — it is the same EPA formula applied to AirGradient and PurpleAir. What is missing is '], ['confirmation that the humidity sensor is measuring the same air as the particulate sensor', { bold: true }], [' — genuinely co-located, not a reading borrowed from elsewhere on the property or from a different device. Applying the formula without that confirmation would not fail loudly; it would silently produce a plausible-looking but potentially wrong number, which this project judges worse than an honest, clearly-labelled raw one. The ingest system encodes this as an explicit per-station flag, defaulted to '], ['off', { italics: true }], [', that only this project can set once co-location with this specific contributor is confirmed — not an assumption baked into the correction logic itself.']]));
+body.push(RP([['What the raw values look like. ', { bold: true }], ['Over its first 500 readings (27 August – 3 September 2026):']]));
+body.push(TABLE([4800, 4800], ['Statistic', 'Value (raw, uncorrected)'], [
+  ['Mean', '15.1 µg/m³'],
+  ['Median', '13.5 µg/m³'],
+  ['Maximum', '32.0 µg/m³'],
+]));
+body.push(SPACER(160));
+body.push(P('These figures should be read against the Raw column in §5.5, not the Corrected one — they are not directly comparable to a corrected reading from any other station on this network without first accounting for the same humidity over-read described in §5.2.', { before: 120 }));
+body.push(RP([['Statistical treatment. ', { bold: true }], ['A contributed reading is unverified by construction: this project did not site the device and cannot inspect it. Consistent with every other unverified or non-ambient reading on this network (§8.3), '], ['cs-amed-01', { font: MONO }], [' is shown on the public map and published through the API from its first reading onward, but it is '], ['excluded from every island-wide statistic', { bold: true }], [' — median, worst-current-reading, WHO exceedance share — until co-location is confirmed. This is the same treatment given to stations flagged '], ['suspected_indoor', { font: MONO }], [': published in full, held out of ambient claims.']]));
 
 // 6
 body.push(H1('6.  The AirGradient / OpenAQ duplication, and why it matters'));
