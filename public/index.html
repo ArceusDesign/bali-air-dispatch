@@ -799,7 +799,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 
 <!-- DISPATCH VII · DATA REVIEW CALLOUT -->
 <section class="front-page wrap">
-  <a href="/dispatches/7" class="solutions-callout">
+  <a href="/dispatches/7" class="solutions-callout crimson">
     <div class="solutions-callout-left">
       <div class="kicker" data-i18n="home.kicker.d7">§ VI — The Data Review</div>
       <h2 class="solutions-h" data-i18n-html="home.h.d7">Ninety days of data — <em>on the island's garbage fires.</em></h2>
@@ -810,6 +810,23 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       <div class="solutions-meta" data-i18n="home.d7.meta">Dispatch VII</div>
       <div class="solutions-stat">100<em>%</em></div>
       <div class="solutions-stat-lab" data-i18n="home.d7.stat">of days since June exceeded the WHO 24-hour guideline at the one sensor with a two-year record — up from 92% in the same window last year.</div>
+    </div>
+  </a>
+</section>
+
+<!-- DISPATCH VIII · COMMUNITY KNOWLEDGE CALLOUT -->
+<section class="front-page wrap">
+  <a href="/dispatches/8" class="solutions-callout">
+    <div class="solutions-callout-left">
+      <div class="kicker" data-i18n="home.kicker.d8">§ VII — The Community Knowledge Base</div>
+      <h2 class="solutions-h" data-i18n-html="home.h.d8">What two hundred and forty <em>neighbours worked out.</em></h2>
+      <p class="solutions-p" data-i18n-html="home.d8.body">Seal the room before you buy a second purifier. Buy the filters, not the mask body, from the official store. Talk to the neighbour before the banjar, and the banjar before the agency. Four months of what this community established about living with the island's smoke — each finding marked for what was tested, what is one person's account, and what is still argued over.</p>
+      <div class="solutions-cta" data-i18n-html="home.d8.cta">Read the knowledge base <span class="arrow">→</span></div>
+    </div>
+    <div class="solutions-callout-right">
+      <div class="solutions-meta" data-i18n="home.d8.meta">Dispatch VIII</div>
+      <div class="solutions-stat" data-i18n="home.d8.statnum">2,900</div>
+      <div class="solutions-stat-lab" data-i18n="home.d8.stat">messages between roughly 240 residents, distilled into a working knowledge base — and the nine questions four months of collective effort could not answer.</div>
     </div>
   </a>
 </section>
@@ -855,6 +872,16 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 .solutions-stat{font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;font-size:clamp(72px,9vw,112px);line-height:.88;letter-spacing:-.04em;color:var(--forest)}
 .solutions-stat em{font-style:italic;font-weight:500;font-size:.5em}
 .solutions-stat-lab{font-family:"Source Serif 4",serif;font-style:italic;font-size:13px;line-height:1.5;color:var(--ink-soft);margin-top:10px}
+/* Crimson variant of the same callout. The front page runs three of these in a
+   row, and three consecutive green blocks read as one undifferentiated slab —
+   alternating the middle one to crimson separates them and matches the
+   Evidence Brief callout above. Owner decision, 3 Sep 2026. */
+.solutions-callout.crimson::before{background:var(--crimson)}
+.solutions-callout.crimson .kicker{color:var(--crimson)}
+.solutions-callout.crimson .solutions-h em{color:var(--crimson)}
+.solutions-callout.crimson .solutions-cta{color:var(--crimson);border-color:var(--crimson)}
+.solutions-callout.crimson:hover .solutions-cta{background:var(--crimson);color:var(--paper)}
+.solutions-callout.crimson .solutions-stat{color:var(--crimson)}
 </style>
 
 <!-- UNIVERSAL FOOTER · keep in sync across all pages -->
