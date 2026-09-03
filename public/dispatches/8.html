@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dispatch VIII — What two hundred and forty neighbours worked out. · Bali Air Dispatch</title>
+<meta name="description" content="Dispatch VIII of the Bali Air Dispatch — four months of community knowledge on living with Bali’s smoke: indoor air, masks, monitoring, and how to get burning stopped.">
+<meta name="referrer" content="no-referrer">
+<!-- Favicons. Tab icons (favicon.ico + the two PNGs) carry the PAGODA MARK
+     ALONE, redrawn onto a fresh circular badge — no wordmark (owner decision,
+     28 Aug 2026, superseding the full-roundel version shipped a day earlier).
+     At 16-32px "Bali Air Dispatch" is illegible and the original artwork's
+     ring anti-aliases to nothing; scripts/generate-favicons.py redraws a
+     thicker ring and re-centers the mark on its own content bbox rather than
+     naively cropping+scaling the source. apple-touch-icon.png below keeps the
+     COMPLETE logo (wordmark included) — it renders at 180px+, where the full
+     lockup is legible. Cream background matches the logo's own, so the icon
+     reads as a solid badge on light and dark browser chrome alike.
+     Before 27 Aug 2026 the site shipped NO favicon: /favicon.ico fell through
+     to the SPA HTML, which is why browsers showed a blank page icon. -->
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preload" as="style" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --paper:#f3ece0;
+  --paper-dark:#eae1d1;
+  --ink:#14110d;
+  --ink-soft:#34302a;
+  --ink-faint:#6a635a;
+  --rule:#2b2620;
+  --hairline:#c0b9a8;
+  --crimson:#8b1a1a;
+  --ochre:#a7742e;
+  --forest:#355e3b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{
+  font-family:"Source Serif 4",Georgia,serif;
+  font-optical-sizing:auto;
+  font-size:16px;line-height:1.55;
+  padding:0 0 80px 0;
+}
+.wrap{max-width:1320px;margin:0 auto;padding:0 32px}
+@media(max-width:720px){.wrap{padding:0 18px}}
+
+/* subtle grain — identical to brief.html */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode:multiply;opacity:.35;
+}
+
+/* ===== MASTHEAD ===== */
+.masthead{border-bottom:3px double var(--rule);padding:22px 0 18px 0;position:relative}
+.masthead-top{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:baseline;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+  padding-bottom:10px;border-bottom:1px solid var(--hairline);
+}
+.masthead-top .r{text-align:right}
+.nameplate{text-align:center;padding:28px 0 18px 0}
+.nameplate h1{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 20;
+  font-size:clamp(52px,8.6vw,132px);line-height:.92;letter-spacing:-.015em;color:var(--ink);
+}
+.nameplate .sub{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(16px,2vw,22px);color:var(--ink-soft);margin-top:10px;letter-spacing:.02em;
+}
+.folio{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+  padding-top:10px;border-top:1px solid var(--hairline);
+}
+.folio .c{text-align:center;letter-spacing:.22em}
+.folio .r{text-align:right}
+
+/* ===== NAV BAR ===== */
+.navbar{
+  border-bottom:1px solid var(--rule);padding:12px 0;margin-top:0;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  display:flex;justify-content:center;gap:32px;flex-wrap:wrap;
+}
+.navbar a{color:var(--ink);text-decoration:none}
+.navbar a:hover{color:var(--crimson)}
+.navbar a.on{color:var(--crimson);border-bottom:1px solid var(--crimson);padding-bottom:4px;margin-bottom:-5px}
+
+/* ===== BULLETIN ===== */
+.bulletin{
+  margin:26px 0 10px 0;padding:10px 14px;
+  background:var(--crimson);color:var(--paper);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  display:flex;justify-content:space-between;gap:16px;
+}
+.bulletin .tag{font-weight:700}
+.bulletin .when{opacity:.85}
+
+/* ===== CHAPTER / DISPATCH ===== */
+.chapter{padding:60px 0 28px;border-top:3px double var(--rule);margin-top:18px;scroll-margin-top:12px}
+.chapter-head{
+  display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:baseline;
+  border-bottom:1px solid var(--rule);padding-bottom:14px;margin-bottom:30px;
+}
+.chapter-no{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--crimson);
+  border:1px solid var(--crimson);padding:6px 12px;
+}
+.chapter-title{
+  font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 144,"SOFT" 10;
+  font-size:clamp(34px,4.4vw,62px);line-height:.98;letter-spacing:-.02em;
+}
+.chapter-title em{font-style:italic;font-weight:500;color:var(--crimson)}
+.chapter-meta{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+  text-align:right;
+}
+@media(max-width:720px){
+  .chapter-head{grid-template-columns:1fr;gap:10px}
+  .chapter-meta{text-align:left}
+}
+.chapter-lede{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:400;
+  font-size:clamp(19px,2.1vw,24px);line-height:1.42;color:var(--ink-soft);
+  max-width:880px;margin-bottom:26px;
+}
+.chapter-body{display:grid;grid-template-columns:repeat(2,1fr);gap:38px}
+.chapter-body>div{min-width:0}
+@media(max-width:900px){.chapter-body{grid-template-columns:1fr}.chapter-body>div{grid-column:auto !important}}
+.chapter-body p{margin-bottom:16px}
+.chapter-body p strong{font-weight:700;color:var(--ink)}
+.chapter-body a{color:var(--crimson);text-decoration:none;border-bottom:1px dotted var(--crimson)}
+.chapter-body a:hover{background:var(--crimson);color:var(--paper)}
+.chapter-body p.first::first-letter{
+  font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144;
+  font-size:78px;line-height:.82;float:left;padding:8px 12px 0 0;color:var(--crimson);
+}
+
+/* Sub-headings within a dispatch chapter */
+.sub-h{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 120;font-size:22px;line-height:1.1;letter-spacing:-.005em;color:var(--ink);margin:8px 0 12px}
+.chapter-body h3.sub-h{margin-top:6px}
+.sub-h .sub-kicker{display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson);font-weight:500;margin-bottom:6px}
+/* Minor heading, one level below .sub-h */
+.min-h{font-family:"Fraunces",serif;font-weight:600;font-size:16.5px;line-height:1.25;color:var(--ink);margin:20px 0 9px}
+.min-h:first-child{margin-top:0}
+
+/* Data tables — inherited from Dispatch VII */
+.data-tbl-wrap{overflow-x:auto;border:1px solid var(--rule);background:var(--paper);margin:14px 0 8px}
+.data-tbl{width:100%;border-collapse:collapse;font-family:"Source Serif 4",serif;font-size:13.5px;font-variant-numeric:tabular-nums}
+.data-tbl th,.data-tbl td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--hairline);vertical-align:top;line-height:1.45}
+.data-tbl th{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid var(--rule);background:var(--paper-dark,#eae1d1)}
+.data-tbl td.r,.data-tbl th.r{text-align:right}
+.data-tbl tr:last-child td{border-bottom:none}
+@media(max-width:720px){.data-tbl{font-size:12px}.data-tbl th,.data-tbl td{padding:8px 7px}}
+
+/* Bulleted lists inside the body */
+.chapter-body ul.pts{list-style:none;padding-left:0;margin:10px 0 16px}
+.chapter-body ul.pts li{position:relative;padding:0 0 10px 20px;line-height:1.55}
+.chapter-body ul.pts li::before{content:"";position:absolute;left:2px;top:9px;width:5px;height:5px;background:var(--crimson);transform:rotate(45deg)}
+.chapter-body ul.pts li:last-child{padding-bottom:0}
+
+/* ===== TABLE OF CONTENTS (Dispatch VIII) =====
+   The dispatch is long and used as a reference rather than read straight
+   through, so it opens on a linked contents block instead of a lede alone. */
+.toc{grid-column:span 2;border:1px solid var(--rule);background:var(--paper-dark);padding:26px 30px;margin:0 0 12px}
+@media(max-width:900px){.toc{grid-column:span 1}}
+@media(max-width:720px){.toc{padding:20px 18px}}
+.toc-h{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--crimson);
+  border-bottom:1px solid var(--hairline);padding-bottom:9px;margin-bottom:14px;
+}
+.toc-list{list-style:none;display:grid;grid-template-columns:repeat(2,1fr);gap:0 38px;padding:0;margin:0}
+@media(max-width:820px){.toc-list{grid-template-columns:1fr}}
+.toc-list li{border-bottom:1px dotted var(--hairline)}
+.toc-list a{
+  display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:baseline;
+  padding:10px 6px;text-decoration:none;color:var(--ink);border-bottom:0;
+  transition:background .12s,color .12s;
+}
+.toc-list a:hover{background:var(--crimson);color:var(--paper)}
+.toc-list a:hover .n{color:var(--paper)}
+.toc-list .n{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson)}
+.toc-list .t{font-family:"Fraunces",serif;font-weight:600;font-size:15.5px;line-height:1.28}
+
+/* Anchor targets — keep a little breathing room above a jumped-to section */
+.sec{scroll-margin-top:24px}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+
+/* ===== CONFIDENCE BADGES =====
+   The source document's central discipline: tested, reported and contested
+   claims are NOT equally reliable and are never presented as if they were.
+   These carry that distinction into the dispatch rather than flattening it. */
+.badge{
+  display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:500;
+  padding:2px 7px;border:1px solid currentColor;border-radius:2px;
+  margin-right:7px;white-space:nowrap;
+}
+.badge.tested{color:var(--forest)}
+.badge.reported{color:var(--ochre)}
+.badge.contested{color:var(--crimson)}
+
+/* ===== CALLOUTS ===== */
+.callout{margin:16px 0;padding:18px 22px;background:var(--paper-dark);border-left:4px solid var(--ochre)}
+.callout.warn,.callout.open{border-left-color:var(--crimson)}
+.callout.good{border-left-color:var(--forest)}
+.callout p{font-family:"Source Serif 4",serif;font-size:14.5px;line-height:1.6;color:var(--ink-soft);margin-bottom:9px}
+.callout p:last-child{margin-bottom:0}
+.callout .clab{
+  display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;
+  color:var(--ochre);margin-bottom:8px;
+}
+.callout.warn .clab,.callout.open .clab{color:var(--crimson)}
+.callout.good .clab{color:var(--forest)}
+
+/* ===== PARTNER BOX =====
+   Owner decision: the source document carries six separate "Campaign tooling"
+   boxes for Making Sense Bali's own hardware and reporting bot. Those are
+   condensed here into this single attributed section, so the dispatch stays
+   community findings first and another organisation's tooling stays clearly
+   labelled as theirs rather than interleaved through our text. */
+.partner{grid-column:span 2;margin:34px 0 8px;padding:30px 34px;border:1px solid var(--rule);background:var(--paper-dark)}
+@media(max-width:900px){.partner{grid-column:span 1}}
+@media(max-width:720px){.partner{padding:22px 18px}}
+.partner .plab{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--forest);font-weight:600;margin-bottom:10px}
+.partner h3{font-family:"Fraunces",serif;font-weight:700;font-size:24px;line-height:1.12;margin-bottom:12px}
+.partner p{font-size:14.5px;line-height:1.62;color:var(--ink-soft);margin-bottom:12px}
+.partner p:last-child{margin-bottom:0}
+.partner a{color:var(--forest);text-decoration:none;border-bottom:1px dotted var(--forest)}
+.partner a:hover{background:var(--forest);color:var(--paper)}
+.partner-cols{display:grid;grid-template-columns:repeat(2,1fr);gap:26px;margin-top:6px}
+@media(max-width:760px){.partner-cols{grid-template-columns:1fr;gap:18px}}
+
+/* ===== PULL QUOTE ===== */
+.pull{
+  grid-column:span 2;
+  border-top:3px double var(--rule);border-bottom:3px double var(--rule);
+  padding:42px 0;margin:28px 0;text-align:center;
+}
+@media(max-width:900px){.pull{grid-column:span 1}}
+.pull blockquote{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:500;
+  font-size:clamp(26px,3.4vw,42px);line-height:1.2;color:var(--ink);
+  max-width:900px;margin:0 auto;
+}
+.pull cite{
+  display:block;margin-top:18px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-style:normal;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+}
+
+/* Closing note box — green-tinted */
+.closing-note{margin-top:34px;padding:24px 28px;background:var(--paper-dark,#eae1d1);border-left:4px solid var(--forest)}
+.closing-note p{font-family:"Source Serif 4",serif;font-size:15px;line-height:1.6;color:var(--ink-soft);margin-bottom:10px}
+.closing-note p:last-child{margin-bottom:0}
+.closing-note p b{color:var(--ink);font-weight:700}
+.closing-note a{color:var(--forest);text-decoration:none;border-bottom:1px dotted var(--forest)}
+.closing-note a:hover{background:var(--forest);color:var(--paper)}
+.closing-note .signoff{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
+
+/* ===== FOOTER ===== */
+.foot{padding:34px 0 60px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.65;color:var(--ink-soft);text-transform:none;letter-spacing:.02em;border-top:3px double var(--rule);margin-top:50px}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1.5fr 1fr 1.15fr;gap:30px;margin-bottom:30px}
+@media(max-width:1000px){.foot-grid{grid-template-columns:repeat(2,1fr);gap:26px}}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:22px}}
+.foot-col h4{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:10px;border-bottom:1px solid var(--hairline);padding-bottom:6px}
+.foot-col a{display:block;color:var(--ink);text-decoration:none;padding:3px 0;border-bottom:none;letter-spacing:.02em}
+.foot-col a:hover{color:var(--crimson)}
+.foot-strip{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;text-align:center}
+.foot-rights,.foot-sources{margin-top:14px;font-size:11px;line-height:1.55;color:var(--ink-faint);max-width:920px;margin-left:auto;margin-right:auto;text-align:center;letter-spacing:.02em}
+.foot-rights strong,.foot-sources strong{color:var(--ink-soft);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px;margin-right:6px}
+</style>
+<style>
+/* WhatsApp community button — green box (matches Dispatch VI / --forest accent) */
+.navbar a.wa-btn,.foot-col a.wa-btn{display:inline-flex;align-items:center;gap:7px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--forest);border:1px solid var(--forest);background:rgba(53,94,59,0.08);padding:6px 13px;border-radius:3px;text-decoration:none;line-height:1.2;transition:background .15s,color .15s,border-color .15s}
+.navbar a.wa-btn::before,.foot-col a.wa-btn::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--forest);flex:none}
+.navbar a.wa-btn:hover,.foot-col a.wa-btn:hover{background:var(--forest);color:var(--paper);border-color:var(--forest)}
+.navbar a.wa-btn:hover::before,.foot-col a.wa-btn:hover::before{background:var(--paper)}
+.foot-col a.wa-btn{margin-top:12px}
+.navbar-second{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:9px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+
+
+  <!-- MASTHEAD -->
+  <header class="masthead wrap">
+    <div class="masthead-top">
+      <div data-i18n="mast.published">Published since April · 2026</div>
+      <a href="/" style="color:inherit;text-decoration:none" data-i18n-attr="aria-label:nav.live" aria-label="Live Monitor">Bali Air Dispatch</a>
+      <div class="r" data-i18n="mast.tagline">Anonymous, non-commercial</div>
+    </div>
+    <div class="nameplate">
+      <h1>Bali&nbsp;Air&nbsp;Dispatch</h1>
+      <div class="sub" data-i18n="disp.8.x.sub">Dispatch VIII — What two hundred and forty neighbours worked out.</div>
+    </div>
+    <div class="folio">
+      <div data-i18n="mast.editionXXIX">Edition XXIX</div>
+      <div class="c" id="mt-date">—</div>
+      <div class="r" id="nav-status">LIVE · — SENSORS · — OFFLINE</div>
+    </div>
+  </header>
+
+  <!-- NAV (universal · keep in sync across all pages) -->
+  <nav class="navbar">
+    <a href="/" data-i18n="nav.live">Live Monitor</a>
+    <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+    <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+    <a href="/articles" class="on current" data-i18n="nav.dispatches">Dispatches</a>
+    <a href="/history" data-i18n="nav.history">History</a>
+    <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="nav.community">Join the WhatsApp community</a>
+    <div id="lang-switcher"></div>
+  </nav>
+<div class="wrap">
+
+  <!-- BULLETIN -->
+  <div class="bulletin">
+    <div class="tag" data-i18n="disp.8.x.bulTag">Bulletin · Dispatch VIII</div>
+    <div data-i18n="disp.8.x.bulLine">Four months of community knowledge — what was tested, what is disputed</div>
+    <div class="when" id="bul-when">—</div>
+  </div>
+
+  <!-- DISPATCH CONTENT -->
+  <section class="chapter" id="dispatch-8">
+    <div class="chapter-head">
+      <div class="chapter-no" data-i18n="disp.8.x.chapNo">Dispatch · VIII</div>
+      <div class="chapter-title" data-i18n-html="disp.8.title">What two hundred and forty neighbours <em>worked out</em>.</div>
+      <div class="chapter-meta" data-i18n-html="disp.8.x.meta">Filed · 3 September 2026<br>Approx. 28-minute read</div>
+    </div>
+    <p class="chapter-lede" data-i18n="disp.8.lede">Bali Air Dispatch · 3 September 2026 · Four months of what this community learned about living with the island's smoke — and what it still cannot answer</p>
+
+    <div class="chapter-body">
+
+      <!-- TABLE OF CONTENTS -->
+      <nav class="toc" aria-labelledby="toc-h">
+        <div class="toc-h" id="toc-h" data-i18n="disp.8.x.tocH">Contents · eleven sections</div>
+        <ol class="toc-list">
+          <li><a href="#s1"><span class="n">§ I</span><span class="t" data-i18n="disp.8.toc.1">How to read this</span></a></li>
+          <li><a href="#s2"><span class="n">§ II</span><span class="t" data-i18n="disp.8.toc.2">Indoor air: seal first, then filter</span></a></li>
+          <li><a href="#s3"><span class="n">§ III</span><span class="t" data-i18n="disp.8.toc.3">Masks and personal protection</span></a></li>
+          <li><a href="#s4"><span class="n">§ IV</span><span class="t" data-i18n="disp.8.toc.4">Monitoring: what to buy, and how far to trust it</span></a></li>
+          <li><a href="#s5"><span class="n">§ V</span><span class="t" data-i18n="disp.8.toc.5">Understanding the pollution itself</span></a></li>
+          <li><a href="#s6"><span class="n">§ VI</span><span class="t" data-i18n="disp.8.toc.6">The escalation ladder: how to get burning stopped</span></a></li>
+          <li><a href="#s7"><span class="n">§ VII</span><span class="t" data-i18n="disp.8.toc.7">Fixing the source: waste-side solutions</span></a></li>
+          <li><a href="#s8"><span class="n">§ VIII</span><span class="t" data-i18n="disp.8.toc.8">Campaigning, and what survived argument</span></a></li>
+          <li><a href="#s9"><span class="n">§ IX</span><span class="t" data-i18n="disp.8.toc.9">Where the community corrected itself</span></a></li>
+          <li><a href="#s10"><span class="n">§ X</span><span class="t" data-i18n="disp.8.toc.10">Open needs: where we are stuck</span></a></li>
+          <li><a href="#s11"><span class="n">§ XI</span><span class="t" data-i18n="disp.8.toc.11">The tooling behind this, and who built it</span></a></li>
+        </ol>
+      </nav>
+
+      <!-- § I -->
+      <div id="s1" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.1"><span class="sub-kicker">§ I</span>How to read this</h3>
+      </div>
+
+      <div>
+        <p class="first" data-i18n-html="disp.8.body.p1">Every dispatch before this one was built from instruments. This one is built from people. Between 6 May and 1 September 2026, roughly <strong>240 residents</strong> exchanged some <strong>2,900 messages</strong> in this community's group, and in the process worked out a great deal that no sensor network can measure: which purifier actually helps, what to say to a neighbour who burns, which office answers, and which widely-repeated advice is simply wrong.</p>
+        <p data-i18n-html="disp.8.body.p2">That knowledge was compiled into a structured document by <a href="https://www.meaningful-design.org/" target="_blank" rel="noopener noreferrer">Making Sense Bali</a> at Fab Lab Bali, and is reproduced here in full so it survives outside a chat history. The findings are the community's own. The compiling, and the tooling described in <a href="#s11">§ XI</a>, are theirs.</p>
+      </div>
+
+      <div>
+        <p data-i18n-html="disp.8.body.p3">Three kinds of thing get mixed together in any group chat, and they are <strong>not</strong> equally reliable. This dispatch keeps them apart, and marks every substantial claim:</p>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li1"><span class="badge tested">Tested</span> Someone did it, measured it, and reported a result others could reproduce.</li>
+          <li data-i18n-html="disp.8.body.li2"><span class="badge reported">Reported</span> First-hand experience, single source, plausible but unverified.</li>
+          <li data-i18n-html="disp.8.body.li3"><span class="badge contested">Contested</span> Disputed within the group, or unsourced. Labelled as such, never presented as consensus.</li>
+        </ul>
+        <p data-i18n-html="disp.8.body.p4"><strong>Everything here is anonymous.</strong> No names, no numbers, no addresses. Contributors appear only as "a member". Nothing identifies anyone reported as burning, and no banjar is named as an offender.</p>
+      </div>
+
+      <!-- § II -->
+      <div id="s2" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.2"><span class="sub-kicker">§ II</span>Indoor air: seal first, then filter</h3>
+        <p data-i18n-html="disp.8.body.p5">The most repeated and most consequential discovery in four months, arrived at independently by several members: <strong>air leaks defeat purifiers, and people massively underestimate their leaks.</strong></p>
+      </div>
+
+      <div>
+        <div class="callout good">
+          <span class="clab" data-i18n="disp.8.x.co1lab">Tested · the headline finding</span>
+          <p data-i18n-html="disp.8.x.co1p1">One member ran <em>three</em> high-capacity purifiers on maximum in a bedroom and still could not hit their target PM2.5. The cause was an unsealed LED lighting trough acting as an air inlet. After sealing it, <strong>a single purifier on a low, quiet setting outperformed the previous three on high.</strong></p>
+          <p data-i18n-html="disp.8.x.co1p2">A second member independently found the same thing — downstairs rooms held below 5&nbsp;µg/m³ on low, while a <em>smaller</em> upstairs room with three purifiers on high sat around ten times worse. Same cause: unsealed downlights.</p>
+        </div>
+        <div class="min-h" data-i18n="disp.8.x.h_method">The practical method</div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li4">Use masking tape to temporarily seal a suspected leak, run overnight, compare readings. Cheap, reversible, diagnostic. Make it permanent only where it works.</li>
+          <li data-i18n-html="disp.8.body.li5"><strong>Recessed lighting, downlights and LED troughs are the most commonly missed culprit</strong> — check the ceiling, not just doors and windows.</li>
+          <li data-i18n-html="disp.8.body.li6">Silicone or foam weather strips (widely available on Indonesian marketplaces) for doors in regular use; tape for doors you never open.</li>
+          <li data-i18n-html="disp.8.body.li7">Walk a portable PM2.5 meter around the house to find where dirty air enters. Members consistently rate this as the highest-value use of a cheap sensor.</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_co2">The CO₂ trade-off — the counter-lesson</div>
+        <p data-i18n-html="disp.8.body.p6">Sealing works so well that it creates a second problem. This was the group's most productive argument.</p>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li8"><span class="badge tested">Tested</span> A sealed bedroom with two occupants measured <strong>above 2,000&nbsp;ppm</strong> overnight. Another member with a partly-open window held <strong>1,000–1,300&nbsp;ppm with PM2.5 under 10</strong> — offered as a workable middle ground for a small room with three sleepers.</li>
+          <li data-i18n-html="disp.8.body.li9">Reference points cited: outdoor and forest air ≈400&nbsp;ppm; EU indoor guidance ≈800–1,000&nbsp;ppm; one member targets 650&nbsp;ppm.</li>
+          <li data-i18n-html="disp.8.body.li10"><span class="badge contested">Contested</span> Members split on whether 1,800–2,000&nbsp;ppm actually harms you. One reported no noticeable effect; others report grogginess and headaches. A medically-framed contribution noted that modest CO₂ elevation does not cause clinically significant drops in blood oxygen in healthy people — the grogginess is attributed to CO₂ and stale air, not oxygen deprivation.</li>
+          <li data-i18n-html="disp.8.body.li11">Ventilation guidance offered: roughly 25–30&nbsp;m³ per occupant per hour of fresh-air intake with a matching outlet, or about one full room-air exchange per hour.</li>
+        </ul>
+        <p data-i18n-html="disp.8.body.p7"><strong>The pattern most converged on:</strong> seal tightly → filter hard → ventilate deliberately during daytime hours when outdoor air is acceptable → keep a small controlled opening at night, or accept higher CO₂ on the worst burn nights.</p>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_notdo">Two things purifiers do not do</div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li12"><strong>They do not remove CO₂ and do not add oxygen.</strong> A clean PM2.5 reading tells you nothing about CO₂.</li>
+          <li data-i18n-html="disp.8.body.li13"><strong>Split-system air conditioning does not bring in fresh air.</strong> It recirculates and dehumidifies. Do not mistake AC for ventilation.</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_choose">Choosing a purifier</div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li14"><strong>For smoke, the activated carbon bed matters as much as HEPA.</strong> Smoke is gases and VOCs, not only particles. One member's research found most consumer units carry a thin carbon layer, versus 8–12&nbsp;kg in units built for smoke — but those are largely US brands, and <strong>import duty makes them impractical here.</strong> An unresolved gap.</li>
+          <li data-i18n-html="disp.8.body.li15"><span class="badge reported">Reported</span> Locally available units members actually bought and rated: a Japanese-brand unit around IDR&nbsp;2.5M (quiet, effective, user-cleanable filters, credited with resolving nasal irritation, though no PM2.5 display); a Chinese-brand "Pro 4" around IDR&nbsp;3M; a Sharp 84&nbsp;m² dual-HEPA with activated charcoal; a Philips 900i with onboard PM2.5 display and app scheduling; a Levoit Core 600S.</li>
+          <li data-i18n-html="disp.8.body.li16"><span class="badge reported">Reported</span> Run purifiers high for an hour or two <em>before</em> bed to scrub the room, then drop to sleep mode overnight.</li>
+          <li data-i18n-html="disp.8.body.li17"><strong>Sizing reality check.</strong> A member with a 65&nbsp;m² high-ceilinged room asked what to buy. The group's answer was consistent — seal the room first, or you will buy three units to do one unit's job.</li>
+        </ul>
+      </div>
+
+      <div style="grid-column:span 2">
+        <div class="min-h" data-i18n="disp.8.x.h_ducted">Whole-house and ducted approaches — specified, not yet built</div>
+        <p data-i18n-html="disp.8.body.p8">An active thread ran on filtered fresh-air intake: HEPA 13/14 plus activated carbon on an inline duct fan, sized 200–500&nbsp;m³/h, to solve PM2.5 and CO₂ at once. Indonesian inline duct and HEPA suppliers were identified (6", 8" and 10" pipe feeds), along with ultra-thin duct fans with integrated HEPA. <strong>Status: specified, not yet reported as installed and measured.</strong> It is the most promising unfinished thread in the group, and the one most worth somebody completing.</p>
+      </div>
+
+      <!-- § III -->
+      <div id="s3" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.3"><span class="sub-kicker">§ III</span>Masks and personal protection</h3>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_resp">Half-face respirators are the power-user answer</div>
+        <p data-i18n-html="disp.8.body.p9"><span class="badge tested">Tested</span> by multiple members. Two configurations came back repeatedly:</p>
+        <div class="data-tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th data-i18n="disp.8.x.t1h1">Setup</th>
+                <th data-i18n="disp.8.x.t1h2">Use case</th>
+                <th data-i18n="disp.8.x.t1h3">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-i18n="disp.8.x.t1r1a">3M 6200 or 6502 body + 2091 / 2097 / 2093 P100 filters</td>
+                <td data-i18n-html="disp.8.x.t1r1b">Motorbike — <strong>fits under a full-face helmet</strong></td>
+                <td data-i18n="disp.8.x.t1r1c">6200 is slimmer; 6502 slightly bulkier, softer silicone, more comfortable</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t1r2a">3M 7503 + 7093 P100</td>
+                <td data-i18n="disp.8.x.t1r2b">Around the house when pollution is bad</td>
+                <td data-i18n="disp.8.x.t1r2c">Most comfortable for long wear; too bulky for a helmet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p data-i18n-html="disp.8.body.p10">These are industrial respirators certified for particulate protection. They do not get soggy like paper masks and are comfortable enough for extended wear. The 2097-type filters add a carbon layer for organic vapour and nuisance odour, which is relevant for smoke.</p>
+      </div>
+
+      <div>
+        <div class="callout warn">
+          <span class="clab" data-i18n="disp.8.x.co2lab">Counterfeit warning · the most important safety note here</span>
+          <p data-i18n-html="disp.8.x.co2p1">Fake 3M products are widespread on Indonesian marketplaces. A member deliberately bought both genuine and counterfeit units to compare. Their conclusion: you <em>might</em> get away with a counterfeit mask body, though material quality is worse, but <strong>buy filters only from the official 3M store</strong> — the filter is the part that protects you. Official-store prices were found to differ between marketplaces, so it is worth comparing.</p>
+        </div>
+        <div class="min-h" data-i18n="disp.8.x.h_kids">Masks for children — fit beats rating</div>
+        <p data-i18n-html="disp.8.body.p11"><strong>Consensus:</strong> the binding constraint for children is <strong>seal, not filtration class</strong>. A well-fitting KF94 or KN95 sized for a child will outperform a poorly-fitting adult N95. Parents also reported buying pharmacy-brand children's masks locally.</p>
+        <p data-i18n-html="disp.8.body.p12">Sourcing tip: search Indonesian marketplaces under the category <strong>APD</strong> (<em>alat pelindung diri</em>) rather than English terms.</p>
+      </div>
+
+      <div style="grid-column:span 2">
+        <div class="min-h" data-i18n="disp.8.x.h_moto">A motorbike-specific premium option</div>
+        <p data-i18n-html="disp.8.body.p13"><span class="badge reported">Reported</span> A French-made anti-pollution motorbike mask is resold locally at roughly <strong>IDR 1.9M including filter</strong>, one size, with reports of 14-year-olds wearing it successfully. A member who used it daily for two weeks reported it as genuinely more breathable than N95s and snug with two adjustable straps, with a fit consideration under a closed full-face helmet.</p>
+        <div class="callout">
+          <span class="clab" data-i18n="disp.8.x.co3lab">Disclosure</span>
+          <p data-i18n-html="disp.8.x.co3p1">The reseller of this mask is an active member of the group. Their promotional descriptions use phrases such as "military-grade filtration", which is a marketing term and not a technical certification — treat it accordingly. The independent user review above is the more useful signal. It is listed here because members found it genuinely useful, not as an endorsement.</p>
+        </div>
+      </div>
+
+      <!-- § IV -->
+      <div id="s4" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.4"><span class="sub-kicker">§ IV</span>Monitoring: what to buy, and how far to trust it</h3>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_std">The network standard</div>
+        <p data-i18n-html="disp.8.body.p14"><strong>AirGradient</strong> emerged as the group's consensus platform for contributing to the shared network — outdoor Open Air O-1PST and indoor ONE I-9PSL, assembled or as kits. The kit saves roughly USD&nbsp;100 and needs no soldering: "clicking a few cables in and a few screws." There is a mobile app and a public map.</p>
+        <p data-i18n-html="disp.8.body.p15"><span class="badge reported">Reported</span> Import experience, documented by a member so others would not have to guess: ships from Thailand, about 2.5 weeks door to door; <strong>IDR 667k total customs and tax for two units</strong> (one indoor kit, one outdoor kit). The vendor later enabled <strong>DDP with customs prepaid at 19.2%</strong>, removing the surprise. The courier emails a bank account and amount on delivery day.</p>
+        <div class="callout">
+          <span class="clab" data-i18n="disp.8.x.co4lab">A step almost everyone misses</span>
+          <p data-i18n-html="disp.8.x.co4p1">After connecting a monitor you must <strong>opt in to sharing outdoor readings</strong> with the public map and OpenAQ. A sensor that is not opted in is invisible to everyone else — including to this site. If you already run a sensor on AirGradient, PurpleAir, Sensor.Community or Smart Citizen, opting in adds it to the shared picture at no cost to you.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_trust">How much to trust a cheap sensor</div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li18"><span class="badge tested">Tested</span> Two units of one popular cheap handheld brand read <strong>1.5–1.6× higher</strong> than nearby calibrated sensors. Consistently — which makes the bias usable if you know about it.</li>
+          <li data-i18n-html="disp.8.body.li19"><span class="badge tested">Tested</span> A 3× discrepancy between a purifier's onboard sensor (~30&nbsp;µg/m³) and an AirGradient (~10&nbsp;µg/m³) in the same room. Explanation offered: placement, plus different <strong>calibration and humidity-correction algorithms</strong>. AirGradient exposes both <strong>raw and corrected</strong> values via its local API — comparing raw against the other device isolates how much of the gap is correction rather than hardware.</li>
+          <li data-i18n-html="disp.8.body.li20"><strong>The right mental model:</strong> cheap portables are excellent for <em>relative</em> comparison — finding leaks, comparing rooms, proving a purifier works, walking around to locate a source. They are unreliable for <em>absolute</em> numbers. Fixed, calibrated, always-on outdoor sensors are what make a network credible.</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_map">Reading a public map critically</div>
+        <p data-i18n-html="disp.8.body.p16">Members noticed neighbouring sensors reporting wildly different values — 67 against 9&nbsp;µg/m³ in the same area — and correctly diagnosed the likely cause: <strong>some "outdoor" sensors are physically indoors</strong>, often inside a filtered space. Worth knowing before drawing conclusions from any single station.</p>
+        <p data-i18n-html="disp.8.body.p17">The interpretation guidance that emerged: one sensor spiking while its neighbours stay flat indicates a very local source. Several sensors rising and falling together is much stronger evidence of a genuine area-wide event. <strong>Geographic coverage matters more than total sensor count</strong> — a sensor filling a gap is worth more than another in a well-covered area.</p>
+      </div>
+
+      <div>
+        <div class="callout open">
+          <span class="clab" data-i18n="disp.8.x.co5lab">Still open · no calibration reference</span>
+          <p data-i18n-html="disp.8.x.co5p1">Asked twice in the group, never resolved: <strong>where in Bali can anyone check a monitor against a reference-grade instrument?</strong> Members proposed testing at both high and low concentrations to establish whether device error is a constant offset or a linear scaling factor. Nobody identified a facility.</p>
+          <p data-i18n-html="disp.8.x.co5p2">This is the highest-leverage unsolved technical problem in this document, and not one any community can solve alone — it needs an institution with a reference instrument, plausibly the meteorological agency or a university. It matters more, not less, as cheap sensors proliferate: every handheld's bias is a guess until something authoritative exists to check it against.</p>
+        </div>
+      </div>
+
+      <!-- § V -->
+      <div id="s5" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.5"><span class="sub-kicker">§ V</span>Understanding the pollution itself</h3>
+        <p data-i18n-html="disp.8.body.p18">Independently corroborated by many members across different areas — and, notably, matching what our own sensor archive recorded in <a href="/dispatches/7">Dispatch VII</a>:</p>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_timing">Timing — the community's observational epidemiology</div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li21"><strong>Twice-daily household burning at sunrise and sunset.</strong> In some neighbourhoods this is social — everyone out at the same time with metal bins, chatting while they burn.</li>
+          <li data-i18n-html="disp.8.body.li22"><strong>A distinct morning peak roughly 07:00–09:00</strong>, with air improving through the day.</li>
+          <li data-i18n-html="disp.8.body.li23"><strong>Night burning from about 01:00–03:30</strong>, reported as the worst and hardest to locate. One member drove around at night trying to find the source and could not, describing an entire village blanketed in smoke.</li>
+          <li data-i18n-html="disp.8.body.li24"><strong>Spikes after ceremonial days</strong>, as accumulated waste is cleared.</li>
+          <li data-i18n-html="disp.8.body.li25"><strong>Rice-field stubble burning</strong> as a seasonal agricultural layer on top of household burning.</li>
+          <li data-i18n-html="disp.8.body.li26"><strong>Still air is the multiplier.</strong> With no wind the smoke simply hangs over the village — the same burn is far worse on a calm night.</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_cause">The structural cause, stated plainly</div>
+        <p data-i18n-html="disp.8.body.p19">The clearest-eyed thread in the archive. Members converged on a diagnosis that is uncomfortable and probably correct:</p>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li27"><strong>Burning is a symptom of missing waste collection, not primarily of ignorance.</strong> A family burning daily was found to have no rubbish pickup at all, and years of accumulated backlog.</li>
+          <li data-i18n-html="disp.8.body.li28"><strong>The Suwung landfill closure removed the alternative.</strong> Collection services, including established recycling operators, refused new customers because they were full. A member in the Tabanan area asked publicly for <em>any</em> working collection option and got no solution.</li>
+          <li data-i18n-html="disp.8.body.li29"><strong>Enforcement is therefore hollow.</strong> Burning non-organic waste is illegal and people know it. But when a member contacted local security about a facility burning plastic, they were told to go and speak to the facility themselves.</li>
+          <li data-i18n-html="disp.8.body.li30">A local perspective relayed in the group: nobody wants to report anyone else's harmful practice, because they are themselves doing something reportable. Tragedy of the commons.</li>
+        </ul>
+      </div>
+
+      <div class="pull">
+        <blockquote data-i18n="disp.8.x.pq1">Telling someone burning is harmful, without offering a functioning alternative, does not work — and can damage the relationship. Pair every ask with a solution.</blockquote>
+        <cite data-i18n="disp.8.x.pq1c">The operational implication, as the group stated it</cite>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_sources">Sources beyond household burning</div>
+        <p data-i18n-html="disp.8.body.p20"><strong>Waste facilities and small incinerators</strong> were flagged repeatedly and several were mapped by members. One reported fumes carried about 450&nbsp;m on easterly winds every afternoon. Members raised a serious question: a new middle school was reportedly built beside one such facility, and there appears to be <strong>no monitoring at any of them.</strong></p>
+        <p data-i18n-html="disp.8.body.p21">On the provincial <strong>waste-to-energy project</strong>, members translated and circulated Indonesian reporting on comparable plants in East and Central Java that failed — offered as a caution against assuming a new facility solves this.</p>
+      </div>
+
+      <div>
+        <div class="callout open">
+          <span class="clab" data-i18n="disp.8.x.co6lab">Still open · dioxins and furans</span>
+          <p data-i18n-html="disp.8.x.co6p1">Asked early in the group and never answered, so let us answer it plainly: <strong>no, these monitors do not detect dioxins and furans.</strong> PM2.5 and VOC sensors do not speciate. Since burning plastic is the central concern and dioxins are among its most serious hazards, the honest position is that <strong>every network described in this document — including ours — measures a proxy, not the most toxic component of the smoke.</strong> Proper dioxin measurement requires laboratory sampling and is outside the reach of citizen sensing as it currently exists in Bali.</p>
+        </div>
+      </div>
+
+      <!-- § VI -->
+      <div id="s6" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.6"><span class="sub-kicker">§ VI</span>The escalation ladder: how to get burning stopped</h3>
+        <p data-i18n-html="disp.8.body.p22">The most valuable and least documented knowledge in the archive: hard-won social protocol. Get the order wrong and you damage the outcome.</p>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_seq">The sequence that reflects local norms</div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li31"><strong>1 · Neighbour to neighbour, first.</strong> Explained by a member with local knowledge: in Balinese villages the expectation is that neighbours try to resolve things together before escalating. Going over someone's head first damages the outcome.</li>
+          <li data-i18n-html="disp.8.body.li32"><strong>2 · Then the banjar / klian.</strong> Reported as effective — <em>"They have authority and respect, and people listen to them."</em> One member found the banjar responsive and supportive where direct appeals to individuals had been dismissed. Introduce yourself properly, build the relationship, then ask for help.</li>
+          <li data-i18n-html="disp.8.body.li33"><strong>3 · Then the environmental agency — the level-skip that worked.</strong> One of the most useful single data points here: a member reported an issue to their village head and <strong>nothing happened</strong>; they then went <strong>directly to the environmental agency, who arrived the next day and resolved it</strong> — and told the village head it should never have escalated that far. That case was noise, but the path is the transferable insight.</li>
+          <li data-i18n-html="disp.8.body.li34"><strong>4 · Local security (linmas)</strong> was tried and produced only a redirection. Least effective route reported.</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_rungs">Two rungs above that, which almost nobody was using</div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li35"><strong>DLH / DLHK at kabupaten level.</strong> The first rung with statutory power. Each regency has its own office and its own official <strong>dlh.&lt;regency&gt;kab.go.id</strong> site — find yours rather than relying on a forwarded contact.</li>
+          <li data-i18n-html="disp.8.body.li36"><strong>SP4N-LAPOR</strong> (<strong>lapor.go.id</strong>), the national complaints system. Can be filed <strong>anonymously</strong>, is trackable by ticket, and is also reachable by SMS and app. The anonymity is the point for anyone worried about visa exposure, or about being identified to their own neighbours.</li>
+        </ul>
+      </div>
+
+      <div style="grid-column:span 2">
+        <div class="callout">
+          <span class="clab" data-i18n="disp.8.x.co7lab">The finding that reframes the whole ladder</span>
+          <p data-i18n-html="disp.8.x.co7p1">Members who interviewed their neighbours, schools and desa officials <em>before</em> complaining all reported the same thing: <strong>people do not want to burn.</strong> Recyclable plastic and clean paper are still collected. <strong>Residual waste — dirty plastic, nappies, mixed household rubbish — has had no collection route since landfill acceptance changed.</strong> Banjars were often willing and responsive, and still could not help: no trucks, no budget, nowhere to take it.</p>
+          <p data-i18n-html="disp.8.x.co7p2">Enforcement without a disposal route just moves the fire. <strong>A complaint that asks only for enforcement is weaker than one that asks for a disposal pathway.</strong></p>
+        </div>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_complaint">A complaint structure worth reusing</div>
+        <p data-i18n-html="disp.8.body.p23">One member's submission to a regency DLH was circulated in the group. What made it strong, and worth copying:</p>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li37">It established the writer's standing briefly.</li>
+          <li data-i18n-html="disp.8.body.li38">It presented measurements <em>with method</em> — sensor location, days recorded, mean, share of days above the WHO 24-hour guideline, plus portable readings taken during active burning.</li>
+          <li data-i18n-html="disp.8.body.li39">It <strong>explained why people burn before complaining about it</strong>, having spoken to the school, banjar and desa first.</li>
+          <li data-i18n-html="disp.8.body.li40">It described facilities specifically, including observed operating hours.</li>
+          <li data-i18n-html="disp.8.body.li41">It made <strong>seven numbered asks</strong>, one of which was an inspection <em>while burning is occurring</em>.</li>
+          <li data-i18n-html="disp.8.body.li42">It stated explicitly that it was not blaming the desa or banjar.</li>
+          <li data-i18n-html="disp.8.body.li43">It requested confidentiality, plus three things back: acknowledgement, the name of the handling officer, and the next step.</li>
+        </ul>
+        <p data-i18n-html="disp.8.body.p24"><strong>Volume over eloquence.</strong> The group's working conclusion: many separate complaints, each with its own evidence and wording, carry more weight than one letter — or than many copies of the same screenshot. Several members filed individually on the same issue by agreement.</p>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_persuade">What actually persuaded people</div>
+        <div class="callout good">
+          <span class="clab" data-i18n="disp.8.x.co8lab">Tested · a documented success</span>
+          <p data-i18n-html="disp.8.x.co8p1">One member ended daily burning by an extended family of about twenty. They <strong>met the family in person</strong> rather than reporting them. They found the real constraint: no rubbish collection, years of backlog dumped in a back plot, and the banjar had never talked to them about composting. They treated it as a <strong>shared problem</strong>, proposing a composting system and framing the family as potentially <strong>the first in the village with a good system</strong>, with the klian invited to see it once working.</p>
+          <p data-i18n-html="disp.8.x.co8p2">The result the next day, in their words: <em>"First morning waking up without smoke."</em> Their own framing of why it is worth it for a single household — it creates <strong>a template to share with the rest of the village.</strong></p>
+        </div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li44"><strong>Show the live reading on your phone.</strong> Several members described the moment a neighbour sees the number turn red as the thing that lands. Abstract harm does not; a colour does.</li>
+          <li data-i18n-html="disp.8.body.li45"><strong>Lead with children's health.</strong> Consistently the most persuasive frame.</li>
+          <li data-i18n-html="disp.8.body.li46">A member produced <strong>a printed explainer</strong> for exactly this — health impacts for children, adults and elderly, then solutions. Community-made and reusable.</li>
+          <li data-i18n-html="disp.8.body.li47"><strong>What did not work:</strong> telling people it is bad with nothing to offer. One member described being met with smiles and blank stares, and feeling "useless".</li>
+        </ul>
+      </div>
+
+      <!-- § VII -->
+      <div id="s7" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.7"><span class="sub-kicker">§ VII</span>Fixing the source: waste-side solutions</h3>
+      </div>
+
+      <div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li48"><span class="badge tested">Tested</span> <strong>Home composting with compost bags — the most accessible win in this document.</strong> Around <strong>IDR 60k</strong> each, available online. Tested by at least three members, one for over two years. The technique repeatedly shared: <strong>interlace waste with layers of soil to prevent smell.</strong> Buy a little soil to start. One member noted animal bones go in a designated spot near the road, where local animals clear them immediately.</li>
+          <li data-i18n-html="disp.8.body.li49"><strong>Organic separation is the biggest single lever</strong> — roughly two-thirds of household waste. Members reported it working at every scale: household composting with an EM4-style bacterial starter (one member trialling an almost-free version to hand to neighbours), in-ground compost bins installed at a school once organic separation became a condition of landfill acceptance, named commercial services for garden, food and commercial-scale organic waste, and <strong>Bank Sampah depots</strong> as the low-cost route for institutions unwilling to pay for private collection. Black soldier fly and vermicomposting were raised as established and unglamorous.</li>
+          <li data-i18n-html="disp.8.body.li50"><strong>Batteries and household hazardous waste</strong> — asked, and answered: Badung has a <strong>B3 facility in Mengwitani</strong> receiving household hazardous waste including used batteries via the TPS3R and <em>bank sampah</em> network, forwarding to licensed processors. A concrete answer to a real disposal gap.</li>
+          <li data-i18n-html="disp.8.body.li51"><strong>School programmes work, and there is a local precedent.</strong> A member described a project in Bondalem, Buleleng: a small truck able to reach narrow lanes, teacher training, and two-hour Saturday sessions for children aged 8–12 on recycling, waste separation and growing plants in composted soil. Adopted and sustained. The strategic response it drew from another member: <strong>a short documentary in Bahasa would spread this faster and more cheaply than anything else.</strong></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="callout warn">
+          <span class="clab" data-i18n="disp.8.x.co9lab">Contested · centralised incineration</span>
+          <p data-i18n-html="disp.8.x.co9p1">The data does not settle this one. <strong>One position:</strong> a tonne burned in a well-designed high-temperature furnace produces far less incomplete-combustion pollution than the same tonne in thousands of roadside fires. <strong>The other:</strong> facilities operating below spec carry their own nanoparticle hazard, and members living near centralised facilities reported strong plastic odour and elevated readings during operating hours. Twelve incinerators in one regency were sealed by the Environment Ministry in February 2026 and reopened later in the year after emissions testing.</p>
+          <p data-i18n-html="disp.8.x.co9p2">But at least two members found their monitor nearest a centralised facility reading <em>lower</em> than a second monitor kilometres away, and concluded the cumulative effect of dispersed household and construction fires may dominate. <strong>Nobody in the group claimed the current network can attribute sources.</strong> Treat any confident claim about a specific facility — in either direction — as unproven.</p>
+        </div>
+        <div class="callout warn">
+          <span class="clab" data-i18n="disp.8.x.co10lab">Contested · home pyrolysis</span>
+          <p data-i18n-html="disp.8.x.co10p1">Proposed repeatedly as a way to convert plastic into fuel and wax, and qualified repeatedly. A claimed 98% emissions reduction was challenged as depending entirely on measurement conditions, and chlorinated plastics such as PVC release dioxins at incomplete-combustion temperatures. DIY pyrolysis also carries real fire and toxicity risk. Recorded here only as an idea in circulation — interesting, and <strong>not a validated household solution.</strong></p>
+        </div>
+      </div>
+
+      <div style="grid-column:span 2">
+        <div class="min-h" data-i18n="disp.8.x.h_gap">The gap nobody has a plan for</div>
+        <p data-i18n-html="disp.8.body.p25">Waste-to-energy capacity is under construction with central funding and is not expected to deliver until <strong>late 2027</strong>. That leaves roughly two years with no interim route for residual waste — which is the exact condition that produced the current burning. The most concrete near-term proposal from the group was a privately funded, subsidised collection-and-sorting service offered to villages as a full alternative. <strong>Provide the route first, then expect the burning to stop.</strong></p>
+      </div>
+
+      <!-- § VIII -->
+      <div id="s8" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.8"><span class="sub-kicker">§ VIII</span>Campaigning, and what survived argument</h3>
+        <p data-i18n-html="disp.8.body.p26">Many tactics were proposed over four months. These are the ones the group actually converged on.</p>
+      </div>
+
+      <div>
+        <ul class="pts">
+          <li data-i18n-html="disp.8.body.li52"><strong>An open letter signed by Balinese doctors, published by established Indonesian activist accounts.</strong> The strongest proposal of the period and the closest thing to consensus. The reasoning: fifty to a hundred local medical signatures give politicians something they can safely act on, and authorship decides whether the message is heard or rejected. Suggested routes were hospital departments, public and private, and medical associations.</li>
+          <li data-i18n-html="disp.8.body.li53"><strong>Social media outpaces formal process.</strong> Members with local experience argued that a visible, tagged post reaches decision-makers faster than a petition, because it gives a politician a reason to engage. Community pages with large followings beat individual accounts. Petitions were judged slow and, for foreigners, risky to organise.</li>
+          <li data-i18n-html="disp.8.body.li54"><strong>Make the number mean something.</strong> A general reader does not know whether 150 is bad. The same figure placed against other cities, or against the WHO guideline, makes the scale legible immediately. Members repeatedly found this the difference between a post that landed and one that did not.</li>
+          <li data-i18n-html="disp.8.body.li55"><strong>Petition method</strong>, from a member who had run a successful local petition: state the problem <em>with evidence</em>, identify who can act, and specify what you are asking for. Vague petitions fail.</li>
+          <li data-i18n-html="disp.8.body.li56"><strong>Other channels used:</strong> school parent networks (several reaching 200+ parents), posters with QR codes to live data in high-traffic areas, in-venue live displays in businesses, and a proposed billboard at a major Canggu junction — costed around IDR 20M/week and floated as a group crowdfund, with the consensus being to try social channels first and hold the billboard as escalation.</li>
+          <li data-i18n-html="disp.8.body.li57"><strong>The tourism and investment framing</strong> — cancellations, reviews, investor confidence — was reported as having real traction. Members were divided on whether leading with it is wise or merely effective.</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="callout warn">
+          <span class="clab" data-i18n="disp.8.x.co11lab">Foreign residents · take advice before organising</span>
+          <p data-i18n-html="disp.8.x.co11p1">Members disagreed on where the line sits; nobody disputed the risk. Organising petitions, fronting public campaigns or being named as an organiser may exceed KITAS/visa scope, and the political climate makes it sensitive. The consistent advice was to check with an immigration lawyer, use anonymous official channels where available, and <strong>let Indonesian residents lead and front anything public.</strong></p>
+          <p data-i18n-html="disp.8.x.co11p2">This is not only a legal calculation. Members judged that a campaign read as foreigner-driven would be dismissed on those grounds regardless of its evidence.</p>
+        </div>
+        <div class="callout">
+          <span class="clab" data-i18n="disp.8.x.co12lab">Third-party services are not available everywhere</span>
+          <p data-i18n-html="disp.8.x.co12p1">Some banjars prohibit external waste, recycling and compost companies in favour of their own paid collection — in one reported case with a mandatory monthly fee tied to the banjar's purchase of an incinerator. "Just use a private collector" is not a universal answer, and attempting it can create friction with the banjar whose cooperation you need. Rice-field burning was also reported as treated as a protected agricultural activity in at least one banjar; it is a different conversation from waste burning, and conflating the two weakens both.</p>
+        </div>
+      </div>
+
+      <div style="grid-column:span 2">
+        <div class="callout warn">
+          <span class="clab" data-i18n="disp.8.x.co13lab">The credibility discipline, learned in public</span>
+          <p data-i18n-html="disp.8.x.co13p1">A widely-shared graphic presented a single current reading as if it were a 24-hour island-wide average. It was corrected inside the group within the hour. If campaign material can be shown to overstate, the entire evidence base becomes contestable — and the numbers holding up is this campaign's only real asset. <strong>Label a peak as a peak, state when it was taken, and use consistent sensor sets for averages.</strong></p>
+        </div>
+        <p data-i18n-html="disp.8.body.p27">One further note the group kept returning to, and the reason this site exists in the form it does: <strong>a commercial Indonesian air-monitoring network shut down its sensors, reportedly over funding.</strong> A network that depends on one company's business model can vanish, taking the historical record with it. Every reading this site has ever collected stays on the <a href="/history">history page</a>, including from sensors that have since gone dark.</p>
+        <p data-i18n-html="disp.8.body.p28">Institutional threads in progress at the close of the period: an MOU with a Bali health organisation, and conversations about placing monitors in villages with Indonesian-language communication support. Members also shared a civic toolkit from a prior participatory noise-monitoring campaign in Barcelona as a structural template, and used satellite fire maps to place Bali's burning in a global context. A thread on <strong>drone-based fire-finding</strong> ran through the period — night burns are nearly impossible to locate from the ground — proposing either a thermal-imaging enterprise drone with a retrofitted PM2.5 sensor, or far cheaper, a consumer drone flying autonomous grids with images assembled into orthophoto maps using open-source tooling. The recurring insight underneath all of it: <strong>the communication layer has to be Indonesian-led to land.</strong></p>
+      </div>
+
+      <!-- § IX -->
+      <div id="s9" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.9"><span class="sub-kicker">§ IX</span>Where the community corrected itself</h3>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_plants">Houseplants do not solve CO₂</div>
+        <p data-i18n-html="disp.8.body.p29">A genuinely useful disagreement. One member cited a peer-reviewed paper suggesting two snake plants meaningfully reduced closed-room CO₂. Others pushed back with an order-of-magnitude argument: a sleeping human produces hundreds of litres of CO₂ daily; snake plants are CAM plants and do absorb some at night, but the amounts are trivial by comparison. The widely-circulated "6–8 snake plants can keep you alive in a sealed room" claim is a <strong>misquotation of old NASA research that has been explicitly debunked.</strong></p>
+        <p data-i18n-html="disp.8.body.p30"><span class="badge contested">Contested</span> Status: unresolved in-group, with the weight of argument favouring ventilation. A member offered to test it directly once they have a CO₂ sensor — the right response, and a small experiment this community could actually run and publish.</p>
+      </div>
+
+      <div>
+        <div class="min-h" data-i18n="disp.8.x.h_windows">"I close my windows when I burn"</div>
+        <p data-i18n-html="disp.8.body.p31">Recorded because it captures the core misconception this work is up against: several members met neighbours who genuinely believe that closing their own windows makes their burning harmless to everyone else.</p>
+      </div>
+
+      <!-- § X -->
+      <div id="s10" class="sec" style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.8.sub.10"><span class="sub-kicker">§ X</span>Open needs: where we are stuck</h3>
+        <p data-i18n-html="disp.8.body.p32">Unanswered questions with real demand behind them. Each is a candidate for a project, a partnership, or a workshop. If you can close one of these, it is worth more than another sensor in a well-covered area.</p>
+        <div class="data-tbl-wrap">
+          <table class="data-tbl">
+            <thead>
+              <tr>
+                <th data-i18n="disp.8.x.t2h1">Need</th>
+                <th data-i18n="disp.8.x.t2h2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-i18n="disp.8.x.t2r1a">A calibration reference for citizen sensors in Bali</td>
+                <td data-i18n="disp.8.x.t2r1b">Asked twice, no answer. Highest-leverage technical gap. Needs an institution with a reference instrument.</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t2r2a">Working waste collection in Tabanan / Tanah Lot / Seseh</td>
+                <td data-i18n="disp.8.x.t2r2b">Multiple requests, services full, no solution found. The structural blocker behind most burning.</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t2r3a">Dioxin and furan measurement</td>
+                <td data-i18n="disp.8.x.t2r3b">Beyond citizen sensing as it stands. Requires lab sampling. Until then, every network here measures a proxy.</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t2r4a">Monitoring at waste facilities and small incinerators</td>
+                <td data-i18n="disp.8.x.t2r4b">Raised with mapped locations; no monitors installed. A concrete deployment opportunity.</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t2r5a">An affordable heavy-activated-carbon purifier available in Indonesia</td>
+                <td data-i18n="disp.8.x.t2r5b">Identified as the right tool for smoke; import cost blocks it. Possible local-manufacture project.</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t2r6a">The neighbour explainer, properly published in Bahasa</td>
+                <td data-i18n="disp.8.x.t2r6b">Exists as a community artifact; deserves a permanent home rather than scrolling away in a chat.</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t2r7a">A Bahasa video documenting the Bondalem school programme</td>
+                <td data-i18n="disp.8.x.t2r7b">Explicitly requested in-group as the fastest way to spread a model that already worked.</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t2r8a">Whole-house filtered fresh-air intake, built and measured</td>
+                <td data-i18n="disp.8.x.t2r8b">Specified in detail; no completed installation reported.</td>
+              </tr>
+              <tr>
+                <td data-i18n="disp.8.x.t2r9a">Sensor coverage in under-covered areas</td>
+                <td data-i18n="disp.8.x.t2r9b">Sanur reported weeks of symptoms with almost no coverage to corroborate them; similar requests from Ubud and Gianyar. Where there is no sensor there is no evidence, and where there is no evidence a complaint is an anecdote.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- § XI — PARTNER -->
+      <div id="s11" class="sec partner">
+        <div class="plab" data-i18n="disp.8.x.plab">§ XI · The tooling behind this — a partner's work, described in their words</div>
+        <h3 data-i18n="disp.8.x.ph">Making Sense Bali</h3>
+        <p data-i18n-html="disp.8.x.pp1">The document this dispatch reproduces was compiled by <strong>Making Sense Bali</strong>, a community environmental sensing campaign run by Fab Lab Bali within the Fab City Bali chapter, methodologically descended from the EU Making Sense project and built on the Smart Citizen platform. It is a separate and independent effort from this one. The community findings above came first and stand on their own; what follows is theirs, condensed from the six "campaign tooling" sections of the original.</p>
+        <div class="partner-cols">
+          <div>
+            <p data-i18n-html="disp.8.x.pp2"><strong>Open hardware.</strong> A DIY sensor node in two tiers, designed to be built in a workshop by people with no electronics background. <strong>Basic</strong> (XIAO ESP32-S3 + BME680, ~USD 15–25) reads temperature, humidity, pressure and a gas/VOC indicator. <strong>Plus</strong> (adds a Seeed Grove HM3301, ~USD 35–60) adds PM1 / PM2.5 / PM10. Roughly 2–3 hours to build. Firmware, parametric enclosure, STLs, schematic and a BOM with Indonesian sourcing notes are all open.</p>
+            <p data-i18n-html="disp.8.x.pp3"><strong>Their own stated limits</strong>, which are worth repeating because they are unusually honest: this is <em>not</em> a cheaper replacement for an AirGradient or an official Smart Citizen Kit. Those are the calibrated, drift-compensated backbone. The DIY node buys <strong>spatial density per campaign rupiah</strong>, not accuracy. There is no noise sensor, no CO₂ sensor — the BME680's gas reading is a VOC indicator, not CO₂ — and PM sensor drift in tropical humidity is real. DIY-node readings are marked as such on their dashboard, at lower stated fidelity.</p>
+          </div>
+          <div>
+            <p data-i18n-html="disp.8.x.pp4"><strong>A reporting bot, for what a sensor cannot see.</strong> A sensor records that PM2.5 spiked at 06:40. It cannot record that it was a household burn two doors down, or what was on the fire. Residents send an observation — category, photo, location, rough time — via WhatsApp, Telegram or an anonymous web form, in English, Bahasa Indonesia or Spanish, and a human moderator reviews every report before publication.</p>
+            <p data-i18n-html="disp.8.x.pp5"><strong>Deliberately blunt publishing.</strong> Reports appear at desa/kelurahan level with day-only dates — never exact coordinates, never a time of day. This answers a concern raised inside this very community: that a map of precise, repeated burning locations becomes a public directory of which household is responsible, and would endanger reporters. Precise detail is retained privately and can be prepared as a dossier for a named recipient — a klian banjar, a regency office — on request.</p>
+            <p data-i18n-html="disp.8.x.pp6"><strong>Built to outlive its funding.</strong> Hardware open source, data published openly under CC BY 4.0 as static files, sensors federating to Smart Citizen and OpenAQ, and a Murmurations profile so the dataset stays discoverable independently of any platform. A direct response to the commercial network that switched itself off. Files and full documentation: <a href="https://github.com/Meaningful-Design-Group/makingsensebali" target="_blank" rel="noopener noreferrer">github.com/Meaningful-Design-Group/makingsensebali</a>.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLOSING -->
+      <div style="grid-column:span 2">
+        <div class="closing-note">
+          <p data-i18n-html="disp.8.close.p1"><b>If something here is wrong,</b> it should be corrected. Say so in the group, or open an issue on the source repository. This is a working document, not a finished one — and roughly a third of it is a list of things nobody has answered yet.</p>
+          <p data-i18n-html="disp.8.close.p2"><b>On health.</b> The symptom accounts here are community reports, not clinical evidence. Persistent cough, breathing difficulty or other ongoing respiratory symptoms warrant seeing a doctor. Nothing in this dispatch is medical advice.</p>
+          <p data-i18n-html="disp.8.close.p3"><b>On the products named.</b> Nothing here is a paid placement or an endorsement. Products appear because members bought them and reported back. Where a member has a commercial interest, it is stated.</p>
+          <p data-i18n-html="disp.8.close.p4"><b>Source and licence.</b> Adapted from <em>"What the community has learned"</em>, compiled by Making Sense Bali at Fab Lab Bali from this community's group, 6 May – 1 September 2026. The original is published under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>, and this adaptation is published under the same licence. Source document: <a href="https://github.com/Meaningful-Design-Group/makingsensebali/blob/main/docs/community-knowledge.md" target="_blank" rel="noopener noreferrer">community-knowledge.md</a>.</p>
+          <p class="signoff" data-i18n="disp.8.close.p5">— Bali Air Dispatch, 3 September 2026</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+<style>
+.disp-pager{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:38px 0 26px;border-top:3px double var(--rule);border-bottom:3px double var(--rule);padding:24px 0}
+@media(max-width:700px){.disp-pager{grid-template-columns:1fr}}
+.disp-pager-link{display:flex;flex-direction:column;gap:4px;padding:18px 22px;border:1px solid var(--rule);background:var(--paper);text-decoration:none;color:var(--ink);transition:background .15s,color .15s,transform .15s}
+.disp-pager-link:hover{background:var(--ink);color:var(--paper);transform:translateY(-2px)}
+.disp-pager-link.next{text-align:right}
+.disp-pager-link .lab{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--crimson)}
+.disp-pager-link:hover .lab{color:var(--paper)}
+.disp-pager-link .ttl{font-family:"Fraunces",serif;font-weight:700;font-variation-settings:"opsz" 96;font-size:18px;line-height:1.2;letter-spacing:-.005em}
+.disp-back{margin:18px 0 8px;text-align:center;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+.disp-back a{color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted var(--hairline);padding-bottom:1px}
+.disp-back a:hover{color:var(--crimson);border-color:var(--crimson)}
+</style>
+
+  <nav class="disp-pager wrap" aria-label="Dispatch navigation">
+    <a class="disp-pager-link prev" href="/dispatches/7"><span class="lab" data-i18n="disp.8.x.pPrev">← Previous</span><span class="ttl" data-i18n="disp.8.x.pPrevT">Dispatch VII</span></a>
+    <a class="disp-pager-link next" href="/articles"><span class="lab" data-i18n="disp.8.x.pAll">All dispatches →</span><span class="ttl" data-i18n="disp.8.x.pAllT">Back to the index</span></a>
+  </nav>
+  <div class="disp-back wrap"><a href="/articles" data-i18n="disp.8.x.index">Index of dispatches</a></div>
+
+
+  <!-- UNIVERSAL FOOTER · keep in sync across all pages -->
+  <footer class="foot">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.pages">Pages</h4>
+        <a href="/" data-i18n="nav.live">Live Monitor</a>
+        <a href="/brief" data-i18n="nav.brief">Evidence Brief</a>
+        <a href="/setup-monitor" data-i18n="nav.setup">Set up a Monitor</a>
+        <a href="/articles" data-i18n="nav.dispatches">Dispatches</a>
+        <a href="/history" data-i18n="nav.history">History</a>
+        <a href="/appendix" data-i18n="foot.appendix">Appendix &amp; Methodology</a>
+        <a href="/api" data-i18n="foot.api">The API</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.dispatches">Dispatches</h4>
+        <a href="/dispatches/1" data-i18n="foot.disp.1">I — The daily guideline, exceeded.</a>
+        <a href="/dispatches/2" data-i18n="foot.disp.2">II — One government sensor.</a>
+        <a href="/dispatches/3" data-i18n="foot.disp.3">III — Seven tons of river waste.</a>
+        <a href="/dispatches/4" data-i18n="foot.disp.4">IV — The long-term health effects.</a>
+        <a href="/dispatches/5" data-i18n="foot.disp.5">V — A practical mask guide.</a>
+        <a href="/dispatches/6" data-i18n="foot.disp.6">VI — The fix, in order of impact.</a>
+        <a href="/dispatches/7" data-i18n="foot.disp.7">VII — Ninety days of data.</a>
+        <a href="/dispatches/8" data-i18n="foot.disp.8">VIII — What the community worked out.</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-i18n="foot.h.contact">Contact</h4>
+        <span class="email" tabindex="0" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;color:var(--ink);user-select:all;-webkit-user-select:all;cursor:text;border-bottom:1px dotted var(--hairline);padding:1px 4px;display:inline-block">baliair@protonmail.com</span>
+        <a class="wa-btn" href="https://chat.whatsapp.com/EyttUDMLFSd8meFwtm2eHa?mode=gi_t" target="_blank" rel="noopener noreferrer" data-i18n="foot.community">Join the WhatsApp community</a>
+      </div>
+    <div class="foot-col">
+      <h4 data-i18n="foot.h.collab">Collaborators</h4>
+      <a href="https://www.fablabbali.com/" target="_blank" rel="noopener noreferrer">Fab Lab Bali</a>
+      <a href="https://koalisibaliemisinolbersih.org/" target="_blank" rel="noopener noreferrer" data-i18n="foot.collab.bnzc">Bali Net Zero Coalition</a>
+      <a href="https://castfoundation.id/" target="_blank" rel="noopener noreferrer">CAST Foundation</a>
+      <a href="https://www.meaningful-design.org/" target="_blank" rel="noopener noreferrer">Meaningful Design Group</a>
+    </div>
+    </div>
+    <div class="foot-strip" data-i18n="foot.strip">No trackers · No advertisements · No accounts · No cookies · Circulated anonymously</div>
+    <div class="foot-rights"><strong data-i18n="foot.rights.label">Rights.</strong><span data-i18n="foot.rights.body"> Public-interest research. Independent of any government or commercial entity. Redistribution encouraged with attribution to the underlying data sources.</span></div>
+    <div class="foot-sources"><strong data-i18n="foot.sources.label">Sources.</strong><span data-i18n="foot.sources.body"> AQICN · BPS · CREA 2024 · WHO 2021 · IQAir · Denpasar PUPR · Sungai Watch · CCAC CLOCC · KLHK ISPU · OpenAQ · GAIA · PurpleAir · Nafas · Airly · basemap © OpenStreetMap contributors (ODbL) · © OpenMapTiles · style © CARTO (CC BY 4.0) · wind © Open-Meteo</span></div>
+  </footer>
+
+</div>
+<script>
+// Dynamic WITA date for masthead folio + bulletin "when"
+(function(){
+  function update(){
+    const d = new Date();
+    const fmt = d.toLocaleDateString('en-GB',{
+      weekday:'long', day:'numeric', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    }).toUpperCase();
+    const el = document.getElementById('mt-date');
+    if (el) el.textContent = fmt;
+    const when = d.toLocaleDateString('en-GB',{
+      day:'2-digit', month:'long', year:'numeric',
+      timeZone:'Asia/Makassar'
+    });
+    const bw = document.getElementById('bul-when');
+    if (bw) bw.textContent = 'Last updated ' + when + ' WITA';
+  }
+  update();
+  setInterval(update, 60*1000);
+})();
+</script>
+<script src="/js/i18n.js" defer></script>
+</body>
+</html>
