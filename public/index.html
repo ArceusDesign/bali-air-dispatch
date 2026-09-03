@@ -236,9 +236,9 @@ body::before{
    dashed edge so it reads as "somewhere in this desa" rather than a surveyed
    point: upstream publishes desa centroids and asks integrators not to imply
    point precision. Sized by report count, coloured by the freshest report. */
-.report-area{border-radius:50%;border:1.5px dashed rgba(139,26,26,.5);cursor:pointer;transition:transform .15s,opacity .15s;position:relative;opacity:.34;mix-blend-mode:multiply}
-.report-area:hover{transform:scale(1.06);opacity:.5}
-.report-area.selected{opacity:.58;border-style:solid;border-color:var(--crimson);border-width:2px}
+.report-area{border-radius:50%;border:1.5px dashed rgba(139,26,26,.5);cursor:pointer;transition:transform .15s,opacity .15s;position:relative;opacity:.27;mix-blend-mode:multiply}
+.report-area:hover{transform:scale(1.06);opacity:.4}
+.report-area.selected{opacity:.46;border-style:solid;border-color:var(--crimson);border-width:2px}
 /* Count badge, pinned to the edge — NEVER centred. A bare digit in the middle
    of a circle on an air-quality map is indistinguishable from a µg/m³ reading;
    at the rim, attached to a dashed region, it reads as "how many reports". */
@@ -1267,9 +1267,14 @@ function renderReports(){
     // on an air-quality map a crisp numbered circle reads as a measurement, so
     // the region has to be unmistakably a region. sqrt keeps 18 reports bigger
     // than 2 without swallowing the island.
-    const size = Math.round(46 + Math.sqrt(group.length) * 13);
+    // Both terms scaled by 0.7 rather than just the base, so the reduction is a
+    // uniform ~30% at every count (1 report 59→41 px, 14 reports 95→66 px) and
+    // the sqrt spread that encodes recurrence is preserved, not flattened.
+    const size = Math.round(32 + Math.sqrt(group.length) * 9);
     const color = reportColor(head.age_days * 24);  // area takes the FRESHEST report's age
-    const glow = fresh ? '0 0 18px 6px rgba(139,26,26,.22)' : 'none';
+    // Scaled with the disc — an unchanged 18px halo around a 30% smaller mark
+    // reads as a blur rather than an ember.
+    const glow = fresh ? '0 0 13px 4px rgba(139,26,26,.22)' : 'none';
     // Count sits in a corner badge, never centred in the disc — a bare digit in
     // the middle of a circle on this map is indistinguishable from a µg/m³
     // reading. The badge reads as metadata attached to a region.
