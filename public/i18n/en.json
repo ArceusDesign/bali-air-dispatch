@@ -897,5 +897,7 @@
   "panel.lastArchived": "last archived reading",
   "roll.uncorrected": "· raw",
   "roll.uncorrectedTip": "Relayed by OpenAQ as supplied — not humidity-corrected, so it reads high in Bali’s humidity. Shown only because no direct feed exists here.",
-  "panel.uncorrected": "· raw, not corrected"
+  "panel.uncorrected": "· raw, not corrected",
+  "nav.report": "Submit a burn report",
+  "foot.report": "Submit a burn report"
 }

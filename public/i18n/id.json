@@ -1509,5 +1509,7 @@
   "panel.lastArchived": "pembacaan terarsip terakhir",
   "roll.uncorrected": "· mentah",
   "roll.uncorrectedTip": "Direlai oleh OpenAQ apa adanya — tanpa koreksi kelembapan, sehingga terbaca tinggi dalam kelembapan Bali. Ditampilkan hanya karena tidak ada umpan langsung di sini.",
-  "panel.uncorrected": "· mentah, tanpa koreksi"
+  "panel.uncorrected": "· mentah, tanpa koreksi",
+  "nav.report": "Laporkan pembakaran",
+  "foot.report": "Laporkan pembakaran"
 }
