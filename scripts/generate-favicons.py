@@ -3,8 +3,8 @@
 # Favicon build script.
 #
 # Source artwork lives OUTSIDE this repo (the operator's own working directory,
-# not committed — see the SOURCE path below, which will not exist on another
-# machine; point it at the master logo PNG to regenerate). This script produces
+# not committed). Pass its path via the FAVICON_SOURCE environment variable to
+# regenerate. This script produces
 # two distinct outputs from that one source, per owner decision 28 Aug 2026:
 #
 #   TAB ICONS (favicon.ico, favicon-16x16.png, favicon-32x32.png)
@@ -23,10 +23,16 @@
 #
 # Re-run this whenever the source artwork changes. Requires Pillow + numpy.
 # ─────────────────────────────────────────────────────────────────────────────
+import os
+import sys
+
 import numpy as np
 from PIL import Image, ImageDraw
 
-SOURCE = '/Users/derek/Claude/Claude Code/RNDM/BaliAir/BaliAirFavicon.png'
+# Path to the master logo PNG. Lives outside the repo and differs per machine,
+# so it is taken from the environment rather than hardcoded:
+#   FAVICON_SOURCE=/path/to/BaliAirFavicon.png python3 scripts/generate-favicons.py
+SOURCE = os.environ.get('FAVICON_SOURCE')
 OUT = 'public'
 
 BG = (244, 237, 219, 255)          # the logo's own cream
@@ -79,6 +85,8 @@ def make_tab_icons(src):
 
 
 if __name__ == '__main__':
+    if not SOURCE or not os.path.isfile(SOURCE):
+        sys.exit('set FAVICON_SOURCE to the master logo PNG (see header comment)')
     src = Image.open(SOURCE).convert('RGBA')
     make_tab_icons(src)
     make_home_screen_icons(src)
