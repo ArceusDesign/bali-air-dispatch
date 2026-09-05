@@ -1,0 +1,3 @@
+# Every change needs a review from a code owner before it can merge to main.
+# Branch protection on main enforces this; see CONTRIBUTING.md.
+*   @ArceusDesign
