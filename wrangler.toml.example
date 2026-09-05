@@ -1,0 +1,32 @@
+#:schema node_modules/wrangler/config-schema.json
+# Cloudflare Pages project config — baliair.pages.dev
+#
+# This file declares the D1 binding for the Pages Functions in /functions.
+# The deploy command remains `wrangler pages deploy public` (unchanged).
+# D1 binding is also configurable via the dashboard; this file just keeps
+# it in-repo for reproducibility.
+#
+# NOTE: Cloudflare Pages projects are configured primarily via the dashboard
+# for name/account/branch settings. Only bindings need to live here for
+# local `wrangler pages dev` to work.
+
+name = "baliair"
+pages_build_output_dir = "public"
+compatibility_date = "2025-01-01"
+
+# D1 database — historical Nafas archive (shared with workers/nafas-archive)
+[[d1_databases]]
+binding = "ARCHIVE_DB"
+database_name = "bali-air-archive"
+database_id = "<your-d1-database-id>"
+
+# R2 — the self-hosted basemap tileset served by functions/tiles/[[path]].js.
+# Holds our own OSM-derived raster tiles (Voyager style) for the Bali bbox at
+# z9-16, base + @2x. Replaced CARTO on 27 Aug 2026 after they ended keyless
+# access AND forbade server-side proxying; see the header of that file.
+[[r2_buckets]]
+binding = "TILES"
+bucket_name = "baliair-tiles"
+
+# Pages Functions do NOT run cron (that's what workers/nafas-archive is for).
+# Keep this Pages project lean: serve HTML + /api/live + /api/wind + /api/history.

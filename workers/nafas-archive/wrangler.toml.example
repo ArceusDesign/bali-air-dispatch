@@ -1,0 +1,45 @@
+#:schema node_modules/wrangler/config-schema.json
+# Cloudflare Worker — scheduled Nafas archive.
+# Deploy separately from the Pages project:
+#   cd workers/nafas-archive
+#   wrangler deploy
+#
+# After deploy, bind a manual-trigger secret:
+#   wrangler secret put CRON_SECRET
+# Then you can kick off a backfill from your laptop with:
+#   curl -H "X-Secret: $SECRET" https://nafas-archive.<subdomain>.workers.dev/run
+
+name = "nafas-archive"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Cron: every 15 minutes. Matches Nafas's own ~15 min refresh.
+# (If you'd rather poll less, switch to "*/30 * * * *" or "0 * * * *".)
+[triggers]
+crons = ["*/15 * * * *"]
+
+# D1 binding — same database as the Pages function.
+# Replace `database_id` with the real ID after `wrangler d1 create bali-air-archive`.
+[[d1_databases]]
+binding = "ARCHIVE_DB"
+database_name = "bali-air-archive"
+database_id = "<your-d1-database-id>"
+
+# Service binding → iqair-scrape worker. Used by the IQAir-scrape watchdog so the
+# call routes DIRECTLY to that worker via the runtime (no DNS, no public edge).
+# This replaces the old `fetch('https://iqair-scrape.<sub>.workers.dev/watchdog')`
+# call, which returned HTTP 404 from inside a Worker: a same-account Worker-to-
+# Worker subrequest over the public workers.dev hostname is intercepted by the
+# edge and never reaches the target (external curl to the same URL returns 403 —
+# the route's own gated response — proving the route is live; only the in-Worker
+# path 404'd). A service binding is the canonical, reliable fix and keeps the
+# call entirely inside Cloudflare's network (no public exposure → more anonymous).
+[[services]]
+binding = "IQAIR_SCRAPE"
+service = "iqair-scrape"
+
+# Keep the worker anonymous — no observability that logs request bodies,
+# no tail subscribers. If you enable observability later, disable sampling
+# and keep logs out of any third-party sink.
+[observability]
+enabled = false
