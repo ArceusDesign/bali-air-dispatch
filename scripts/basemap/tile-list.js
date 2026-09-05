@@ -1,5 +1,5 @@
 // Ported verbatim (same constants/formulas) from
-// bali-air-quality/functions/tiles/[[path]].js so the pre-rendered tileset
+// functions/tiles/[[path]].js so the pre-rendered tileset
 // exactly matches what the Worker will ever be asked to serve.
 const MIN_Z = 9;
 const MAX_Z = 16;

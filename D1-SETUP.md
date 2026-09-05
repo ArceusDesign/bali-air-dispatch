@@ -20,7 +20,7 @@ All Cloudflare-side. No third-party accounts.
 ## 1. Create the D1 database
 
 ```bash
-cd "/Users/derek/Claude/Claude Code/RNDM/bali-air-quality"
+cd /path/to/bali-air-dispatch      # the repository root
 wrangler d1 create bali-air-archive
 ```
 
@@ -114,7 +114,7 @@ From here the cron takes over — a new snapshot per station every 15 min.
 `wrangler.toml` at the project root now declares the D1 binding for Pages. Pages picks up bindings at deploy time, so:
 
 ```bash
-cd "/Users/derek/Claude/Claude Code/RNDM/bali-air-quality"
+cd /path/to/bali-air-dispatch      # the repository root
 wrangler pages deploy public
 ```
 
