@@ -7,7 +7,21 @@
 # kept README/CONTRIBUTING/SECURITY out of the repo too; see commit history.
 HISTORY-PLAN.md
 SENSOR-OUTREACH.md
-# Word lock files (~$name.docx) appear whenever the methodology doc is open.
+# Documents are never committed here. The methodology reference lives in the
+# repo as DATA-METHODOLOGY.md; working documents (Word, Pages, slides) stay
+# local and are published, if at all, through their own channels. The .docx
+# build of the methodology was tracked until 2026-09-04 and has been purged
+# from history — do not re-add it or any other document artefact.
+*.docx
+*.doc
+*.odt
+*.rtf
+*.pptx
+*.ppt
+*.pages
+*.numbers
+*.key
+# Word/Office lock files (~$name.docx) appear whenever a document is open.
 ~$*
 node_modules/
 .vercel/
