@@ -3,7 +3,12 @@
 *.xlsx
 *.png
 *.pdf
-*.md
+# Internal working notes only. The blanket `*.md` rule that used to live here
+# kept README/CONTRIBUTING/SECURITY out of the repo too; see commit history.
+HISTORY-PLAN.md
+SENSOR-OUTREACH.md
+# Word lock files (~$name.docx) appear whenever the methodology doc is open.
+~$*
 node_modules/
 .vercel/
 .vercel
@@ -21,3 +26,6 @@ wrangler.local.toml
 !public/apple-touch-icon.png
 !public/icon-192.png
 !public/icon-512.png
+__pycache__/
+previews/README.md
+previews/SECURITY-REVIEW.md
