@@ -30,6 +30,9 @@ says how it was arrived at and what it does not claim.
   monitor in East Bali.
 - **Burning-reports layer** from the Making Sense Bali community mapping
   project.
+- **Satellite hotspots** from NASA FIRMS — thermal detections of active fires,
+  independent of the PM2.5 networks. Detects landfill and agricultural fires;
+  does not detect household burning (see methodology §3.2).
 - **Self-hosted basemap** rendered from OpenStreetMap and served from R2, so a
   page load makes no third-party requests.
 
@@ -45,6 +48,7 @@ says how it was arrived at and what it does not claim.
 | IQAir | API key for the AirVisual API; a separate optional worker renders public IQAir station pages that are not on any API |
 | Smart Citizen | Public API (no key) |
 | Community | Pushed to `POST /api/ingest` by the sensor owner |
+| NASA FIRMS | Free `MAP_KEY`; **not a PM2.5 network** — satellite thermal detections of active fires, served separately at `/api/hotspots` |
 
 Every reading originates from one of these networks and remains subject to
 that network's terms. The humidity correction is the US EPA / Barkjohn formula
@@ -61,6 +65,7 @@ functions/              Pages Functions — the API layer
   api/v1/[[path]].js      public read-only API (JSON/CSV)
   api/ingest.js           community sensor POST endpoint
   api/reports.js          burning-reports layer
+  api/hotspots.js         NASA FIRMS satellite fire detections, edge-cached
   tiles/[[path]].js       basemap tiles from R2
   _middleware.js          canonical-domain redirect (never for /api/*)
 workers/

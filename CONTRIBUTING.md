@@ -58,6 +58,7 @@ git-ignored by Wrangler convention).
 | | `IQAIR_API_KEY` | IQAir AirVisual API |
 | | `AIRLY_API_KEY` | Airly |
 | | `LIVE_FRESH_TOKEN` | gates `/api/live?fresh=1`, the archive worker's cache-bypassing full fan-out. Unset = ungated, which is what a local run or a fork wants; set it in production and give the archive worker the same value |
+| | `FIRMS_MAP_KEY` | NASA FIRMS satellite hotspots (`/api/hotspots`); free, self-serve |
 | `workers/nafas-archive` | `LIVE_ORIGIN` | origin of `/api/live` to archive from (defaults sensibly) |
 | | `LIVE_FRESH_TOKEN` | must match the Pages value above, or the worker's fetch comes back as a fast-path payload and the tick is skipped |
 | | `CRON_SECRET` | gates the manual `/run` trigger |
