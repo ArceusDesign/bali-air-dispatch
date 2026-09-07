@@ -64,6 +64,33 @@ As of this writing there is one such station: `cs-amed-01` ("Amed (north)"), a W
 
 For privacy, the contributor is not named in this document; the project's practice throughout is that operators and contributors are not identified.
 
+### 3.2 A categorically different observation: satellite fire detections
+
+Everything above measures **particulate matter** — the smoke. NASA FIRMS measures something else entirely: the **thermal signature of an active fire**, observed from orbit. It is included here because it speaks directly to the limitation in §9.2 — that a PM2.5 sensor cannot attribute a reading to a source — without resolving it.
+
+| | |
+|---|---|
+| **Source** | NASA FIRMS (Fire Information for Resource Management System), LANCE/ESDIS |
+| **Instrument** | VIIRS aboard Suomi-NPP, NOAA-20 and NOAA-21 |
+| **Resolution** | **375 m** |
+| **Access** | Area API, free `MAP_KEY`, CSV |
+| **Latency** | ~60 minutes (near-real-time product) |
+| **Served at** | `/api/hotspots`, not `/api/live` — it is not a station and carries no PM2.5 value |
+| **Cadence** | Edge-cached 15 minutes; a 2-day trailing window |
+
+MODIS is deliberately **not** ingested. At 1 km it is coarser than the fires this project cares about, and it would add duplicate detections of the large fires without revealing any of the small ones.
+
+**Multi-satellite de-duplication.** The three VIIRS platforms frequently observe the same fire. Detections within ~500 m and 30 minutes of one another are collapsed to one, keeping the observation with the highest fire radiative power. 500 m is a little over one VIIRS pixel — wide enough to merge genuine double-observations, narrow enough not to merge two neighbouring fires.
+
+**What this source can and cannot support.** It is good evidence that a fire *was* present at a place and time. It is very weak evidence that one was *not*, for four separate reasons:
+
+1. **Detection floor.** At 375 m, VIIRS reliably detects landfill and agricultural fires — a TPA Suwung fire shows clearly. It does **not** detect household backyard burning, which is small, brief and often under tree cover. **A quiet hotspot map on a high-PM2.5 day means the burns were small, not that nobody was burning.** Any interface presenting this layer has to say so, or it will be read backwards — as exoneration rather than as a resolution limit.
+2. **Overpass gaps.** These are polar orbiters, not geostationary satellites. A fire that begins and ends between overpasses is never observed at all.
+3. **Cloud.** Thermal detection is degraded or blocked by cloud cover, which in Bali is neither rare nor evenly distributed through the year.
+4. **Not specific to waste.** A detection is a hot object. Cooking fires, cremation ceremonies, land clearing and industrial heat all qualify.
+
+The endpoint distinguishes an **empty sky** from an **unavailable source**: if every satellite request fails, or no key is configured, it returns `available: false` with an empty array rather than an empty result that would read as zero fires. This is the honest-gap rule of §8 applied to a non-particulate source.
+
 ---
 
 ## 4. Collection schedule
@@ -270,7 +297,7 @@ Stated plainly, because a reference document that omits them is not usable for p
 
 1. **We cannot measure dioxins or furans.** PM2.5 and VOC sensors do not speciate. Where burning plastic is the concern, dioxins are among the most serious hazards, and **every network in this document — including ours — measures a proxy, not the most toxic component of the smoke.** Proper dioxin measurement requires laboratory sampling.
 
-2. **We cannot attribute a reading to a source.** A PM2.5 sensor weighs smoke; it cannot chemically distinguish burning plastic from burning agricultural residue from vehicle exhaust. Consistent daily timing patterns across many stations are suggestive of a shared cause; they are not proof of one. Any confident claim about a *specific* facility — in either direction — is unproven by this data.
+2. **We cannot attribute a reading to a source.** A PM2.5 sensor weighs smoke; it cannot chemically distinguish burning plastic from burning agricultural residue from vehicle exhaust. Consistent daily timing patterns across many stations are suggestive of a shared cause; they are not proof of one. Any confident claim about a *specific* facility — in either direction — is unproven by this data. The FIRMS hotspot layer (§3.2) is a partial and asymmetric help here: it can corroborate that a *large* fire was burning nearby, but its 375 m detection floor means it cannot see household burning at all, so it can never be used to argue that a source was absent.
 
 3. **There is no calibration reference available in Bali.** We know of no facility where a citizen-operated monitor can be checked against a reference-grade instrument at both high and low concentrations. Until one exists, every low-cost sensor's error — including whether it is a constant offset or a scaling factor — is an estimate. **This is the single highest-leverage gap in the record, and it needs an institution with a reference instrument to close it.**
 
