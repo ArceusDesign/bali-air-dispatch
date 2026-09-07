@@ -36,8 +36,6 @@
      here before the tags were replaced. -->
 <link rel="stylesheet" href="/vendor/leaflet.css"/>
 <script src="/vendor/leaflet.js"></script>
-<script src="/vendor/chart.umd.min.js"></script>
-<script src="/vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
 
 <style>
 :root{
@@ -246,7 +244,9 @@ body::before{
 
 /* ===== FLOATING MAP CARDS ===== */
 .map-card{position:absolute;z-index:500;background:var(--paper);border:1px solid var(--rule);box-shadow:0 2px 0 var(--paper-3),0 3px 0 var(--rule)}
-.map-card h5{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);padding:8px 12px 6px;border-bottom:1px solid var(--hairline);font-weight:600}
+/* Was `.map-card h5`. The header is a <button> now (keyboard-operable
+   disclosure control), so the selector follows the class, not the tag. */
+.map-card .card-h{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);padding:8px 12px 6px;border:0;border-bottom:1px solid var(--hairline);font-weight:600;background:var(--paper);width:100%;text-align:left;appearance:none;-webkit-appearance:none}
 
 /* (HUD card removed — the Live/Offline/Worst counts now live in .tb-stats
    in the map topbar, and the search field it once held is long gone.) */
@@ -254,7 +254,9 @@ body::before{
 /* Layer toggles top-right — offset for overlay topbar. Narrow, because the
    card ships collapsed and only ever has to fit its own header. */
 .layers{top:94px;right:18px;min-width:120px}
-.layer-row{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--hairline);transition:background .12s}
+/* Buttons, not divs — see the markup note. width/appearance/border resets are
+   what a <button> needs to keep looking like the row it replaced. */
+.layer-row{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);border:0;border-bottom:1px solid var(--hairline);transition:background .12s;background:var(--paper);width:100%;text-align:left;appearance:none;-webkit-appearance:none}
 .layer-row:last-child{border-bottom:none}
 .layer-row:hover{background:var(--dust)}
 .layer-row .icn{width:14px;height:14px;color:var(--ink-faint);flex-shrink:0}
@@ -555,6 +557,18 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   padding:10px 16px;text-align:center;max-width:78%;
 }
 .map-gesture-hint.on{visibility:visible;opacity:1}
+
+/* KEYBOARD FOCUS. The page had no focus style at all, so every control in the
+   map chrome was operable-but-invisible to anyone tabbing through it. Uses
+   :focus-visible, so it appears for keyboard and assistive-tech focus and not
+   on a mouse click. Crimson to match the rest of the furniture; outline rather
+   than border so nothing reflows when it appears. */
+#map-leaflet:focus-visible,
+.map-card .card-h:focus-visible,
+.layer-row:focus-visible,
+.legend-more:focus-visible,
+.zoom-btn:focus-visible,
+.side-close:focus-visible{outline:2px solid var(--crimson);outline-offset:-2px}
 @media(prefers-reduced-motion:reduce){.map-gesture-hint{transition:none}}
 @media(max-width:720px){.map-gesture-hint{font-size:10px;padding:9px 13px}}
 
@@ -667,7 +681,10 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       <div class="tb-center" data-i18n-html="home.hero">A bird&rsquo;s-eye of <em>Bali&rsquo;s air</em>.</div>
       <div class="tb-right" id="heroWx">Wind <b>—</b> m/s · <b>—</b></div>
     </div>
-    <div id="map-leaflet"></div>
+    <!-- Leaflet puts tabindex="0" on this container itself (keyboard:true), so
+         it is a real tab stop with arrow-key panning — it just had no name to
+         announce when focused. -->
+    <div id="map-leaflet" aria-label="Map of PM2.5 monitoring stations across Bali" data-i18n-attr="aria-label:home.x.mapLabel"></div>
     <!-- Gesture hint. Empty and invisible until a scroll or a one-finger swipe
          over the map needs explaining; role=status so a screen reader hears it
          once instead of being interrupted. Text is written by
@@ -710,24 +727,28 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
 
     <!-- Layers · ships collapsed on every breakpoint -->
     <div class="map-card layers collapsed">
-      <h5 class="card-h" onclick="toggleCard(this)" data-i18n-html="home.x.layersTitle">Layers <span class="cap">▾</span></h5>
-      <div class="card-body">
-      <div class="layer-row on" id="lr-live" onclick="toggleLayer('live')">
-        <svg class="icn" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
-        <span class="lbl" data-i18n="home.layer.live">Live</span><span class="swch"></span>
-      </div>
-      <div class="layer-row on" id="lr-off" onclick="toggleLayer('off')">
-        <svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"><circle cx="12" cy="12" r="6"/></svg>
-        <span class="lbl" data-i18n="home.layer.offline">Offline</span><span class="swch"></span>
-      </div>
-      <div class="layer-row on" id="lr-wind" onclick="toggleLayer('wind')">
-        <svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h14a3 3 0 1 1-3 3"/><path d="M3 16h8"/></svg>
-        <span class="lbl" data-i18n="home.layer.wind">Wind</span><span class="swch"></span>
-      </div>
-      <div class="layer-row on" id="lr-reports" onclick="toggleLayer('reports')">
-        <svg class="icn" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
-        <span class="lbl" data-i18n="home.layer.reports">Reports</span><span class="swch"></span>
-      </div>
+      <!-- A button, not an <h5 onclick>: this is a disclosure control, not a
+           document heading, and as a heading it was unreachable by keyboard
+           and announced no state. aria-expanded starts false because the card
+           ships .collapsed. -->
+      <button type="button" class="card-h" aria-expanded="false" aria-controls="layersBody" onclick="toggleCard(this)" data-i18n-html="home.x.layersTitle">Layers <span class="cap" aria-hidden="true">▾</span></button>
+      <div class="card-body" id="layersBody">
+      <button type="button" class="layer-row on" id="lr-live" aria-pressed="true" onclick="toggleLayer('live')">
+        <svg class="icn" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+        <span class="lbl" data-i18n="home.layer.live">Live</span><span class="swch" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="layer-row on" id="lr-off" aria-pressed="true" onclick="toggleLayer('off')">
+        <svg class="icn" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"><circle cx="12" cy="12" r="6"/></svg>
+        <span class="lbl" data-i18n="home.layer.offline">Offline</span><span class="swch" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="layer-row on" id="lr-wind" aria-pressed="true" onclick="toggleLayer('wind')">
+        <svg class="icn" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10a3 3 0 1 0-3-3"/><path d="M3 12h14a3 3 0 1 1-3 3"/><path d="M3 16h8"/></svg>
+        <span class="lbl" data-i18n="home.layer.wind">Wind</span><span class="swch" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="layer-row on" id="lr-reports" aria-pressed="true" onclick="toggleLayer('reports')">
+        <svg class="icn" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+        <span class="lbl" data-i18n="home.layer.reports">Reports</span><span class="swch" aria-hidden="true"></span>
+      </button>
       </div><!-- /card-body -->
     </div>
 
@@ -1131,6 +1152,44 @@ const API_BASE = (location.hostname==='localhost' || location.hostname==='127.0.
 const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c => (
   { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
 ));
+// Chart.js — LOADED ON FIRST USE, not in <head>.
+//
+// The library plus the date-fns time adapter it needs is ~255 KB, and nothing
+// on this page draws a chart until either the reader opens a station panel or
+// the Archive section's own /api/history fetches come back. Both are well past
+// first paint. In <head> those two tags were therefore 255 KB of
+// parser-blocking JavaScript standing between a visitor and the map — on the
+// page this project most wants to be readable on a Bali mobile connection.
+//
+// Same-origin /vendor/ paths, so script-src 'self' in public/_headers still
+// covers them exactly as it covered the static tags, and no CDN enters the
+// request path (the reason those files are vendored at all — see the long note
+// in _headers).
+//
+// Chained rather than fired together: the adapter patches the library and must
+// execute after it. Resolves to a BOOLEAN instead of rejecting, because a chart
+// that cannot load must still leave the panel's readings, timeline and text on
+// screen — that is most of what the panel is. On failure the memo is cleared so
+// the next panel open retries, which is the right behaviour for a dropped
+// connection.
+let chartJsReady = null;
+function ensureChartJs(){
+  if (window.Chart) return Promise.resolve(true);
+  if (chartJsReady) return chartJsReady;
+  const load = (src) => new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = src;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error('failed to load ' + src));
+    document.head.appendChild(el);
+  });
+  chartJsReady = load('/vendor/chart.umd.min.js')
+    .then(() => load('/vendor/chartjs-adapter-date-fns.bundle.min.js'))
+    .then(() => true)
+    .catch((e) => { console.error(e); chartJsReady = null; return false; });
+  return chartJsReady;
+}
+
 // Monitors we believe are INDOOR (consistently far below nearby outdoor sensors).
 // Rendered gray + faint on the map (never AQI/green colour-coded), flagged in the
 // popup, and grouped/tagged separately in History. Matched by stable id.
@@ -1828,6 +1887,12 @@ async function renderArchive(){
     .sort((a,b) => (+b.pm25) - (+a.pm25))
     .slice(0, 3);
 
+  // Start the chart library alongside the history fetches below rather than
+  // after them. Both are network-bound and independent, so the sparklines
+  // arrive no later than they did when the library was loaded in <head> — the
+  // 255 KB has simply moved off the critical path to the map.
+  const chartReady = ensureChartJs();
+
   // For each, fetch 30d history from D1 — works for all archived sources.
   // Nafas: use legacy ?uuid= path (richer nafas_daily series).
   // All others (AQICN, Airly, IQAir, OpenAQ, PurpleAir): universal ?id= path
@@ -1861,6 +1926,8 @@ async function renderArchive(){
   }));
 
   const T = (k,f) => (window.I18N && window.I18N.t) ? window.I18N.t(k,f) : f;
+  // Cards render either way; only the sparkline needs the library.
+  const haveChart = await chartReady;
   cards.forEach(({stn, daily}, idx) => {
     const mean = daily.length ? daily.reduce((a,b)=>a+b[1],0)/daily.length : null;
     const peak = daily.length ? Math.max(...daily.map(d=>d[1])) : null;
@@ -1885,7 +1952,7 @@ async function renderArchive(){
       <div class="arc-act" data-sid="${esc(stn.id)}">${T('worst.openRecord','Open the record →')}</div>
     `;
     grid.appendChild(el);
-    if (daily.length) drawSparkline('spark-'+cardId, daily);
+    if (daily.length && haveChart) drawSparkline('spark-'+cardId, daily);
     el.addEventListener('click',(e)=>{
       e.stopPropagation();
       openPanel(stn.id);
@@ -2134,6 +2201,8 @@ async function loadAndDrawLiveChart(s){
   if (!cv) return;
   const showFallback = (msg) => { if (fb) { fb.textContent = msg; fb.style.display='flex'; } };
   showFallback('Loading recent readings…');
+  // In parallel with the history fetch below — see ensureChartJs.
+  const chartReady = ensureChartJs();
 
   let url, kind;
   if (s.id && s.id.startsWith('nafas-')) {
@@ -2220,6 +2289,9 @@ async function loadAndDrawLiveChart(s){
     }
   };
 
+  // Every number above is already on screen; only the trace needs the library.
+  if (!(await chartReady)) { showFallback('Chart unavailable right now. Check back shortly.'); return; }
+
   // Destroy any prior chart attached to this canvas
   if (cv._liveChart) { try { cv._liveChart.destroy(); } catch(_) {} }
 
@@ -2261,7 +2333,7 @@ async function loadAndDrawLiveChart(s){
   });
 }
 
-function drawPanelChart(s){
+async function drawPanelChart(s){
   if(!s.daily) return;
   // Timeline (data vs. silence bar)
   const today = new Date();
@@ -2346,6 +2418,9 @@ function drawPanelChart(s){
       }
     }
   };
+  // Awaited here, not at the top: the timeline bar and its dates above are
+  // plain DOM and must survive a failed or slow library load.
+  if (!(await ensureChartJs())) return;
   new Chart(canvas,{
     type:'line',
     data:{ datasets:[{
@@ -2415,6 +2490,9 @@ function toggleLayer(kind){
   const row = document.getElementById('lr-'+kind);
   const on = !row.classList.contains('on');
   row.classList.toggle('on', on);
+  // The switch graphic is a CSS ::after on an aria-hidden span, so aria-pressed
+  // is the ONLY thing that tells a screen reader whether the layer is showing.
+  row.setAttribute('aria-pressed', on ? 'true' : 'false');
   // Wind is a canvas animation, not a Leaflet layer group.
   if(kind==='wind'){ if(on) startWind(); else stopWind(); return; }
   applyLayerVisibility();
@@ -2641,7 +2719,10 @@ table.roll th.c, table.roll td.c{text-align:center}
   //    this only handles the click.
   window.toggleCard = function(headerEl){
     const card = headerEl.closest('.map-card');
-    if (card) card.classList.toggle('collapsed');
+    if (!card) return;
+    const collapsed = card.classList.toggle('collapsed');
+    // The ▾ cap is decoration (aria-hidden); aria-expanded is the state.
+    headerEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
   };
 
   // The main script declares `const map = L.map(...)`. A top-level const is a
