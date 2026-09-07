@@ -146,7 +146,7 @@ function buildDailyStmt(db) {
 // ── Universal snapshot helpers (Edition III) ───────────────────────────
 // Snapshot every station from /api/live into the universal tables, in
 // addition to the Nafas-specific deep dive (hourly/daily aggregates).
-async function fetchUnifiedLive(originBase) {
+async function fetchUnifiedLive(originBase, freshToken) {
   // CF-to-CF fetch — calls our own /api/live aggregator from the worker.
   // originBase is set via env.LIVE_ORIGIN (defaults to baliair.pages.dev).
   //
@@ -180,7 +180,16 @@ async function fetchUnifiedLive(originBase) {
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
       const r = await fetch(base + '/api/live?fresh=1&_cb=' + Date.now() + '-' + attempt, {
-        headers: { Accept:'application/json' },
+        // X-Fresh-Token is what authorises ?fresh=1 (see freshAllowed in
+        // functions/api/live.js). Sent only when configured: the aggregator
+        // defaults open with no secret set, so a fork or a local run needs no
+        // token and this header simply does not appear. If the secret IS set
+        // on the Pages side and missing or wrong here, the request comes back
+        // as a fast-path payload and the fast_path guard below throws — one
+        // skipped tick and a loud error, rather than a stale-loop write.
+        headers: freshToken
+          ? { Accept:'application/json', 'X-Fresh-Token': freshToken }
+          : { Accept:'application/json' },
         cf: { cacheTtl: 0, cacheEverything: false }
       });
       if (!r.ok) throw new Error('live HTTP ' + r.status);
@@ -512,7 +521,7 @@ async function archiveOnce(env) {
   // ── Universal pass: snapshot every station from /api/live ────────────
   let universalWarning = null;
   try {
-    const live = await fetchUnifiedLive(env.LIVE_ORIGIN);
+    const live = await fetchUnifiedLive(env.LIVE_ORIGIN, env.LIVE_FRESH_TOKEN);
     const u = await snapshotUniversal(db, live, nowSec);
     universalStations = u.stationsSeen;
     universalSnaps = u.snapshots;

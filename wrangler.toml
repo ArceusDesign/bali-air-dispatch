@@ -30,3 +30,12 @@ bucket_name = "baliair-tiles"
 
 # Pages Functions do NOT run cron (that's what workers/nafas-archive is for).
 # Keep this Pages project lean: serve HTML + /api/live + /api/wind + /api/history.
+
+# SECRETS are not declared here — set them in the Pages dashboard, or in
+# .dev.vars for `wrangler pages dev`. One of them is new and worth naming:
+#
+#   LIVE_FRESH_TOKEN   gates /api/live?fresh=1 (the archive worker's
+#                      cache-bypassing full upstream fan-out). Leave it UNSET
+#                      to keep the endpoint ungated, which is what a local run
+#                      or a fork wants. If you set it here, set the same value
+#                      on workers/nafas-archive or its ticks will be skipped.
