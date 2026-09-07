@@ -65,10 +65,17 @@ const BALI_BBOX = '114.4,-9.2,115.8,-8.0';
 // large ones without revealing any small ones.
 const FIRMS_SOURCES = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT'];
 
-// FIRMS accepts 1-10; the API bills longer ranges as multiple transactions.
-// 2 days covers "recent" for a live map while keeping each refresh at 3
-// transactions total, well inside the 5000-per-10-minutes quota.
-const DAY_RANGE = 2;
+// FIRMS accepts 1-5 ONLY. A 10-day request is answered "Invalid day range.
+// Expects [1..5]." with HTTP 200 (measured 2026-09-07) -- see the non-CSV
+// guard below, which is what stops that string being parsed as zero fires.
+//
+// 5 rather than a shorter window because Bali is genuinely sparse in this
+// dataset: a live query for the Bali bbox returned ZERO detections, while the
+// same query widened to Java/Sumatra/Kalimantan returned 762 in three days.
+// At 375 m the fires here mostly are not visible, so a narrow window would
+// show an empty layer nearly always and the occasional real landfill fire --
+// the event this source exists to catch -- could fall outside it.
+const DAY_RANGE = 5;
 
 const UPSTREAM_TIMEOUT_MS = 8000;   // matches the 8s upstream timeout in live.js
 const CACHE_TTL_S = 900;            // 15 min; NRT latency is ~60 min, so polling faster gains nothing
@@ -192,13 +199,15 @@ export async function onRequestGet({ env }) {
       });
       if (!res.ok) throw new Error(`${source} ${res.status}`);
       const text = await res.text();
-      // Defence in depth. A bad key is answered with HTTP 400 and the body
-      // "Invalid MAP_KEY." (measured 2026-09-07), so res.ok already catches
-      // that case. This guard exists for any condition where FIRMS returns a
-      // plain-text message under a 2xx -- quota exhaustion is the likely one,
-      // and it is NOT verified here because doing so means actually exhausting
-      // the quota. Treating a non-CSV body as a source failure costs nothing
-      // and keeps an error string from being parsed as zero fires.
+      // NOT defensive speculation -- FIRMS really does return plain-text
+      // errors under HTTP 200. Measured 2026-09-07: an out-of-range day count
+      // returns 200 with "Invalid day range. Expects [1..5]." (a bad *key*, by
+      // contrast, returns 400, which res.ok already catches).
+      //
+      // Without this check that body parses as a CSV with no data rows, i.e.
+      // as "no fires in Bali" -- which is both plausible-looking here and
+      // completely wrong. An upstream error must never be presented as an
+      // empty sky.
       if (!/latitude/i.test(text.split('\n')[0] || '')) throw new Error(`${source} non_csv`);
       return parseFirmsCsv(text, source);
     })
