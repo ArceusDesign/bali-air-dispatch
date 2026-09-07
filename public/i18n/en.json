@@ -872,6 +872,7 @@
   "home.x.locate": "Show my location",
   "home.x.zoomHint": "Hold Ctrl or ⌘ and scroll to zoom",
   "home.x.panHint": "Use two fingers to move the map",
+  "home.x.mapLabel": "Map of PM2.5 monitoring stations across Bali",
   "home.x.locateOutside": "Your location is outside Bali",
   "home.x.locateDenied": "Location permission is off",
   "home.x.locateFailed": "Could not find your location",

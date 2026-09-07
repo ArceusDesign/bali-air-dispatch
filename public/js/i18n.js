@@ -38,7 +38,16 @@
       return;
     }
     try {
-      const r = await fetch('/i18n/' + lang + '.json', { cache:'no-cache' });
+      // No `cache:'no-cache'` here any more. It forced a revalidation round
+      // trip for every page load, which for id.json means re-downloading
+      // 230 KB whenever the validator has nothing to compare against — on the
+      // page's largest single asset, for the audience most likely to be on
+      // mobile data. Caching is now stated once, in public/_headers
+      // (/i18n/* → max-age=3600), where the trade-off is written down; this
+      // fetch just honours it. A dictionary that is briefly stale after a
+      // deploy loses only the keys added in it, and a missing key falls back
+      // to the English already in the HTML.
+      const r = await fetch('/i18n/' + lang + '.json');
       if (!r.ok) throw new Error('HTTP '+r.status);
       dict = await r.json();
     } catch(e){
@@ -152,11 +161,26 @@
   }
 
   // Boot
+  //
+  // The language is decided and the dictionary REQUESTED here, at script
+  // execution time, rather than inside the DOMContentLoaded handler below. The
+  // choice comes from localStorage and needs no DOM at all, and the fetch is
+  // the only slow step in this file — starting it now lets it overlap whatever
+  // parsing and subresource loading is left instead of beginning after all of
+  // it. For a reader on Bahasa Indonesia that is a 230 KB request moved off
+  // the end of the load.
+  //
+  // The APPLY step still waits for DOMContentLoaded, deliberately unchanged:
+  // it walks the whole document for [data-i18n] and must not run against a
+  // half-parsed one. So this is strictly an earlier start, not an earlier
+  // swap, and the visible sequence on every page is what it was.
+  const stored = getStoredLang();
+  currentLang = stored && SUPPORTED.some(s => s.code === stored) ? stored : DEFAULT_LANG;
+  const dictReady = (currentLang !== DEFAULT_LANG) ? loadDict(currentLang) : Promise.resolve();
+
   document.addEventListener('DOMContentLoaded', async () => {
     injectSwitcherCss();
-    const stored = getStoredLang();
-    currentLang = stored && SUPPORTED.some(s => s.code === stored) ? stored : DEFAULT_LANG;
-    if (currentLang !== DEFAULT_LANG) await loadDict(currentLang);
+    await dictReady;          // loadDict swallows its own failures (dict = {})
     applyTranslations();
     renderSwitcher();
   });
