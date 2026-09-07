@@ -542,6 +542,22 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
   padding:5px 7px;max-width:176px;line-height:1.4;
 }
 .locate-msg[hidden]{display:none}
+
+/* Gesture hint — the transient "hold Ctrl to zoom" plate. pointer-events:none
+   so it can sit over the middle of the map without swallowing a click on a
+   station underneath it. visibility (not display) is toggled so the opacity
+   transition has something to animate. */
+.map-gesture-hint{
+  position:absolute;z-index:502;top:50%;left:50%;transform:translate(-50%,-50%);
+  pointer-events:none;visibility:hidden;opacity:0;transition:opacity .18s,visibility .18s;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--paper);background:rgba(20,17,13,.82);border:1px solid var(--ink);
+  padding:10px 16px;text-align:center;max-width:78%;
+}
+.map-gesture-hint.on{visibility:visible;opacity:1}
+@media(prefers-reduced-motion:reduce){.map-gesture-hint{transition:none}}
+@media(max-width:720px){.map-gesture-hint{font-size:10px;padding:9px 13px}}
+
 @media(max-width:720px){
   .zoom-card{left:10px;top:80px}
   .zoom-btn{width:36px;height:36px;font-size:20px}
@@ -652,6 +668,11 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
       <div class="tb-right" id="heroWx">Wind <b>—</b> m/s · <b>—</b></div>
     </div>
     <div id="map-leaflet"></div>
+    <!-- Gesture hint. Empty and invisible until a scroll or a one-finger swipe
+         over the map needs explaining; role=status so a screen reader hears it
+         once instead of being interrupted. Text is written by
+         showGestureHint(). -->
+    <div class="map-gesture-hint" id="mapGestureHint" role="status" aria-live="polite"></div>
 
     <!-- Legend, directly under the map so it reads as the map's own furniture
          rather than a card parked on top of Karangasem. -->
@@ -969,7 +990,22 @@ const map = L.map('map-leaflet',{
   minZoom:9, maxZoom:16,
   maxBounds: BALI.pad(0.02),
   maxBoundsViscosity:1.0,
-  zoomControl:true
+  zoomControl:true,
+  // COOPERATIVE GESTURES. The map is a ~100vh hero at the TOP of a long page,
+  // so a plain wheel or trackpad scroll has to scroll the PAGE. With Leaflet's
+  // default scrollWheelZoom, a reader on their way to the bulletin instead got
+  // hauled to z16 over whatever was under the pointer, lost the framing they
+  // started with, and had no scroll left to escape with. Zoom is still one
+  // gesture away and every route to it is kept: ctrl/(cmd) + wheel and trackpad
+  // pinch (wired up under COOPERATIVE ZOOM below), the +/- buttons, double
+  // click, and the keyboard when the map has focus.
+  scrollWheelZoom:false,
+  // Touch is the same trap, worse: a swipe anywhere on 100vh of map panned
+  // Bali and never reached the page, so a phone reader could not get past the
+  // homepage at all. One finger now scrolls the page; two move and zoom the
+  // map, because L.Map.TouchZoom re-centres as it scales. This is Leaflet's
+  // own documented recipe for an embedded map, not a hand-rolled gesture.
+  dragging: !L.Browser.mobile
 });
 // Tiles come from our own origin (functions/tiles/[[path]].js) and, since
 // 27 Aug 2026, from our own R2 bucket — no third party is in the request path
@@ -989,6 +1025,68 @@ L.tileLayer('/tiles/{z}/{x}/{y}{r}.png',{
   maxZoom:16
 }).addTo(map);
 map.fitBounds(BALI,{padding:[20,20]});
+
+/* =========================================================
+   COOPERATIVE ZOOM — modifier-gated wheel, with a hint
+   =========================================================
+   Leaflet has no built-in modifier gate, so rather than re-implement zooming
+   we toggle Leaflet's OWN scrollWheelZoom handler on and off around the
+   modifier. That keeps its wheel accumulation, debounce and zoomSnap
+   behaviour, and it is the handler that calls preventDefault() — which is
+   also what stops the browser zooming the whole page on ctrl+wheel while the
+   pointer is over the map.
+
+   Two independent ways in, because they arrive differently:
+     - Key held: keydown fires BEFORE any wheel event, so the handler is
+       already live when the first wheel tick lands. A mouse wheel emits one
+       discrete tick per notch, so gating on the wheel event alone would eat
+       the first notch every time.
+     - Trackpad pinch: the browser synthesises a wheel event with ctrlKey set
+       and NO Control keydown at all. Nothing to listen for but the wheel
+       itself; pinch streams events continuously, so enabling on the first one
+       costs nothing visible.
+   Both paths converge on the same handler, and any modifier-less wheel turns
+   it back off so a page scroll can never be caught mid-pinch. */
+const mapEl = document.getElementById('map-leaflet');
+const gestureHint = document.getElementById('mapGestureHint');
+let hintTimer = null;
+function showGestureHint(key, fallback){
+  if (!gestureHint) return;
+  // textContent, and the text is our own locale string — no markup path.
+  gestureHint.textContent = (window.I18N && window.I18N.t) ? window.I18N.t(key, fallback) : fallback;
+  gestureHint.classList.add('on');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(()=>gestureHint.classList.remove('on'), 1800);
+}
+const wheelZoom = (on) => {
+  if (!map.scrollWheelZoom) return;
+  if (on && !map.scrollWheelZoom.enabled()) map.scrollWheelZoom.enable();
+  if (!on && map.scrollWheelZoom.enabled()) map.scrollWheelZoom.disable();
+};
+if (mapEl) {
+  // passive: this listener never calls preventDefault — Leaflet's own handler
+  // does that once enabled. Declaring it lets the browser keep scrolling
+  // smooth instead of waiting on us.
+  mapEl.addEventListener('wheel', (e)=>{
+    if (e.ctrlKey || e.metaKey) { wheelZoom(true); return; }
+    wheelZoom(false);
+    // Both keys named rather than sniffed: navigator.platform is deprecated,
+    // and a single string is also one string to translate instead of two.
+    showGestureHint('home.x.zoomHint', 'Hold Ctrl or \u2318 and scroll to zoom');
+  }, {passive:true});
+  // One-finger swipe on a map that no longer drags: say why, rather than
+  // letting it look broken.
+  mapEl.addEventListener('touchmove', (e)=>{
+    if (e.touches && e.touches.length === 1 && !map.dragging.enabled()) {
+      showGestureHint('home.x.panHint', 'Use two fingers to move the map');
+    }
+  }, {passive:true});
+}
+// Releasing the key, or losing the window while it is down, must not leave the
+// wheel armed — the next scroll would zoom with no modifier held.
+window.addEventListener('keydown', (e)=>{ if (e.key === 'Control' || e.key === 'Meta') wheelZoom(true); });
+window.addEventListener('keyup',   (e)=>{ if (e.key === 'Control' || e.key === 'Meta') wheelZoom(false); });
+window.addEventListener('blur', ()=>wheelZoom(false));
 
 // Kick off wind overlay by default — iqair-style airflow visible on load.
 setTimeout(()=>{ try{ startWind(); }catch(e){} }, 800);

@@ -870,6 +870,8 @@
   "home.layer.reports": "Reports",
   "home.x.legReports": "<span class=\"sw\" style=\"background:var(--crimson);border-radius:50%;border-style:dashed;opacity:.55\"></span>Dashed circle = area with community burning reports, sized by count, fading over 30 days",
   "home.x.locate": "Show my location",
+  "home.x.zoomHint": "Hold Ctrl or ⌘ and scroll to zoom",
+  "home.x.panHint": "Use two fingers to move the map",
   "home.x.locateOutside": "Your location is outside Bali",
   "home.x.locateDenied": "Location permission is off",
   "home.x.locateFailed": "Could not find your location",
