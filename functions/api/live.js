@@ -195,6 +195,47 @@ function flagStale(station, observedAtMs) {
   }
   return station;
 }
+// ── ?fresh=1 AUTHORISATION ────────────────────────────────────────────────
+// fresh=1 is the archive worker's private flag, not part of the public API. It
+// is documented nowhere in public/api.html or /api/v1 on purpose, and it is the
+// single most expensive request this project can serve: it bypasses the edge
+// cache in BOTH directions (see onRequest) and forces the full upstream
+// fan-out across every network we read.
+//
+// Left ungated, `while :; do curl ".../api/live?fresh=1"; done` from anywhere
+// on the internet spends the PurpleAir, AQICN, OpenAQ and IQAir quotas the
+// whole record depends on, and pays the aggregator's CPU cost once per
+// request. That CPU ceiling is not hypothetical here: four "Exceeded CPU Time
+// Limits" in 24 h once cost this archive a 60-minute hole (see fetchUnifiedLive
+// in workers/nafas-archive). An outsider could reproduce that on demand.
+//
+// DEFAULTS OPEN when LIVE_FRESH_TOKEN is not configured, and that is the
+// deliberate part. `wrangler pages dev` and every fork have no secret set, and
+// a closed default would silently answer their ?fresh=1 with a fast-path
+// payload — which is precisely the stale-loop shape the flag exists to prevent.
+// So: a configured deployment is protected; an unconfigured one behaves exactly
+// as it did before this function existed.
+//
+// An unauthorised fresh=1 is IGNORED rather than rejected — it earns the
+// ordinary cached response, so the parameter cannot be used to probe whether a
+// token is set, and no error path is added to the visitor-facing endpoint. The
+// archive worker is not left guessing either: it throws on `fast_path: true`
+// (safeguard #1 in workers/nafas-archive), so a missing or wrong secret costs
+// one skipped tick and a loud error in the log, never a corrupted archive.
+function constantTimeEqual(a, b) {
+  // Compared per request against a secret, so it does not branch on content.
+  // Length is not secret (and cannot be hidden — it changes the loop bound).
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+function freshAllowed(request, env) {
+  const want = env && env.LIVE_FRESH_TOKEN;
+  if (!want) return true;                       // unconfigured → prior behaviour
+  return constantTimeEqual(request.headers.get('X-Fresh-Token') || '', want);
+}
+
 function jsonResponse(body, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     headers: {
@@ -1834,7 +1875,9 @@ async function fetchIQAir(env) {
 async function handleLive(context) {
   const env = context.env;
   const url = new URL(context.request.url);
-  const noFast = url.searchParams.get('fresh') === '1';
+  // Must agree with the cache gate in onRequest — same inputs, same helper, so
+  // an unauthorised fresh=1 cannot bypass one of the two and not the other.
+  const noFast = url.searchParams.get('fresh') === '1' && freshAllowed(context.request, env);
 
   // Durable OpenAQ↔AirGradient relay pairing from our own catalog, so a relay
   // stays suppressed — and its twin's spot stays occupied — on a tick where the
@@ -2058,7 +2101,7 @@ async function handleLive(context) {
 // this runs on the visitor's response path and nothing here may throw.
 export async function onRequest(context) {
   const url = new URL(context.request.url);
-  const bypass = url.searchParams.get('fresh') === '1';
+  const bypass = url.searchParams.get('fresh') === '1' && freshAllowed(context.request, context.env);
   let cache = null, cacheKey = null;
   if (!bypass) {
     try {

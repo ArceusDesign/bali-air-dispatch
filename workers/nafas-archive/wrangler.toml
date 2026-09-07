@@ -6,6 +6,11 @@
 #
 # After deploy, bind a manual-trigger secret:
 #   wrangler secret put CRON_SECRET
+#
+# And, if the Pages project has LIVE_FRESH_TOKEN set, the matching value —
+# without it /api/live ignores this worker's ?fresh=1, answers from the D1
+# fast path, and the fast_path guard in fetchUnifiedLive skips the tick:
+#   wrangler secret put LIVE_FRESH_TOKEN
 # Then you can kick off a backfill from your laptop with:
 #   curl -H "X-Secret: $SECRET" https://nafas-archive.<subdomain>.workers.dev/run
 
