@@ -749,6 +749,16 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
         <svg class="icn" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
         <span class="lbl" data-i18n="home.layer.reports">Reports</span><span class="swch" aria-hidden="true"></span>
       </button>
+      <!-- Same <button aria-pressed> pattern as the rows above (see the
+           accessibility pass that converted them): a layer toggle is a
+           control, not a div, so it must be reachable by keyboard and must
+           announce its state. Dashed circle distinguishes a satellite
+           detection from a ground sensor at a glance. -->
+      <button type="button" class="layer-row on" id="lr-hotspots" aria-pressed="true" onclick="toggleLayer('hotspots')">
+        <svg class="icn" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><circle cx="12" cy="12" r="7"/></svg>
+        <span class="lbl" data-i18n="home.layer.hotspots">Hotspots</span><span class="swch" aria-hidden="true"></span>
+      </button>
+      <div id="hotspotNote" style="font-family:'IBM Plex Mono',monospace;font-size:9px;line-height:1.45;color:var(--ink-faint);padding:2px 10px 6px;white-space:normal"></div>
       </div><!-- /card-body -->
     </div>
 
@@ -1282,6 +1292,13 @@ const offLayer   = L.layerGroup().addTo(map);
 map.createPane('reportsPane');
 map.getPane('reportsPane').style.zIndex = 450;
 const reportLayer = L.layerGroup().addTo(map);
+// Satellite hotspots sit BELOW the community reports (450) and below sensor
+// pins. A FIRMS detection is the weakest of the three as evidence about any
+// particular street -- it is a 375 m pixel, not an address -- so it must never
+// occlude a human report or a measurement.
+map.createPane('hotspotPane');
+map.getPane('hotspotPane').style.zIndex = 440;
+const hotspotLayer = L.layerGroup().addTo(map);
 const markers = {};
 
 // haze cloud colors keyed to AQI class
@@ -1382,6 +1399,90 @@ async function loadReports(){
     console.warn('reports fetch failed', e); // enhancement layer — never block the base map
   }
 }
+/* =========================================================
+   SATELLITE HOTSPOTS (NASA FIRMS) — thermal detections, not PM2.5.
+   Separate array, separate layer, separate pane. Never touches
+   liveStations/allStations, so it can never reach the median /
+   worst-now / WHO-ratio math, exactly as the reports layer does not.
+
+   THE MARK IS A 375 m CIRCLE, NOT A PIN, AND THAT IS THE WHOLE POINT.
+   VIIRS resolves at 375 m. The coordinate is a pixel centroid, not an
+   address. Drawing a crisp pin would claim a precision the instrument
+   does not have and would point at whoever lives at that coordinate --
+   the same reasoning the reports layer uses for its desa areas. So the
+   circle is drawn at the instrument's true footprint, in metres, and
+   grows and shrinks with zoom because it is a real distance.
+   ========================================================= */
+let hotspotPoints = [];
+let hotspotMeta = null;
+async function loadHotspots(){
+  try{
+    const r = await fetch(API_BASE + '/api/hotspots', {cache:'no-cache'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    hotspotMeta = d;
+    // available:false means the SOURCE failed or is unconfigured -- NOT an
+    // empty sky. Keep whatever we last drew rather than clearing the layer,
+    // so an upstream blip cannot be read as "the burning stopped".
+    if(d.available === false){ renderHotspotNote(); return; }
+    hotspotPoints = (d.hotspots||[]).filter(h=>h && h.lat!=null && h.lon!=null);
+    renderHotspots();
+  }catch(e){
+    console.warn('hotspots fetch failed', e); // enhancement layer — never block the base map
+  }
+}
+function hotspotColor(iso){
+  // Age within the window, burnt-orange (fresh) fading toward the paper.
+  // Deliberately NOT the crimson the reports layer owns: a human standing in
+  // the smoke and a satellite seeing heat are different classes of evidence
+  // and must not read as the same thing.
+  const ageH = iso ? (Date.now() - Date.parse(iso)) / 36e5 : 120;
+  const frac = Math.min(1, Math.max(0, ageH / (5*24)));
+  const c0=[199,91,18], c1=[243,236,224];
+  const rgb = c0.map((v,i)=>Math.round(v+(c1[i]-v)*frac));
+  return `rgb(${rgb.join(',')})`;
+}
+function renderHotspots(){
+  hotspotLayer.clearLayers();
+  for(const h of hotspotPoints){
+    const col = hotspotColor(h.observedAt);
+    // radius in METRES — the actual VIIRS footprint, so it scales with zoom.
+    const c = L.circle([h.lat,h.lon], {
+      pane:'hotspotPane', radius:187, color:col, weight:1.5,
+      opacity:.85, fillColor:col, fillOpacity:.18, dashArray:'3 3'
+    });
+    const when = h.observedAt ? new Date(h.observedAt).toLocaleString('en-GB',{timeZone:'Asia/Makassar'}) : 'unknown';
+    const conf = ({l:'low',n:'nominal',h:'high'})[h.confidence] || h.confidence || '—';
+    c.bindPopup(
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;line-height:1.55">'
+      + '<strong>Satellite hotspot</strong><br>'
+      + when + ' WITA<br>'
+      + 'confidence: ' + conf + '<br>'
+      + 'radiative power: ' + (h.frpMw!=null ? h.frpMw+' MW' : '—') + '<br>'
+      + '<span style="color:#7a6a55">' + (h.satellite||'VIIRS') + ' · 375 m pixel</span>'
+      + '<div style="margin-top:6px;padding-top:5px;border-top:1px dashed #cbbfa9;color:#7a6a55;max-width:230px;white-space:normal">'
+      + 'A thermal detection, not a PM2.5 reading. The circle is the sensor\'s '
+      + '375 m footprint, not an address.</div></div>'
+    );
+    hotspotLayer.addLayer(c);
+  }
+  renderHotspotNote();
+}
+function renderHotspotNote(){
+  // The count line under the Layers card. States the honest-gap case in situ:
+  // an empty layer here is a statement about RESOLUTION, not about burning.
+  const el = document.getElementById('hotspotNote'); if(!el) return;
+  if(hotspotMeta && hotspotMeta.available === false){
+    el.textContent = 'satellite feed unavailable';
+    return;
+  }
+  const n = hotspotPoints.length;
+  const d = (hotspotMeta && hotspotMeta.dayRange) || 5;
+  el.textContent = n === 0
+    ? 'no large fires detected in ' + d + 'd — household burning is below the 375 m floor'
+    : n + ' detection' + (n===1?'':'s') + ' in ' + d + 'd · large fires only';
+}
+
 function reportColor(ageHours){
   // Dark crimson (fresh) fading to the page's own paper colour at 30 days —
   // old reports look like they're fading into the page, not just "lighter red".
@@ -2485,6 +2586,7 @@ function applyLayerVisibility(){
   else { map.removeLayer(liveLayer); map.removeLayer(hazeLayer); }
   if (layerOn('off')) offLayer.addTo(map); else map.removeLayer(offLayer);
   if (layerOn('reports')) reportLayer.addTo(map); else map.removeLayer(reportLayer);
+  if (layerOn('hotspots')) hotspotLayer.addTo(map); else map.removeLayer(hotspotLayer);
 }
 function toggleLayer(kind){
   const row = document.getElementById('lr-'+kind);
@@ -2676,6 +2778,8 @@ renderSkeleton();   // placeholder pins on screen within one frame
 loadLive();         // real data swaps them in when /api/live returns
 setInterval(loadLive, 5*60*1000);
 loadReports();       // community burning reports (Making Sense Bali)
+loadHotspots();      // NASA FIRMS satellite thermal detections
+setInterval(loadHotspots, 15*60*1000); // matches the /api/hotspots edge cache TTL; FIRMS NRT latency is ~60 min
 setInterval(loadReports, 10*60*1000); // matches our own /api/reports cache TTL — no benefit polling faster
 </script>
 
