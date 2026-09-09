@@ -1299,6 +1299,13 @@ const reportLayer = L.layerGroup().addTo(map);
 map.createPane('hotspotPane');
 map.getPane('hotspotPane').style.zIndex = 440;
 const hotspotLayer = L.layerGroup().addTo(map);
+// Re-apply the pixel floor on zoom, so a detection never shrinks below
+// legibility when the reader zooms out. No refetch — geometry only.
+map.on('zoomend', () => {
+  hotspotLayer.eachLayer(l => {
+    if (l.setRadius && l.getLatLng) l.setRadius(hotspotRadiusM(l.getLatLng().lat));
+  });
+});
 const markers = {};
 
 // haze cloud colors keyed to AQI class
@@ -1432,23 +1439,45 @@ async function loadHotspots(){
   }
 }
 function hotspotColor(iso){
-  // Age within the window, burnt-orange (fresh) fading toward the paper.
+  // Age within the window, burnt-orange (fresh) fading toward a warm tan.
+  //
+  // THE FADE MUST NOT REACH THE PAPER. It used to end at rgb(243,236,224),
+  // which is exactly --paper (#f3ece0) — so a detection at the far end of the
+  // window was painted the precise colour of the map underneath it. The fade
+  // window and the API's dayRange are both 5 days, so this was not an edge
+  // case: the oldest detections in every response were invisible by
+  // construction. Observed live on 2026-09-09 — six detections, five of them
+  // 4.7 days old at 1.08:1 contrast against the paper, while the Layers card
+  // truthfully read "6 detections in 5d". Ending at a warm tan holds the
+  // oldest at ~1.57:1: still legible, still clearly older than a fresh one.
   // Deliberately NOT the crimson the reports layer owns: a human standing in
   // the smoke and a satellite seeing heat are different classes of evidence
   // and must not read as the same thing.
   const ageH = iso ? (Date.now() - Date.parse(iso)) / 36e5 : 120;
   const frac = Math.min(1, Math.max(0, ageH / (5*24)));
-  const c0=[199,91,18], c1=[243,236,224];
+  const c0=[199,91,18], c1=[214,186,158];
   const rgb = c0.map((v,i)=>Math.round(v+(c1[i]-v)*frac));
   return `rgb(${rgb.join(',')})`;
+}
+// The true VIIRS footprint is a 375 m pixel, so a detection is drawn at a
+// 187 m radius and scales honestly with zoom. At island zoom that is about ONE
+// screen pixel — and the island view is the view this layer exists to be read
+// in. The metre radius is therefore a FLOOR, lifted to whatever HOTSPOT_MIN_PX
+// works out to at the current zoom; once the real footprint is bigger (z14+)
+// the circle is the true 375 m pixel again and nothing is exaggerated.
+const HOTSPOT_MIN_PX = 5;
+const HOTSPOT_TRUE_M = 187;
+function hotspotRadiusM(lat){
+  // Metres per pixel varies with BOTH zoom and latitude, hence recomputed.
+  const mPerPx = 40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom() + 8);
+  return Math.max(HOTSPOT_TRUE_M, HOTSPOT_MIN_PX * mPerPx);
 }
 function renderHotspots(){
   hotspotLayer.clearLayers();
   for(const h of hotspotPoints){
     const col = hotspotColor(h.observedAt);
-    // radius in METRES — the actual VIIRS footprint, so it scales with zoom.
     const c = L.circle([h.lat,h.lon], {
-      pane:'hotspotPane', radius:187, color:col, weight:1.5,
+      pane:'hotspotPane', radius:hotspotRadiusM(h.lat), color:col, weight:1.5,
       opacity:.85, fillColor:col, fillOpacity:.18, dashArray:'3 3'
     });
     const when = h.observedAt ? new Date(h.observedAt).toLocaleString('en-GB',{timeZone:'Asia/Makassar'}) : 'unknown';
