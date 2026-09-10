@@ -169,6 +169,9 @@ const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 const SOURCE_STALE_MS = Object.assign(Object.create(null), {
   OpenAQ: 6 * 60 * 60 * 1000,
   AirGradient: 6 * 60 * 60 * 1000,
+  // Smart Citizen kits report about once a minute when alive, like AirGradient.
+  // Six hours silent is a sensor with a problem, and should look like one.
+  'Smart Citizen': 6 * 60 * 60 * 1000,
 });
 // observedAtMs (optional) — when WE recorded this reading. A reading cannot be
 // fresher than the moment we observed it, so this acts as a floor on the age.
@@ -184,7 +187,15 @@ function flagStale(station, observedAtMs) {
   const ms = parseLastSeenMs(station.lastSeen);
   const ages = [];
   if (ms != null) ages.push(Date.now() - ms);
-  if (observedAtMs != null) ages.push(Date.now() - observedAtMs);
+  // observedAtMs must be a REAL epoch-ms timestamp. `!= null` alone let any
+  // number through, and Array.map hands its callback (element, index, array) —
+  // so `.map(flagStale)` fed the array INDEX in here. Index 0 is 1970, and
+  // `0 != null` is true, so 68 of 79 stations on the fresh=1 path were flagged
+  // 496,963 hours (56 years) stale on 2026-09-10 while their readings were
+  // seconds old. The call sites now pass one argument explicitly, and this
+  // guard makes the same mistake impossible to repeat: anything that is not a
+  // finite number after 2001-09-09 (1e12 ms) is not a timestamp and is ignored.
+  if (Number.isFinite(observedAtMs) && observedAtMs > 1e12) ages.push(Date.now() - observedAtMs);
   if (!ages.length) return station;
   // ?? not ||, so a future 0 ("always stale") cannot silently become 24 h.
   const limit = SOURCE_STALE_MS[station.source] ?? STALE_THRESHOLD_MS;
@@ -808,9 +819,20 @@ async function fetchSmartCitizen() {
   for (const d of list) {
     // HARD RULE #1: outdoor only. Never surface indoor devices.
     if (d?.location?.exposure !== 'outdoor') continue;
-    // HARD RULE #2: live only. Skip anything not currently online.
-    const tags = Array.isArray(d.system_tags) ? d.system_tags : [];
-    if (!tags.includes('online') || tags.includes('offline')) continue;
+    // HARD RULE #2: live only — judged by the device's OWN last reading, below,
+    // not by Smart Citizen's online/offline system tag. That tag used to be the
+    // gate here, and it hides real data: it flips to `offline` after a short
+    // silence, far shorter than the 24 h this project already treats as the
+    // line between "stale" and "gone". On 2026-09-10 "Bayu Sensor by Fab Lab -
+    // Kios Serangan" (sc-19768) carried the offline tag while holding a PM2.5
+    // reading 6.4 hours old, and this gate threw it away before anything else
+    // could judge it. (As it happens that unit sits 25 m from sc-19762 and is
+    // folded onto it by the 120 m co-location rule below, so the map looks the
+    // same today — but a LONE sensor in the same state would simply vanish.)
+    // A sensor that reported this afternoon is a sensor; an honest gap means
+    // showing it as stale, not pretending it isn't there. The recency check a
+    // few lines down is now the sole liveness gate, and flagStale() (6 h for
+    // this source, see SOURCE_STALE_MS) does the greying.
     const lat = +d.location?.latitude, lon = +d.location?.longitude;
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
     if (lat < SC_BALI.latMin || lat > SC_BALI.latMax ||
@@ -822,10 +844,14 @@ async function fetchSmartCitizen() {
     const sensors = d.data?.sensors;
     const pm25 = scPickSensor(sensors, /PM2\.5/i);
     if (pm25 == null) continue;  // must carry a real PM2.5 reading
-    // Backstop staleness guard: if the 'online' tag lingers but the last reading
-    // is absurdly old (>24h), skip. A genuinely online SC device reports ~1/min.
+    // Liveness gate (the only one): the device must SAY when it last reported,
+    // and it must be within 24 h. No timestamp is not "unknown, benefit of the
+    // doubt" — a dead device still carries its final PM2.5 value in data.sensors,
+    // so without a recency check a years-dead unit would publish that number as
+    // current. Beyond 24 h it is dropped; between 6 h and 24 h flagStale() greys
+    // it; under 6 h it is live. Three honest states instead of visible/vanished.
     const lastMs = d.last_reading_at ? Date.parse(d.last_reading_at) : NaN;
-    if (Number.isFinite(lastMs) && (Date.now() - lastMs) > 24 * 60 * 60 * 1000) continue;
+    if (!Number.isFinite(lastMs) || (Date.now() - lastMs) > 24 * 60 * 60 * 1000) continue;
     const { cat, cls } = pm25Category(pm25);
     out.push({
       id: `sc-${devId}`,
@@ -1991,7 +2017,7 @@ async function handleLive(context) {
       if (stns.length > 0) {
         results.sources++;
         // Apply stale flag to every station the slow path returns
-        results.stations.push(...stns.map(flagStale));
+        results.stations.push(...stns.map(st => flagStale(st)));
       }
     } else {
       results.errors.push({ source: name, error: String(r.reason).slice(0, 200) });
@@ -2007,7 +2033,7 @@ async function handleLive(context) {
     const scKept = dedupSmartCitizen(sc, results.stations);
     if (scKept.length) {
       results.sources++;
-      results.stations.push(...scKept.map(flagStale));
+      results.stations.push(...scKept.map(st => flagStale(st)));
     }
   } catch (_) { /* Smart Citizen optional — never block the response */ }
 
@@ -2021,7 +2047,7 @@ async function handleLive(context) {
     const agKept = dedupAirGradient(ag, results.stations);
     if (agKept.length) {
       results.sources++;
-      results.stations.push(...agKept.map(flagStale));
+      results.stations.push(...agKept.map(st => flagStale(st)));
     }
   } catch (_) { /* AirGradient optional — never block the response */ }
 
