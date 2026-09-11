@@ -1236,12 +1236,14 @@ const isIndoor = (s) => INDOOR_IDS.has(typeof s === 'string' ? s : (s && s.id));
 // full series stays chartable in History and downloadable from /api/v1. The
 // number is shown and labelled, not hidden.
 const MALFUNCTION_IDS = new Set([
-  // Kopernik (Mas, Ubud), IQAir. Flagged 27 Aug 2026. Running 70-215 µg/m³
-  // around the clock while every sensor near it sits in the teens and twenties:
-  // at flagging it read 151.5 against a 22.0 median for the nine stations
-  // within 15 km, and 16.1 at Villa Malaikat 2.2 km away. Sustained 7x local
-  // divergence is a hardware/siting fault, not an air mass.
-  'iq-kopernik',
+  // Empty since September 2026. Its only entry was 'iq-kopernik' ("Kopernik
+  // (Mas, Ubud)"), flagged 27 Aug for reading 70-215 µg/m³ against 10-35 all
+  // round it. The diagnosis was wrong in kind: it was never a sensor, but
+  // IQAir's Ubud TOWN value under a borrowed name (Kopernik have no monitor
+  // sending data to IQAir). It is now off the map altogether, a stronger rule
+  // than this list's "shown and labelled": a malfunctioning sensor is still a
+  // sensor, and an aggregate is not (DATA-METHODOLOGY §8.5).
+  // Mirrors functions/api/v1 and public/history.html.
 ]);
 const isMalfunctioning = (s) => MALFUNCTION_IDS.has(typeof s === 'string' ? s : (s && s.id));
 // THE ONE TEST for "this device is not reporting trustworthy ambient air".

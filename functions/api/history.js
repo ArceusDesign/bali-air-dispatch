@@ -23,6 +23,11 @@ const JSON_HEADERS = {
   ...CORS,
 };
 
+const RETIRED_MESSAGE =
+  'This id belonged to an IQAir town-level value (nearest_city), not to a ' +
+  'physical sensor. Town-level values were withdrawn from Bali Air Dispatch ' +
+  'in September 2026; see DATA-METHODOLOGY.md §8.5.';
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
@@ -67,10 +72,20 @@ async function handleHistory(context) {
   const ids   = (url.searchParams.get('ids')  || '').trim();
   const range = (url.searchParams.get('range') || '').trim().toLowerCase();
 
+  // Retired town-level aggregates (the iq- namespace: IQAir nearest_city
+  // values, never physical devices) are refused outright, not merely unlisted.
+  // "Hidden from the listing, still reachable by id" is the right rule for a
+  // real-but-duplicate device; it is the wrong one for data that was never a
+  // measurement. See DATA-METHODOLOGY.md §8.5.
+  if (id.startsWith('iq-')) {
+    return json({ error: 'retired_station', message: RETIRED_MESSAGE }, 410);
+  }
+
   try {
     // ── Multi-station mode (?ids=a,b,c) ────────────────────────────────
     if (ids) {
-      const list = ids.split(',').map(x => x.trim()).filter(isStationId).slice(0, 12);
+      const list = ids.split(',').map(x => x.trim()).filter(isStationId)
+        .filter(x => !x.startsWith('iq-')).slice(0, 12);
       if (!list.length) return json({ error: 'no_valid_ids' }, 400);
       // Try station_daily first (universal). Falls back to nafas_daily
       // for nafas-* ids if station_daily is empty.
@@ -302,13 +317,17 @@ async function handleHistory(context) {
     // `daily_n` tells the /history UI whether a chart can be drawn yet
     // (0 = snapshots being captured but no daily rollup yet → "archive starting").
     // Hidden from the catalog (display only — their D1 rows are intentionally
-    // KEPT, just not surfaced). These IQAir nearest_city nodes were retired in
-    // the May 2026 audit: 5 were "satellite-derived model" estimates rather
-    // than ground sensors, and iq-Jimbaran duplicated PurpleAir's "Jimbaran by
-    // Lumi Clinic". Only the real iq-Ubud (Kopernik) IQAir node is retained.
+    // KEPT, just not surfaced).
+    //
+    // NOT in this list: IQAir's town-level nodes, the whole iq- namespace from
+    // the retired nearest_city probe. Six used to be listed here after the May
+    // 2026 audit (five "satellite-derived model" estimates, and iq-Jimbaran, a
+    // copy of PurpleAir's "Jimbaran by Lumi Clinic"), while iq-kopernik and its
+    // old id iq-Ubud were kept as a real sensor. They never were one, and
+    // iq-Ubud leaked into /api/v1 because a list only hides what it names. All
+    // eight are now excluded by PREFIX in the query below and refused by id at
+    // the top of this handler (DATA-METHODOLOGY §8.5).
     const HIDDEN_STATION_IDS = [
-      'iq-Seminyak town', 'iq-Dajan Tangluk', 'iq-Banjar',
-      'iq-Subagan', 'iq-Munduk', 'iq-Jimbaran',
       // "Tonja - Nafas" — an AirGradient unit that appeared on 27 Jul at the
       // EXACT coordinates of the long-running Nafas Tonja station. The map
       // already collapses it (dedupAirGradient drops an AG pin within 300 m of
@@ -337,6 +356,7 @@ async function handleHistory(context) {
       -- scrapedCatalog below; the archive worker also leaks them into the
       -- stations table through /api/live, so exclude here (no double entry).
       AND s.station_id NOT LIKE 'iqs-%'
+      AND s.station_id NOT LIKE 'iq-%'   -- retired town-level aggregates (8.5)
       ORDER BY s.name
     `).bind(...HIDDEN_STATION_IDS).all();
     const nafas = await db.prepare(`

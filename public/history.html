@@ -454,9 +454,10 @@ const isIndoorId = (id) => INDOOR_IDS.has(id);
 // page is where someone goes to judge a sensor's record for themselves.
 // Mirrors MALFUNCTION_IDS in public/index.html + functions/api/v1.
 const MALFUNCTION_IDS = new Set([
-  // Kopernik (Mas, Ubud), IQAir — flagged 27 Aug 2026, sustained ~7x its own
-  // neighbours (151.5 vs a 22.0 local median). Series stays fully chartable.
-  'iq-kopernik',
+  // Empty since September 2026. Its only entry, iq-kopernik, turned out to be
+  // IQAir's Ubud town value under a borrowed name, not a sensor at all. It is
+  // retired with the whole iq- namespace (functions/api/history.js never lists
+  // it and refuses it by id). The group does not render while this is empty.
 ]);
 const isMalfunctionId = (id) => MALFUNCTION_IDS.has(id);
 // Community-contributed sensors (cs-*): residents running their own hardware,
@@ -766,7 +767,8 @@ function buildStationList(){
   //     quiet, and it must use last_date, not last_seen: the worker advances
   //     last_seen every tick for anything /api/live lists, including frozen
   //     sensors whose snapshots it deliberately skips. Using last_seen labelled
-  //     the frozen Nafas Ubud station — 50 m from the live Kopernik sensor — a
+  //     the frozen Nafas Ubud station — 50 m from the then-live IQAir "Kopernik"
+  //     pin (a town value, since withdrawn) — a
   //     "relayed duplicate", which it is not. Silent sensors belong in
   //     Silenced / Recently offline instead.
   //   • within 300 m of a station that IS displayed — i.e. the same site

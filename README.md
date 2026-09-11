@@ -45,7 +45,7 @@ says how it was arrived at and what it does not claim.
 | OpenAQ | API key; used to pair and de-duplicate AirGradient relays |
 | PurpleAir | API key; humidity-corrected |
 | AQICN / GAIA | Free token |
-| IQAir | API key for the AirVisual API; a separate optional worker renders public IQAir station pages that are not on any API |
+| IQAir | Public station pages, one device each, rendered by a separate optional worker. IQAir's town-level values are deliberately not used (methodology §8.5) |
 | Smart Citizen | Public API (no key) |
 | Community | Pushed to `POST /api/ingest` by the sensor owner |
 | NASA FIRMS | Free `MAP_KEY`; **not a PM2.5 network** — satellite thermal detections of active fires, served separately at `/api/hotspots` |

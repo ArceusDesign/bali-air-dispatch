@@ -25,7 +25,7 @@ Three things are worth stating at the outset, because they shape everything that
 | | |
 |---|---|
 | **Networks ingested** | 8 (AirGradient, IQAir, PurpleAir, AQICN/WAQI, Nafas, Smart Citizen, OpenAQ, Airly) |
-| **Stations in catalogue** | 78 |
+| **Stations in catalogue** | 76 |
 | **Stations reporting live** | 39 (at time of writing) |
 | **Government reference stations available** | 1 (Denpasar Lumintang, KLHK, via AQICN) |
 | **Archive depth** | Earliest record 27 September 2023; 4,197 station-days total; longest single station 572 days |
@@ -45,7 +45,7 @@ Each network is polled independently. A network that fails or times out is simpl
 |---|---|---|---|---|
 | **AirGradient** | Open community network; the densest source in Bali | AirGradient O-1PST (Plantower PM module) | Public API, no key | 19 |
 | **OpenAQ** | Aggregator. **In Bali, every OpenAQ station is an AirGradient unit relayed onward** — see §6 | (relayed) | Public API, key | 22 |
-| **IQAir** | Commercial network; mixture of private hosts and contributors | Various | Public station pages | 12 |
+| **IQAir** | Commercial network; mixture of private hosts and contributors | Various | Public station pages, one device each — town-level values are not used (§8.5) | 10 |
 | **PurpleAir** | Open community network | PurpleAir (Plantower PM module) | Public API, key | 2 |
 | **Smart Citizen** | Open citizen-science platform (Fab Lab Barcelona) | SmartCitizen Kit 2.3 | Public API | 11 |
 | **Nafas** | Indonesian commercial network | Nafas Foundation sensor | Public JSON feed | 7 |
@@ -54,7 +54,7 @@ Each network is polled independently. A network that fails or times out is simpl
 
 **Geographic filter.** All networks are filtered to the same Bali bounding box: latitude −9.2 to −8.0, longitude 114.4 to 115.8. The filter is applied identically in the live aggregator and the archive worker.
 
-**On the single government station.** Of 78 catalogued stations, exactly one is a government reference instrument: Denpasar Lumintang (KLHK), reached through AQICN. It is not enumerated by AQICN's map endpoint and has to be probed directly by station ID. This is the principal monitoring gap in the record and is the main reason the archive exists in its present form.
+**On the single government station.** Of 76 catalogued stations, exactly one is a government reference instrument: Denpasar Lumintang (KLHK), reached through AQICN. It is not enumerated by AQICN's map endpoint and has to be probed directly by station ID. This is the principal monitoring gap in the record and is the main reason the archive exists in its present form.
 
 ### 3.1 A ninth, categorically different source: direct contribution
 
@@ -281,13 +281,29 @@ Staleness is computed as the **greater** of two ages: the upstream timestamp, an
 Two flags mark stations whose readings are real but should not enter ambient statistics. **Flagged stations are published in full — every reading is served exactly as recorded — and excluded from every island-wide figure on the site.**
 
 - **`suspected_indoor`** (3 stations): measuring a room, not ambient air.
-- **`suspected_malfunctioning`** (1 station): reporting values that cannot be reconciled with any neighbouring sensor. Currently one IQAir station reading 70–215 µg/m³ while all nine stations within 15 km read 10–35.
+- **`suspected_malfunctioning`** (none at present): reporting values that cannot be reconciled with any neighbouring sensor. The only station ever flagged, an IQAir pin labelled "Kopernik (Mas, Ubud)", was withdrawn in September 2026. It was not a faulty sensor; it was not a sensor at all (§8.5).
 
 The flag is a judgement about the device, never a modification of its data.
 
 ### 8.4 Offline retention
 
 When a station stops reporting permanently, its pin remains as a grey marker carrying its last archived date. Months of history never silently vanish because a device died. These carry no current reading and are excluded from all live statistics.
+
+### 8.5 One point, one device
+
+Every station on the map, in the archive and in the API is **one physical device at a known location, reporting its own measurement.** A town or city value, a satellite- or model-derived estimate, an interpolated surface or an average across devices is not a station, whatever the provider calls it, and is not ingested. Where a provider offers both levels — IQAir's API has `nearest_city` and `city` endpoints as well as individual station pages — only the station level is read.
+
+**The incident behind the rule.** Until September 2026 the map carried one value from IQAir's `nearest_city` endpoint, pinned in Mas and labelled "Kopernik (Mas, Ubud)". The name came from a May 2026 audit, which read a "Data attribution" credit on IQAir's Ubud page as evidence of a device at Kopernik. There was no such device:
+
+- Kopernik told us they have no monitor sending data to IQAir.
+- IQAir's Ubud page lists two stations, both AirGradient devices this archive already ingests directly: Bindu Ricefields and Villa Malaikat. The pin counted them a second time, under another name, at a location we assigned.
+- It was not their average either. On 13 of the 18 days on which both devices reported, it ran more than 15% above the *higher* of their two raw readings. On 28 August it read 200.9 µg/m³ against 44.2 and 31.0. Whatever else goes into IQAir's town value is not disclosed.
+
+On 27 August it was flagged `suspected_malfunctioning` (§8.3). That was the wrong diagnosis: a malfunctioning sensor is still a sensor. Until that flag it counted toward the island-wide figures.
+
+**What was done.** The `nearest_city` request was removed. Every id in the `iq-` namespace, which only that endpoint ever produced, is excluded from every listing and returns `410 Gone` instead of data. That is eight ids: the "Kopernik" series, its earlier id `iq-Ubud`, and six other town values already hidden in May 2026 (five satellite-model estimates, and a Jimbaran value that duplicated a PurpleAir device we ingest directly). Their archived rows are withheld from publication but retained, so the withdrawal itself stays auditable. IQAir's real stations are unaffected: each is read from its own station page and carries an `iqs-` id.
+
+This is unrelated to the AirGradient units that OpenAQ lists under the name "Kopernik" (October 2025 – March 2026). Those were physical devices, and their record remains in the archive.
 
 ---
 
