@@ -44,7 +44,7 @@ says how it was arrived at and what it does not claim.
 | AirGradient | Public feed; humidity-corrected (see methodology §6) |
 | OpenAQ | API key; used to pair and de-duplicate AirGradient relays |
 | PurpleAir | API key; humidity-corrected |
-| AQICN / GAIA | Free token |
+| AQICN / GAIA | Free token; the feed carries AQI sub-indices, converted to µg/m³ (methodology §10.2) |
 | IQAir | Public station pages, one device each, rendered by a separate optional worker. IQAir's town-level values are deliberately not used (methodology §8.5) |
 | Smart Citizen | Public API (no key) |
 | Community | Pushed to `POST /api/ingest` by the sensor owner |

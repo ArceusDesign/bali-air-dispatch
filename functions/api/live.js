@@ -43,6 +43,50 @@ function fetch(input, init) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
+// AQICN / WAQI publish the US-EPA AQI *index* for each pollutant, not a
+// concentration: `iaqi.pm25.v` in their feed is the PM2.5 sub-index, an
+// integer on the 0-500 scale (aqicn.org/data-platform: "all the values ...
+// are already converted from the raw concentration ... to the individual
+// pollutant AQI, according to the US EPA standard"). From 2026-04-26 until
+// 2026-09-11 fetchAQICN archived that integer as if it were µg/m³, so the one
+// government reference station on the map, Kabupaten Badung Sempidi, read
+// roughly four times too high for five months (archived daily mean 37.6,
+// 99% of days over the WHO guideline; in truth about 9, and none). The tell
+// was in the archive itself: 12,039 of 12,041 readings were whole numbers
+// and not one was ever above the station's overall AQI.
+//
+// This inverts WAQI's table. WAQI uses the 2012 EPA breakpoints
+// (aqicn.org/faq/2013-09-09/revised-pm25-aqi-breakpoints/), not the 2024
+// revision (Good <= 9.0): checked against the three IQAir stations within
+// 8 km of Sempidi, the 2012 inversion gives a May 2026 mean of 8.1 against
+// their 8.0; the 2024 table gives 6.1. Cross-checked on the other government
+// station too: AQICN's export shows Lumintang's last reading as 89.19 µg/m³
+// on 2025-08-09, and its API reported 168 for the same hour, which is exactly
+// AQI(89.19). The inversion is exact apart from the index being an integer:
+// within ±0.25 µg/m³ below 55 µg/m³, within about ±1 above.
+//
+// The operator script that converted the archived rows
+// (~/BaliAirBackups/fix-aqicn-units.py) uses the same bands and rounding;
+// keep the two together if this ever changes. DATA-METHODOLOGY.md 10.2.
+const AQICN_PM25_BANDS = [
+  //  index lo, hi,   µg/m³ lo, hi
+  [  0,  50,   0.0,  12.0],
+  [ 51, 100,  12.1,  35.4],
+  [101, 150,  35.5,  55.4],
+  [151, 200,  55.5, 150.4],
+  [201, 300, 150.5, 250.4],
+  [301, 400, 250.5, 350.4],
+  [401, 500, 350.5, 500.4],
+];
+function pm25FromAqicnIndex(v) {
+  const a = Number(v);
+  // A missing or unparseable index is a missing reading, never a zero.
+  if (v == null || v === '' || !Number.isFinite(a) || a < 0) return null;
+  for (const [iLo, iHi, cLo, cHi] of AQICN_PM25_BANDS) {
+    if (a <= iHi) return +(cLo + (a - iLo) * (cHi - cLo) / (iHi - iLo)).toFixed(1);
+  }
+  return AQICN_PM25_BANDS[AQICN_PM25_BANDS.length - 1][3];
+}
 function pm25Category(pm) {
   if (pm == null) return { cat: 'Unknown', cls: 'unknown' };
   if (pm <= 12) return { cat: 'Good', cls: 'good' };
@@ -364,6 +408,10 @@ async function fastPathFromD1(db) {
       // path and not on the slow one — the published figure would depend on
       // which path happened to serve the request.
       contributed: String(r.station_id).startsWith('cs-'),
+      // Same reasoning: aq-* (AQICN / WAQI) PM2.5 is converted from the
+      // network's AQI sub-index, never measured in µg/m³ (pm25FromAqicnIndex),
+      // and the UI marks it "est." whichever path served the request.
+      pm25_estimated: String(r.station_id).startsWith('aq-'),
       pm10: r.pm10 != null ? +(+r.pm10).toFixed(1) : null,
       pm1:  r.pm1  != null ? +(+r.pm1).toFixed(1)  : null,
       aqi: r.aqi != null ? +r.aqi : null,
@@ -591,7 +639,8 @@ async function fetchAQICN(env) {
         } catch { return { s, dd: null }; }
       }));
       for (const { s, dd } of details) {
-        const pm25 = dd?.data?.iaqi?.pm25?.v;
+        // iaqi.pm25.v is the AQI sub-index, not µg/m³ — see pm25FromAqicnIndex.
+        const pm25 = pm25FromAqicnIndex(dd?.data?.iaqi?.pm25?.v);
         const { cat, cls } = pm25Category(pm25);
         const attribution = dd?.data?.attributions?.[0]?.name || '';
         const isGov = attribution.includes('KLHK') || attribution.includes('Kementerian');
@@ -601,7 +650,8 @@ async function fetchAQICN(env) {
           source: 'AQICN',
           type: isGov ? 'Government (KLHK)' : 'GAIA Network',
           lat: s.lat, lon: s.lon,
-          pm25: pm25 != null ? +pm25 : null,
+          pm25,
+          pm25_estimated: pm25 != null,   // derived from the index, not measured
           aqi: +s.aqi || null,
           category: cat, cls,
           lastSeen: dd?.data?.time?.iso || null,
@@ -616,7 +666,7 @@ async function fetchAQICN(env) {
       const r = await fetch(`https://api.waqi.info/feed/${entry.id}/?token=${env.AQICN_TOKEN}`);
       const dd = await r.json();
       if (dd?.status !== 'ok' || !dd.data) return;
-      const pm25 = dd.data.iaqi?.pm25?.v;
+      const pm25 = pm25FromAqicnIndex(dd.data.iaqi?.pm25?.v);   // sub-index -> µg/m³
       // Sanity check: AQICN's free-tier sometimes maps unknown ids to wrong
       // stations (we saw idx=-419824 / Bend, Oregon with the demo token).
       // Only accept when the geo lands in Bali bbox.
@@ -631,7 +681,8 @@ async function fetchAQICN(env) {
         source: 'AQICN',
         type: entry.type,
         lat, lon,
-        pm25: pm25 != null ? +pm25 : null,
+        pm25,
+        pm25_estimated: pm25 != null,
         aqi: dd.data.aqi != null ? +dd.data.aqi : null,
         category: cat, cls,
         lastSeen: dd.data.time?.iso || null,

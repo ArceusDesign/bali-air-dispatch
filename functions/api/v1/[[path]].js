@@ -300,7 +300,15 @@ function routeIndex(origin) {
       corrected:
         'AirGradient and PurpleAir readings are humidity-corrected (US-EPA 2021) ' +
         'before publication; `pm25_raw` carries the uncorrected sensor figure. ' +
-        'All other networks are as-supplied. See /appendix#methodology.',
+        'All other networks are as-supplied, apart from the unit conversion ' +
+        'described under pm25_from_aqi. See /appendix#methodology.',
+      pm25_from_aqi:
+        'AQICN / WAQI publishes the US-EPA AQI sub-index for each pollutant, not ' +
+        'a concentration. Rows and stations flagged `pm25_from_aqi` carry PM2.5 ' +
+        'converted back through the 2012 EPA breakpoint table WAQI uses: derived, ' +
+        'not measured, exact to about ±0.25 µg/m³ below 55 µg/m³ and ±1 above. ' +
+        'Rows from 2026-04-26 to 2026-09-11 were archived as the raw index and ' +
+        'corrected in September 2026. See DATA-METHODOLOGY.md 10.2.',
       suspected_indoor:
         'Stations flagged `suspected_indoor` measure a room, not ambient air. ' +
         'They are published for completeness and excluded from every island-wide ' +
@@ -376,6 +384,9 @@ async function routeStations(db, url) {
     // are uncorrected even for these networks. Per-row truth is pm25_raw
     // being present on a /measurements or /latest row.
     pm25_correction_applied_since: CORRECTED_SOURCES.has(r.source) ? '2026-07-21' : null,
+    // AQICN / WAQI hands out the AQI sub-index, so its PM2.5 is a unit
+    // conversion of an integer index, not a measurement (notes.pm25_from_aqi).
+    pm25_from_aqi: r.source === 'AQICN',
     interval_source: familyFor(r.station_id),
   });
 
@@ -390,7 +401,7 @@ async function routeStations(db, url) {
       // Must track the property name emitted by shape() above — when this said
       // 'pm25_corrected' after the field was renamed, the CSV carried a header
       // that was blank on every row, which reads as "false" to anyone loading it.
-      'pm25_correction_applied_since', 'interval_source',
+      'pm25_correction_applied_since', 'pm25_from_aqi', 'interval_source',
     ], 'baliair-stations.csv', 900);
   }
   return json({ version: VERSION, count: rows.length, licence: LICENCE, stations: rows }, { maxAge: 900 });
@@ -467,6 +478,7 @@ async function routeLatest(db, url) {
     suspected_indoor: INDOOR_IDS.has(r.station_id),
     suspected_malfunctioning: MALFUNCTION_IDS.has(r.station_id),
     pm25_corrected: r.pm25_raw != null,
+    pm25_from_aqi: r.source === 'AQICN',
   });
 
   let rows = [...(universal.results || []), ...(scraped.results || [])].map(shape);
@@ -478,6 +490,7 @@ async function routeLatest(db, url) {
       'station_id', 'name', 'source', 'latitude', 'longitude', 'observed_at',
       'age_hours', 'stale', 'pm25', 'pm25_raw', 'pm10', 'pm1', 'aqi',
       'temperature', 'humidity', 'suspected_indoor', 'suspected_malfunctioning', 'pm25_corrected',
+      'pm25_from_aqi',
     ], 'baliair-latest.csv', 300);
   }
   return json({
@@ -723,6 +736,7 @@ async function routeMeasurements(db, url) {
       source: r.source || null,
       suspected_indoor: INDOOR_IDS.has(r.station_id),
       suspected_malfunctioning: MALFUNCTION_IDS.has(r.station_id),
+      pm25_from_aqi: r.source === 'AQICN',
     };
     if (keyIsDate) base.date = String(r.key).slice(0, 10);
     else base.observed_at = isoFromUnix(Number(r.key));
@@ -753,10 +767,10 @@ async function routeMeasurements(db, url) {
 
   if (format === 'csv') {
     const columns = interval === 'raw'
-      ? ['station_id', 'source', 'observed_at', 'pm25', 'pm25_raw', 'pm25_corrected', 'pm10', 'pm1', 'aqi', 'temperature', 'humidity', 'suspected_indoor', 'suspected_malfunctioning']
+      ? ['station_id', 'source', 'observed_at', 'pm25', 'pm25_raw', 'pm25_corrected', 'pm10', 'pm1', 'aqi', 'temperature', 'humidity', 'suspected_indoor', 'suspected_malfunctioning', 'pm25_from_aqi']
       : keyIsDate
-        ? ['station_id', 'source', 'date', 'pm25', 'pm25_min', 'pm25_max', 'aqi_max', 'samples', 'suspected_indoor', 'suspected_malfunctioning']
-        : ['station_id', 'source', 'observed_at', 'pm25', 'pm25_min', 'pm25_max', 'aqi_max', 'samples', 'suspected_indoor', 'suspected_malfunctioning'];
+        ? ['station_id', 'source', 'date', 'pm25', 'pm25_min', 'pm25_max', 'aqi_max', 'samples', 'suspected_indoor', 'suspected_malfunctioning', 'pm25_from_aqi']
+        : ['station_id', 'source', 'observed_at', 'pm25', 'pm25_min', 'pm25_max', 'aqi_max', 'samples', 'suspected_indoor', 'suspected_malfunctioning', 'pm25_from_aqi'];
     const res = csvResponse(shaped, columns,
       `baliair-${interval}${station ? '-' + station.replace(/[^A-Za-z0-9._-]/g, '_') : ''}.csv`, 600);
     if (nextCursor) res.headers.set('X-Next-Cursor', nextCursor);

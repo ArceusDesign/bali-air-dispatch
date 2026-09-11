@@ -49,7 +49,7 @@ Each network is polled independently. A network that fails or times out is simpl
 | **PurpleAir** | Open community network | PurpleAir (Plantower PM module) | Public API, key | 2 |
 | **Smart Citizen** | Open citizen-science platform (Fab Lab Barcelona) | SmartCitizen Kit 2.3 | Public API | 11 |
 | **Nafas** | Indonesian commercial network | Nafas Foundation sensor | Public JSON feed | 7 |
-| **AQICN / WAQI** | Aggregator; carries the **KLHK government reference station** | Reference-grade (government); GAIA (community) | Public API, token | 2 |
+| **AQICN / WAQI** | Aggregator; carries the **KLHK government reference station** | Reference-grade (government); GAIA (community) | Public API, token. The feed carries AQI sub-indices, converted to µg/m³ (§10.2) | 2 |
 | **Airly** | Commercial network | Airly sensor | Public API, key | 2 |
 
 **Geographic filter.** All networks are filtered to the same Bali bounding box: latitude −9.2 to −8.0, longitude 114.4 to 115.8. The filter is applied identically in the live aggregator and the archive worker.
@@ -117,7 +117,7 @@ Three scheduled processes run continuously on Cloudflare's edge network.
 
 We apply exactly one correction: the **US-EPA 2021 humidity correction for Plantower-based optical sensors**. It is applied to **two networks only** — AirGradient and PurpleAir — because those are the two whose public feeds carry an uncorrected Plantower reading.
 
-**All six other networks are published exactly as supplied.** We do not adjust, scale, calibrate or reconcile them.
+**All six other networks are published exactly as supplied.** We do not adjust, scale, calibrate or reconcile them. The one change of *units* is AQICN, whose feed carries an index rather than a concentration (§10.2); converting it is arithmetic, not a correction.
 
 Correction has been applied since **21 July 2026**. Rows archived before that date are uncorrected, and the API reports this per station in the field `pm25_correction_applied_since`.
 
@@ -341,7 +341,11 @@ Stated plainly, because a reference document that omits them is not usable for p
 
 ### 10.2 AQI conversion
 
-Where a network publishes only an AQI value, PM2.5 is derived using the standard US-EPA breakpoint table. Values obtained this way are marked as such.
+Where a network publishes only an AQI value, PM2.5 is derived using the US-EPA breakpoint table that network uses, and values obtained this way are marked as such: `pm25_estimated` on the live feed, `pm25_from_aqi` on every API row and station.
+
+**AQICN / WAQI is such a network.** Its feed reports the US-EPA *AQI sub-index* for each pollutant, not a concentration ("all the values … are already converted from the raw concentration … to the individual pollutant AQI, according to the US EPA standard"). WAQI uses the 2012 EPA breakpoints (0–12.0 → 0–50, 12.1–35.4 → 51–100, 35.5–55.4 → 101–150, 55.5–150.4 → 151–200, 150.5–250.4 → 201–300, 250.5–350.4 → 301–400, 350.5–500.4 → 401–500), not the 2024 revision, and the inversion is linear within each band. Because the index is a whole number, the recovered concentration is exact to about ±0.25 µg/m³ below 55 µg/m³ and about ±1 µg/m³ above; the original index can always be recovered by applying the table forwards.
+
+**The incident behind the marking.** From 26 April to 11 September 2026 the aggregator stored the sub-index as if it were µg/m³. The station affected was the one government reference instrument then reporting, Kabupaten Badung Sempidi: its archived daily mean was 37.6 µg/m³ with 99% of days over the WHO 24-hour guideline; in real units it is about 9, with none. Three independent checks established the error and the table: 12,039 of its 12,041 archived readings were whole numbers and none was ever above the station's overall AQI, which a concentration cannot do; inverted with the 2012 table its May 2026 mean is 8.1 µg/m³ against 8.0 at the three IQAir stations within 8 km (the 2024 table gives 6.1); and AQICN's export of the other government station, Denpasar Lumintang, shows 89.19 µg/m³ for its final hour on 9 August 2025, for which the API reported 168 — exactly the index of 89.19. The archived rows were converted in September 2026 by the same arithmetic, and the daily rows rebuilt from them; the conversion is recorded in the database (`archive_corrections`). AQICN's **downloadable station exports** are in µg/m³ and were never affected, so the historical Lumintang record (§3, and the Brief) stands as published. Dispatch VII quoted two Sempidi figures from the affected period and carries a correction.
 
 ### 10.3 Open access
 
