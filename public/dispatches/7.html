@@ -305,7 +305,7 @@ body::before{
     <p class="chapter-lede" data-i18n="disp.7.lede">Bali Air Dispatch · 20 July 2026 · The first data review since Dispatch VI</p>
     <div class="correction-note" role="note">
       <span class="kicker" data-i18n="disp.7.x.corrKicker">Correction · September 2026</span>
-      <p data-i18n-html="disp.7.x.corrBody">An earlier version of this dispatch included readings from a map point labelled “Kopernik (Mas, Ubud)”. It was not a sensor but IQAir's town-wide value for Ubud, and we no longer publish area-level values of any kind. That value, and six other IQAir town-level values present in April and May, have been removed, and the affected tables and figures recomputed from the same archive. The findings stand, and are stronger: May was dirtier, and the residential morning peak higher, than first reported.</p>
+      <p data-i18n-html="disp.7.x.corrBody">An earlier version of this dispatch included readings from a map point labelled “Kopernik (Mas, Ubud)”. It was not a sensor but IQAir's town-wide value for Ubud, and we no longer publish area-level values of any kind. Separately, the readings of the Badung government station had been recorded on the AQI index scale rather than in µg/m³, roughly four times too high; April's worst day and a “Sempidi” row in the worst-days table came from them. Both faults have been corrected and every affected table and figure recomputed from the same archive; the monthly table now also leaves out the unverified community sensor, as the note beneath the worst-days table already said. The findings stand: the residential morning peak is higher than first reported, and the monthly figures move by small amounts in both directions.</p>
     </div>
 
     <div class="chapter-body">
@@ -317,7 +317,7 @@ body::before{
 
       <div>
         <h3 class="sub-h" data-i18n-html="disp.7.sub.2"><span class="sub-kicker">§ II</span>The season turned, and it is worse than last year</h3>
-        <p data-i18n-html="disp.7.body.p3">The island-wide picture, month by month (mean of every archived sensor-day; the WHO 24-hour guideline is <strong>15 µg/m³</strong>):</p>
+        <p data-i18n-html="disp.7.body.p3">The island-wide picture, month by month (mean of every validated sensor-day; the WHO 24-hour guideline is <strong>15 µg/m³</strong>):</p>
         <div class="data-tbl-wrap">
           <table class="data-tbl">
             <thead>
@@ -333,30 +333,30 @@ body::before{
               <tr>
                 <td data-i18n="disp.7.x.t1r1m">April</td>
                 <td class="r">134</td>
-                <td class="r">19.7</td>
-                <td class="r">60%</td>
-                <td class="r">57.0</td>
+                <td class="r">19.1</td>
+                <td class="r">59%</td>
+                <td class="r">53.6</td>
               </tr>
               <tr>
                 <td data-i18n="disp.7.x.t1r2m">May</td>
                 <td class="r">612</td>
-                <td class="r">14.8</td>
-                <td class="r">43%</td>
+                <td class="r">13.7</td>
+                <td class="r">38%</td>
                 <td class="r">87.1</td>
               </tr>
               <tr>
                 <td data-i18n="disp.7.x.t1r3m">June</td>
-                <td class="r">592</td>
-                <td class="r">22.7</td>
-                <td class="r">59%</td>
+                <td class="r">574</td>
+                <td class="r">20.4</td>
+                <td class="r">53%</td>
                 <td class="r">164.6</td>
               </tr>
               <tr>
                 <td data-i18n="disp.7.x.t1r4m">July (to the 20th)</td>
-                <td class="r">344</td>
-                <td class="r">26.4</td>
-                <td class="r">57%</td>
-                <td class="r">152.0</td>
+                <td class="r">325</td>
+                <td class="r">22.1</td>
+                <td class="r">49%</td>
+                <td class="r">105.9</td>
               </tr>
             </tbody>
           </table>
@@ -492,12 +492,6 @@ body::before{
                 <td class="r" data-i18n="disp.7.x.t3r7d">3 June</td>
               </tr>
               <tr>
-                <td>Sempidi</td>
-                <td data-i18n="disp.7.x.t3r9a">Badung</td>
-                <td class="r">57.0</td>
-                <td class="r" data-i18n="disp.7.x.t3r9d">27 April</td>
-              </tr>
-              <tr>
                 <td>Sidakarya</td>
                 <td data-i18n="disp.7.x.t3r10a">South Denpasar</td>
                 <td class="r">54.6</td>
@@ -508,6 +502,12 @@ body::before{
                 <td data-i18n="disp.7.x.t3r11a">Centre</td>
                 <td class="r">51.2</td>
                 <td class="r" data-i18n="disp.7.x.t3r11d">24 April</td>
+              </tr>
+              <tr>
+                <td>Umalas (Villa Fusion)</td>
+                <td data-i18n="disp.7.x.t3r12a">Canggu corridor</td>
+                <td class="r">48.9</td>
+                <td class="r" data-i18n="disp.7.x.t3r12d">14 July</td>
               </tr>
             </tbody>
           </table>
