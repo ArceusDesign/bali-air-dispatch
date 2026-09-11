@@ -205,6 +205,10 @@ const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 const SOURCE_STALE_MS = Object.assign(Object.create(null), {
   OpenAQ: 6 * 60 * 60 * 1000,
   AirGradient: 6 * 60 * 60 * 1000,
+  // PurpleAir sensors report every two minutes. Six hours silent is a dead
+  // sensor; under the 24 h default a frozen unit sat on the map at 739 µg/m³
+  // for most of 2026-09-11 (see fetchPurpleAir).
+  PurpleAir: 6 * 60 * 60 * 1000,
   // Smart Citizen kits report about once a minute when alive, like AirGradient.
   // Six hours silent is a sensor with a problem, and should look like one.
   'Smart Citizen': 6 * 60 * 60 * 1000,
@@ -554,16 +558,42 @@ async function scrapedIQAirFromD1(db, existing = []) {
 // ── UPSTREAM SOURCE FETCHERS — each returns an array of station objects ──
 // All fetchers run in parallel via Promise.allSettled.
 
+// PurpleAir sensors report every two minutes, so PurpleAir's own `last_seen`
+// is a strong freshness signal: a sensor silent for PURPLEAIR_FRESH_MS has
+// nothing current to publish, and its last value must not be re-archived on
+// every tick as though it were new. PurpleAir also scores each sensor's two
+// laser channels against each other (`confidence`, 0-100, their own field);
+// a reading the two channels disagree on is not a measurement of the air, and
+// PurpleAir's map stops showing such a sensor. Both rules date from
+// 2026-09-11, when a newly registered unit ("1a3", pa-322288) spent most of a
+// day on this map at 739 µg/m³: its last_seen was frozen at 02:38Z, its raw
+// 602 µg/m³ never moved — the signature of a dead channel — and PurpleAir
+// itself had already stopped showing it. Under the 24 h default it counted as
+// live here for sixteen hours.
+const PURPLEAIR_FRESH_MS = 6 * 60 * 60 * 1000;
+const PURPLEAIR_MIN_CONFIDENCE = 50;
 async function fetchPurpleAir(env) {
   // Whole-Bali bbox (north -8.0 → south -8.92, west 114.4 → east 115.78)
   const r = await fetch(
-    'https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,pm2.5_cf_1,humidity,last_seen&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78',
+    'https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,pm2.5_cf_1,humidity,last_seen,confidence&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78',
     { headers: { 'X-API-Key': env.PURPLEAIR_API_KEY } }
   );
   const data = await r.json();
   if (!data?.data) return [];
   const f = data.fields;
-  return data.data.map(row => {
+  const nowMs = Date.now();
+  const out = [];
+  for (const row of data.data) {
+    // Not reporting: no last_seen, or one older than PURPLEAIR_FRESH_MS. A
+    // missing timestamp fails too — a reading that cannot show its freshness
+    // is not current (the same rule shapeAirGradient applies).
+    const seenSec = f.indexOf('last_seen') >= 0 ? row[f.indexOf('last_seen')] : null;
+    const seenMs = (seenSec == null || seenSec === '' || !Number.isFinite(+seenSec)) ? NaN : +seenSec * 1000;
+    if (!Number.isFinite(seenMs) || (nowMs - seenMs) > PURPLEAIR_FRESH_MS) continue;
+    // Channels disagree: PurpleAir's own verdict on its own hardware. Absent
+    // field or null value = no verdict, and the reading passes.
+    const conf = f.indexOf('confidence') >= 0 ? row[f.indexOf('confidence')] : null;
+    if (conf != null && conf !== '' && Number.isFinite(+conf) && +conf < PURPLEAIR_MIN_CONFIDENCE) continue;
     // PurpleAir is Plantower-based like AirGradient, so it carries the same
     // humidity over-read. `humidity` was added to the field list for exactly
     // this — correct when it's present, fall back to raw when it isn't (a
@@ -577,11 +607,13 @@ async function fetchPurpleAir(env) {
     const atm = row[f.indexOf('pm2.5')];
     const cf1 = f.indexOf('pm2.5_cf_1') >= 0 ? row[f.indexOf('pm2.5_cf_1')] : null;
     const raw = cf1 != null ? cf1 : atm;
+    // No PM2.5 value is no reading — never a row, and never a zero.
+    if (raw == null || raw === '' || !Number.isFinite(+raw)) continue;
     const rh = f.indexOf('humidity') >= 0 ? row[f.indexOf('humidity')] : null;
     const corrected = epaCorrectPm25(raw, rh);
-    const pm = corrected != null ? corrected : (raw != null ? +raw.toFixed(1) : null);
+    const pm = corrected != null ? corrected : +(+raw).toFixed(1);
     const { cat, cls } = pm25Category(pm);
-    return {
+    out.push({
       id: `pa-${row[0]}`,
       name: row[f.indexOf('name')],
       source: 'PurpleAir',
@@ -592,7 +624,7 @@ async function fetchPurpleAir(env) {
       // pm25_raw stores the exact value fed into the correction, so the
       // invariant epaCorrectPm25(pm25_raw, humidity) === pm25 holds for every
       // archived row and the correction stays reproducible from stored fields.
-      pm25_raw: raw != null ? +raw.toFixed(1) : null,
+      pm25_raw: +(+raw).toFixed(1),
       pm25_corrected: corrected != null,
       // Same coercion trap: +null === 0 is finite, which would archive a real
       // "0% relative humidity in Bali" into the humidity column — and worse,
@@ -601,11 +633,10 @@ async function fetchPurpleAir(env) {
       aqi: null,
       category: cat,
       cls,
-      lastSeen: row[f.indexOf('last_seen')]
-        ? new Date(row[f.indexOf('last_seen')] * 1000).toISOString()
-        : null,
-    };
-  });
+      lastSeen: new Date(seenMs).toISOString(),
+    });
+  }
+  return out;
 }
 
 async function fetchAQICN(env) {
