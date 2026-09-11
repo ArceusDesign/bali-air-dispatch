@@ -71,6 +71,7 @@ git-ignored by Wrangler convention).
 | | `IQAIR_WATCHDOG_KEY`, `ARCHIVE_WATCHDOG_KEY` | shared secrets between the two workers |
 | `workers/iqair-scrape` | `FIRECRAWL_KEY` | rendering IQAir station pages (paid service) |
 | | `IQAIR_WATCHDOG_KEY`, `ARCHIVE_WATCHDOG_KEY` | as above |
+| `workers/d1-backup` | `PUSHOVER_TOKEN`, `PUSHOVER_USER` | optional: a phone alert when a daily backup run fails. Nothing else — the worker uses bindings only |
 
 **You do not need any of these to contribute.** Nafas and Smart Citizen need
 no key, so `/api/live` returns real data locally with nothing configured.

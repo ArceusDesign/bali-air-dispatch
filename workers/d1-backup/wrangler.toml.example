@@ -1,0 +1,26 @@
+#:schema node_modules/wrangler/config-schema.json
+# Cloudflare Worker — daily copy of the archive database into R2.
+# Copy to wrangler.toml and fill in your own database_id and bucket name.
+
+name = "d1-backup"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+workers_dev = false
+
+[triggers]
+crons = ["23 19 * * *"]
+
+[[d1_databases]]
+binding = "ARCHIVE_DB"
+database_name = "bali-air-archive"
+database_id = "REPLACE_WITH_REAL_D1_ID"
+
+[[r2_buckets]]
+binding = "BACKUPS"
+bucket_name = "baliair-backups"
+
+[limits]
+cpu_ms = 120000
+
+[observability]
+enabled = false

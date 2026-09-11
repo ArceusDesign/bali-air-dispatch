@@ -196,3 +196,33 @@ wrangler.local.toml
 ```
 
 …and copy `wrangler.toml` → `wrangler.local.toml` once you've filled in the ID. `wrangler` honours whichever is present; the `.local` suffix is ignored by git.
+
+---
+
+## 8. Off-machine backups — `workers/d1-backup`
+
+The nightly dump on the operator's Mac (`~/BaliAirBackups/backup-baliair.sh`)
+is a copy held outside Cloudflare, and it depends on that Mac being on.
+`workers/d1-backup` is the copy that does not: a worker on a daily cron that
+reads every table through the D1 binding and writes gzipped JSONL into a
+private R2 bucket, keeping 90 days. No API token is involved. Cloudflare's own
+Time Travel covers the last 30 days on top of both. `workers/d1-backup/README.md`
+has the layout, the checks and the restore procedure.
+
+```bash
+# one-time
+wrangler r2 bucket create baliair-backups
+wrangler d1 execute bali-air-archive --remote --file schema-v11-backup-runs.sql
+
+# fill in database_id locally (see §7), then
+cd workers/d1-backup && wrangler deploy
+
+# first run now rather than at 19:23 UTC, and check it
+wrangler dev --remote --test-scheduled      # then, in another shell:
+curl "http://localhost:8787/__scheduled?cron=23+19+*+*+*"
+wrangler r2 object get baliair-backups/latest.json --pipe
+```
+
+Optional phone alert on failure: `wrangler secret put PUSHOVER_TOKEN` and
+`wrangler secret put PUSHOVER_USER` in the worker folder. Without them a failed
+run is still recorded in `backup_runs`, which the operator heartbeat watches.
