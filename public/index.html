@@ -1236,14 +1236,19 @@ const isIndoor = (s) => INDOOR_IDS.has(typeof s === 'string' ? s : (s && s.id));
 // full series stays chartable in History and downloadable from /api/v1. The
 // number is shown and labelled, not hidden.
 const MALFUNCTION_IDS = new Set([
-  // Empty since September 2026. Its only entry was 'iq-kopernik' ("Kopernik
-  // (Mas, Ubud)"), flagged 27 Aug for reading 70-215 µg/m³ against 10-35 all
-  // round it. The diagnosis was wrong in kind: it was never a sensor, but
-  // IQAir's Ubud TOWN value under a borrowed name (Kopernik have no monitor
-  // sending data to IQAir). It is now off the map altogether, a stronger rule
-  // than this list's "shown and labelled": a malfunctioning sensor is still a
-  // sensor, and an aggregate is not (DATA-METHODOLOGY §8.5).
+  // Klungkung by Lumi Clinic (PurpleAir). Flagged 2026-09-11: one of its two
+  // laser channels died on 26 August (channel A reads 0.1 while B reads 35),
+  // and PurpleAir's combined figure, which is what we archive, fell to about a
+  // quarter of the sensor's own prior level against its neighbours. Readings
+  // through 25 August are sound; from 26 August they are far too LOW — the
+  // mirror image of the Kopernik case, and a reminder that a sensor can fail
+  // in the direction that looks like clean air. The aggregator still publishes
+  // it (PURPLEAIR_SHOW_DESPITE_DISAGREEMENT in functions/api/live.js) so this
+  // list can grey it, label it and keep it out of every island-wide figure.
+  // The previous entry, 'iq-kopernik', was an IQAir town value, not a sensor,
+  // and is retired with the whole iq- namespace (DATA-METHODOLOGY §8.5).
   // Mirrors functions/api/v1 and public/history.html.
+  'pa-46949',
 ]);
 const isMalfunctioning = (s) => MALFUNCTION_IDS.has(typeof s === 'string' ? s : (s && s.id));
 // THE ONE TEST for "this device is not reporting trustworthy ambient air".

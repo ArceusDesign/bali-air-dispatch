@@ -55,10 +55,13 @@ const INDOOR_IDS = new Set([
 // filtering for one should not silently lose the other.
 // Kept in sync by hand with MALFUNCTION_IDS in public/index.html + history.html.
 const MALFUNCTION_IDS = new Set([
-  // Empty since September 2026. Its only entry was iq-kopernik, flagged 27 Aug
-  // for reading 70-215 µg/m³ against 10-35 all round it. It was not a faulty
-  // sensor; it was not a sensor at all, but IQAir's Ubud town value under a
-  // borrowed name. Retired with the whole iq- namespace (RETIRED_PREFIX below).
+  // Klungkung by Lumi Clinic (PurpleAir). Flagged 2026-09-11: channel A dead
+  // since 26 August (A 0.1 while B 35), so PurpleAir's combined figure — the
+  // one archived — runs at about a quarter of the sensor's prior level against
+  // its neighbours. Rows through 2026-08-25 are sound; later rows are too low.
+  // (The earlier entry, iq-kopernik, was a town value, not a sensor: retired
+  // with the iq- namespace, RETIRED_PREFIX below.)
+  'pa-46949',
 ]);
 
 // Networks whose PM2.5 we humidity-correct before publishing (US-EPA 2021).

@@ -581,6 +581,17 @@ async function scrapedIQAirFromD1(db, existing = []) {
 const PURPLEAIR_FRESH_MS = 6 * 60 * 60 * 1000;
 const PURPLEAIR_AB_ABS_UGM3 = 5;
 const PURPLEAIR_AB_REL = 0.7;
+// A unit whose channels disagree is normally withheld: a sensor that has never
+// produced a sound record (the "1a3" case) should not appear at all. The units
+// listed here are the exception — a long record, and a fault that began on a
+// known date — and are published FLAGGED, so the pin stays on the map, grey
+// and labelled, the History page files the record under "Suspected
+// malfunctioning", and /api/v1 marks every row: the way this site treats a
+// malfunctioning sensor. Mirrors MALFUNCTION_IDS in public/index.html,
+// public/history.html and functions/api/v1; change all four together.
+const PURPLEAIR_SHOW_DESPITE_DISAGREEMENT = new Set([
+  'pa-46949',   // Klungkung by Lumi Clinic — channel A dead since 2026-08-26 (A 0.1 / B 35)
+]);
 async function fetchPurpleAir(env, notes) {
   // Whole-Bali bbox (north -8.0 → south -8.92, west 114.4 → east 115.78)
   const r = await fetch(
@@ -593,6 +604,7 @@ async function fetchPurpleAir(env, notes) {
   const nowMs = Date.now();
   const num = (v) => (v == null || v === '' || !Number.isFinite(+v)) ? null : +v;
   const dropped = [];
+  const shown = [];
   const out = [];
   for (const row of data.data) {
     // Not reporting: no last_seen, or one older than PURPLEAIR_FRESH_MS. A
@@ -605,11 +617,17 @@ async function fetchPurpleAir(env, notes) {
     // reading has no partner to disagree with and passes on its own.
     const chA = f.indexOf('pm2.5_cf_1_a') >= 0 ? num(row[f.indexOf('pm2.5_cf_1_a')]) : null;
     const chB = f.indexOf('pm2.5_cf_1_b') >= 0 ? num(row[f.indexOf('pm2.5_cf_1_b')]) : null;
+    let channelsDisagree = false;
     if (chA != null && chB != null) {
       const diff = Math.abs(chA - chB), mean = (chA + chB) / 2;
       if (diff > PURPLEAIR_AB_ABS_UGM3 && mean > 0 && diff / mean > PURPLEAIR_AB_REL) {
-        dropped.push(`pa-${row[0]} (${row[f.indexOf('name')]}): channels disagree, A ${chA} / B ${chB}`);
-        continue;
+        channelsDisagree = true;
+        const what = `pa-${row[0]} (${row[f.indexOf('name')]}): channels disagree, A ${chA} / B ${chB}`;
+        if (!PURPLEAIR_SHOW_DESPITE_DISAGREEMENT.has(`pa-${row[0]}`)) {
+          dropped.push(what);
+          continue;
+        }
+        shown.push(what);
       }
     }
     // PurpleAir is Plantower-based like AirGradient, so it carries the same
@@ -644,6 +662,7 @@ async function fetchPurpleAir(env, notes) {
       // archived row and the correction stays reproducible from stored fields.
       pm25_raw: +(+raw).toFixed(1),
       pm25_corrected: corrected != null,
+      channels_disagree: channelsDisagree,   // true only for the flagged exceptions above
       // Same coercion trap: +null === 0 is finite, which would archive a real
       // "0% relative humidity in Bali" into the humidity column — and worse,
       // make the row look like it HAS valid RH to any later re-correction pass.
@@ -656,8 +675,11 @@ async function fetchPurpleAir(env, notes) {
   }
   // Not an error, but the only place a visitor of the archive can learn why a
   // sensor is absent: the worker copies these into archive_runs.error.
-  if (dropped.length && Array.isArray(notes)) {
-    notes.push({ source: 'PurpleAir', error: `${dropped.length} sensor(s) not published — ${dropped.join('; ')}`.slice(0, 300) });
+  if ((dropped.length || shown.length) && Array.isArray(notes)) {
+    const parts = [];
+    if (dropped.length) parts.push(`${dropped.length} not published — ${dropped.join('; ')}`);
+    if (shown.length) parts.push(`${shown.length} published flagged — ${shown.join('; ')}`);
+    notes.push({ source: 'PurpleAir', error: parts.join(' | ').slice(0, 300) });
   }
   return out;
 }
