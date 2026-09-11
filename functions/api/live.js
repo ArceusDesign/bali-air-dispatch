@@ -561,27 +561,38 @@ async function scrapedIQAirFromD1(db, existing = []) {
 // PurpleAir sensors report every two minutes, so PurpleAir's own `last_seen`
 // is a strong freshness signal: a sensor silent for PURPLEAIR_FRESH_MS has
 // nothing current to publish, and its last value must not be re-archived on
-// every tick as though it were new. PurpleAir also scores each sensor's two
-// laser channels against each other (`confidence`, 0-100, their own field);
-// a reading the two channels disagree on is not a measurement of the air, and
-// PurpleAir's map stops showing such a sensor. Both rules date from
-// 2026-09-11, when a newly registered unit ("1a3", pa-322288) spent most of a
-// day on this map at 739 µg/m³: its last_seen was frozen at 02:38Z, its raw
-// 602 µg/m³ never moved — the signature of a dead channel — and PurpleAir
-// itself had already stopped showing it. Under the 24 h default it counted as
-// live here for sixteen hours.
+// every tick as though it were new. And a PurpleAir unit carries two laser
+// channels, A and B, that should agree: a reading they disagree on is not a
+// measurement of the air. Both rules date from 2026-09-11, when a newly
+// registered unit ("1a3", pa-322288) spent most of a day on this map at 739
+// µg/m³: its last_seen was frozen at 02:38Z, its raw 602 µg/m³ never moved —
+// the signature of a dead channel — and PurpleAir itself had already stopped
+// showing it. Under the 24 h default it counted as live here for sixteen hours.
+//
+// Agreement is judged on the two channels' own CF=1 values with the test EPA
+// applies to PurpleAir data: exclude only when they differ by more than
+// PURPLEAIR_AB_ABS_UGM3 AND by more than PURPLEAIR_AB_REL of their mean. Both
+// halves matter. The first version of this rule used PurpleAir's own
+// `confidence` score (< 50 = drop), and its first deployed run silently
+// dropped Klungkung by Lumi Clinic, a healthy sensor reading ~6 µg/m³: that
+// score is relative, so two good channels reading 5 and 9 in clean air look
+// like a 57% disagreement. A dead channel at 602 against a live one fails the
+// test below by a mile; 5 against 9 passes on the absolute half.
 const PURPLEAIR_FRESH_MS = 6 * 60 * 60 * 1000;
-const PURPLEAIR_MIN_CONFIDENCE = 50;
-async function fetchPurpleAir(env) {
+const PURPLEAIR_AB_ABS_UGM3 = 5;
+const PURPLEAIR_AB_REL = 0.7;
+async function fetchPurpleAir(env, notes) {
   // Whole-Bali bbox (north -8.0 → south -8.92, west 114.4 → east 115.78)
   const r = await fetch(
-    'https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,pm2.5_cf_1,humidity,last_seen,confidence&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78',
+    'https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5,pm2.5_cf_1,pm2.5_cf_1_a,pm2.5_cf_1_b,humidity,last_seen&location_type=0&nwlat=-8.0&nwlng=114.4&selat=-8.92&selng=115.78',
     { headers: { 'X-API-Key': env.PURPLEAIR_API_KEY } }
   );
   const data = await r.json();
   if (!data?.data) return [];
   const f = data.fields;
   const nowMs = Date.now();
+  const num = (v) => (v == null || v === '' || !Number.isFinite(+v)) ? null : +v;
+  const dropped = [];
   const out = [];
   for (const row of data.data) {
     // Not reporting: no last_seen, or one older than PURPLEAIR_FRESH_MS. A
@@ -590,10 +601,17 @@ async function fetchPurpleAir(env) {
     const seenSec = f.indexOf('last_seen') >= 0 ? row[f.indexOf('last_seen')] : null;
     const seenMs = (seenSec == null || seenSec === '' || !Number.isFinite(+seenSec)) ? NaN : +seenSec * 1000;
     if (!Number.isFinite(seenMs) || (nowMs - seenMs) > PURPLEAIR_FRESH_MS) continue;
-    // Channels disagree: PurpleAir's own verdict on its own hardware. Absent
-    // field or null value = no verdict, and the reading passes.
-    const conf = f.indexOf('confidence') >= 0 ? row[f.indexOf('confidence')] : null;
-    if (conf != null && conf !== '' && Number.isFinite(+conf) && +conf < PURPLEAIR_MIN_CONFIDENCE) continue;
+    // Channels disagree. Only when BOTH channels report; a single-channel
+    // reading has no partner to disagree with and passes on its own.
+    const chA = f.indexOf('pm2.5_cf_1_a') >= 0 ? num(row[f.indexOf('pm2.5_cf_1_a')]) : null;
+    const chB = f.indexOf('pm2.5_cf_1_b') >= 0 ? num(row[f.indexOf('pm2.5_cf_1_b')]) : null;
+    if (chA != null && chB != null) {
+      const diff = Math.abs(chA - chB), mean = (chA + chB) / 2;
+      if (diff > PURPLEAIR_AB_ABS_UGM3 && mean > 0 && diff / mean > PURPLEAIR_AB_REL) {
+        dropped.push(`pa-${row[0]} (${row[f.indexOf('name')]}): channels disagree, A ${chA} / B ${chB}`);
+        continue;
+      }
+    }
     // PurpleAir is Plantower-based like AirGradient, so it carries the same
     // humidity over-read. `humidity` was added to the field list for exactly
     // this — correct when it's present, fall back to raw when it isn't (a
@@ -635,6 +653,11 @@ async function fetchPurpleAir(env) {
       cls,
       lastSeen: new Date(seenMs).toISOString(),
     });
+  }
+  // Not an error, but the only place a visitor of the archive can learn why a
+  // sensor is absent: the worker copies these into archive_runs.error.
+  if (dropped.length && Array.isArray(notes)) {
+    notes.push({ source: 'PurpleAir', error: `${dropped.length} sensor(s) not published — ${dropped.join('; ')}`.slice(0, 300) });
   }
   return out;
 }
@@ -2093,15 +2116,19 @@ async function handleLive(context) {
   }
 
   // 2. UPSTREAM PARALLEL FALLBACK — runs all 6 sources concurrently.
+  // Notes from fetchers that succeed but withhold a sensor on data-quality
+  // grounds (PurpleAir channel disagreement). Merged into results.errors so
+  // the archive worker's run log says why a sensor is absent.
+  const sourceNotes = [];
   const sourceFetchers = [
-    ['PurpleAir', () => fetchPurpleAir(env)],
+    ['PurpleAir', () => fetchPurpleAir(env, sourceNotes)],
     ['AQICN',     () => fetchAQICN(env)],
     ['Airly',     () => fetchAirly(env)],
     ['Nafas',     () => fetchNafas()],
     ['OpenAQ',    () => fetchOpenAQ(env)],
   ];
   const settled = await Promise.allSettled(sourceFetchers.map(([_, fn]) => fn()));
-  const results = { ts: new Date().toISOString(), sources: 0, stations: [], errors: [] };
+  const results = { ts: new Date().toISOString(), sources: 0, stations: [], errors: [...sourceNotes] };
   settled.forEach((r, i) => {
     const [name] = sourceFetchers[i];
     if (r.status === 'fulfilled') {
