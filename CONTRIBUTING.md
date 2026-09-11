@@ -23,6 +23,13 @@ one asset that cannot be rebuilt: the archive.
    `DATA-METHODOLOGY.md` §6 and the `has_rh` gate in `functions/api/ingest.js`.
 5. **Deploys stay manual.** Merging to `main` changes nothing in production.
    That is a feature.
+6. **One point, one device.** Every station on the map, in the archive and in
+   the API is one physical device at a known location, reporting its own
+   measurement. Town or city values, satellite or model estimates,
+   interpolations and averages across devices are not stations, whatever a
+   provider calls them, and are never ingested. That includes IQAir's
+   `nearest_city` and `city` endpoints: one of them was published here for
+   months as a named sensor that did not exist. See `DATA-METHODOLOGY.md` §8.5.
 
 ## Getting set up
 
@@ -55,7 +62,6 @@ git-ignored by Wrangler convention).
 | `functions/` | `PURPLEAIR_API_KEY` | PurpleAir stations |
 | | `OPENAQ_API_KEY` | OpenAQ relays (pairing/de-dup of AirGradient) |
 | | `AQICN_TOKEN` | AQICN / GAIA (free) |
-| | `IQAIR_API_KEY` | IQAir AirVisual API |
 | | `AIRLY_API_KEY` | Airly |
 | | `LIVE_FRESH_TOKEN` | gates `/api/live?fresh=1`, the archive worker's cache-bypassing full fan-out. Unset = ungated, which is what a local run or a fork wants; set it in production and give the archive worker the same value |
 | | `FIRMS_MAP_KEY` | NASA FIRMS satellite hotspots (`/api/hotspots`); free, self-serve |
@@ -98,6 +104,8 @@ New sources are the most valuable contribution. The pattern in
 station objects, registered in the fetcher list, wrapped so it cannot throw.
 Please also:
 
+- confirm that every station it returns is a single physical device (rule 6),
+  and say in the PR how you checked;
 - give it a `SOURCE_STALE_MS` entry if its cadence is not hourly-ish;
 - decide, and document, whether the EPA correction applies (only if it is a
   Plantower-based sensor and you have the raw `cf_1`-equivalent input);

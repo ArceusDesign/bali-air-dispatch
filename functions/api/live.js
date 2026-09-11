@@ -43,14 +43,6 @@ function fetch(input, init) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
-function aqiToPm25(aqi) {
-  if (aqi <= 50) return +(aqi * 12.0 / 50).toFixed(1);
-  if (aqi <= 100) return +(12.1 + (aqi - 51) * (35.4 - 12.1) / 49).toFixed(1);
-  if (aqi <= 150) return +(35.5 + (aqi - 101) * (55.4 - 35.5) / 49).toFixed(1);
-  if (aqi <= 200) return +(55.5 + (aqi - 151) * (150.4 - 55.5) / 49).toFixed(1);
-  if (aqi <= 300) return +(150.5 + (aqi - 201) * (250.4 - 150.5) / 99).toFixed(1);
-  return +(250.5 + (aqi - 301) * (500.4 - 250.5) / 199).toFixed(1);
-}
 function pm25Category(pm) {
   if (pm == null) return { cat: 'Unknown', cls: 'unknown' };
   if (pm <= 12) return { cat: 'Good', cls: 'good' };
@@ -327,6 +319,11 @@ async function fastPathFromD1(db) {
     -- render as a duplicate "offline" pin stacked on the live one. Exclude them
     -- so each scraped station appears exactly once (fresh).
     AND s.station_id NOT LIKE 'iqs-%'
+    -- iq-* rows are IQAir TOWN-level values from the retired nearest_city
+    -- probe, never a device (DATA-METHODOLOGY 8.5). Nothing writes them any
+    -- more, but the 12 h rung could still surface the last one, and the prefix
+    -- keeps any such row off the map for good, whatever is left in the archive.
+    AND s.station_id NOT LIKE 'iq-%'
     ORDER BY s.source, s.name
     `).bind(cutoff).all();
     return rows.results || [];
@@ -405,8 +402,8 @@ function metresBetween(aLat, aLon, bLat, bLon) {
 // Scraped IQAir stations (written by the iqair-scrape worker into
 // iq_scrape_stations — see workers/iqair-scrape). These are REAL hourly PM2.5
 // readings decoded from each IQAir station page, NOT the AQI→PM2.5 estimate the
-// nearest_city probe (fetchIQAir) returns. Folded into the 'IQAir' source so
-// they share styling with the one real Kopernik node.
+// retired nearest_city probe used to return (see the note above handleLive).
+// They are the only IQAir data on the map, under the 'IQAir' source.
 //
 // De-dup: several IQAir devices ALSO publish to an open network we already read
 // (e.g. "Jimbaran" is PurpleAir's "Jimbaran by Lumi Clinic" ~12 m away). Any
@@ -1825,77 +1822,26 @@ async function fetchOpenAQ(env) {
   return out;
 }
 
-async function fetchIQAir(env) {
-  // 7 nearest_city probes — were sequential with 1.2s sleeps (8.4s total).
-  // Now PARALLEL. Free tier is 10 req/min so 7-in-parallel-then-done is OK.
-  // 429s are caught per-call.
-  // IQAir audit (May 2026): of the 7 nearest_city probes we used to run, only
-  // ONE backs a real ground sensor. Verified against each IQAir city page's
-  // "Data attribution":
-  //   • Ubud      → real station "Kopernik" (anonymous contributor)   ← KEEP
-  //   • Jimbaran  → real, but it's the SAME unit as PurpleAir "Jimbaran by
-  //                 Lumi Clinic", which we already pull natively         ← drop
-  //   • Seminyak town, Dajan Tangluk, Banjar, Subagan, Munduk
-  //                 → "satellite-derived model" estimates, NOT sensors  ← drop
-  // The 5 satellite nodes + Jimbaran are removed so the map only shows real,
-  // hyper-local ground data. Their existing D1 rows are left untouched (dormant).
-  //
-  // nearest_city returns the town CENTROID, not the sensor location — for Ubud
-  // that is ~6 km from the real Kopernik device — so we override to the true
-  // coordinates and name. The id uses a STABLE per-probe slug ('kopernik')
-  // instead of the city name, so an upstream city-name change can't orphan
-  // history; existing D1 history was migrated iq-Ubud → iq-kopernik (#27).
-  const iqLocs = [
-    { label:'Ubud', lat:-8.50, lon:115.26,
-      expectCity:'Ubud', slug:'kopernik',
-      override:{ name:'Kopernik (Mas, Ubud)', lat:-8.554004068111293, lon:115.27271248947794 } },
-  ];
-  const probes = await Promise.all(iqLocs.map(async (loc) => {
-    try {
-      const r = await fetch(
-        `https://api.airvisual.com/v2/nearest_city?lat=${loc.lat}&lon=${loc.lon}&key=${env.IQAIR_API_KEY}`,
-        { cf: { cacheTtl: 3600, cacheEverything: true } }
-      );
-      if (r.status === 429) return null;
-      const d = await r.json();
-      return d.status === 'success' ? { loc, d } : null;
-    } catch { return null; }
-  }));
-  const seen = new Set();
-  const out = [];
-  for (const probe of probes) {
-    if (!probe) continue;
-    const { loc, d } = probe;
-    const dd = d.data;
-    // Guard: nearest_city can return a neighbouring town under load; never
-    // emit it under this probe's stable slug if the city doesn't match.
-    if (loc.expectCity && dd.city !== loc.expectCity) continue;
-    const aqi = dd.current?.pollution?.aqius;
-    const mp = dd.current?.pollution?.mainus;
-    const pm25Est = mp === 'p2' ? aqiToPm25(aqi) : null;
-    const { cat, cls } = pm25Category(pm25Est != null ? pm25Est : aqiToPm25(aqi));
-    const dk = `iq-${loc.slug || dd.city}`;
-    if (seen.has(dk)) continue;
-    seen.add(dk);
-    out.push({
-      id: dk,
-      name: loc.override?.name || `${loc.label} (${dd.city})`,
-      source: 'IQAir',
-      type: 'Private sensor',
-      // nearest_city returns the town centroid; override to the true device
-      // location when known (Kopernik) so the map pin matches reality + D1.
-      lat: (loc.override?.lat != null) ? loc.override.lat : dd.location?.coordinates?.[1],
-      lon: (loc.override?.lon != null) ? loc.override.lon : dd.location?.coordinates?.[0],
-      pm25: pm25Est,
-      pm25_estimated: mp === 'p2',
-      aqi,
-      category: cat,
-      cls,
-      lastSeen: dd.current?.pollution?.ts || null,
-    });
-  }
-  return out;
-}
+// ── IQAir town-level values: deliberately NOT fetched ─────────────────
+// A fetchIQAir function used to sit here, polling IQAir's `nearest_city`
+// endpoint. That endpoint returns one number for a whole TOWN, not a reading
+// from any device. It was removed in September 2026, after the last probe —
+// published for months as "Kopernik (Mas, Ubud)" — proved to be IQAir's Ubud
+// town value under a borrowed name, at a pin location we had chosen:
+//   • the name came from an IQAir "Data attribution" credit, read in a May
+//     2026 audit as proof of a device; Kopernik have since told us they have
+//     no monitor sending data to IQAir;
+//   • IQAir's Ubud page lists two stations, both AirGradient devices this map
+//     already carries directly (Bindu Ricefields, Villa Malaikat), so the pin
+//     counted them a second time;
+//   • it was not their average either: on 13 of 18 comparable days it ran more
+//     than 15% above the HIGHER of their two raw readings, peaking at 200.9
+//     against 44.2 and 31.0 µg/m³ (28 Aug). Its other inputs are undisclosed.
+// Every point on this map is one physical device at a known location, reporting
+// its own measurement (DATA-METHODOLOGY.md §8.5; CONTRIBUTING.md rule 6). Real
+// IQAir stations are read one by one from their station pages by
+// workers/iqair-scrape. Do not reintroduce `nearest_city`, `city`, or any other
+// area-level endpoint, from IQAir or anyone else.
 
 // ── ENTRYPOINT ────────────────────────────────────────────────────────
 async function handleLive(context) {
@@ -2006,7 +1952,6 @@ async function handleLive(context) {
     ['Airly',     () => fetchAirly(env)],
     ['Nafas',     () => fetchNafas()],
     ['OpenAQ',    () => fetchOpenAQ(env)],
-    ['IQAir',     () => fetchIQAir(env)],
   ];
   const settled = await Promise.allSettled(sourceFetchers.map(([_, fn]) => fn()));
   const results = { ts: new Date().toISOString(), sources: 0, stations: [], errors: [] };

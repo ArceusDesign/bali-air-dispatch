@@ -55,10 +55,10 @@ const INDOOR_IDS = new Set([
 // filtering for one should not silently lose the other.
 // Kept in sync by hand with MALFUNCTION_IDS in public/index.html + history.html.
 const MALFUNCTION_IDS = new Set([
-  // Kopernik (Mas, Ubud), IQAir. Flagged 27 Aug 2026: sustained 70-215 µg/m³
-  // while all nine stations within 15 km read 10-35 (151.5 against a 22.0
-  // local median at flagging; 16.1 at Villa Malaikat, 2.2 km away).
-  'iq-kopernik',
+  // Empty since September 2026. Its only entry was iq-kopernik, flagged 27 Aug
+  // for reading 70-215 µg/m³ against 10-35 all round it. It was not a faulty
+  // sensor; it was not a sensor at all, but IQAir's Ubud town value under a
+  // borrowed name. Retired with the whole iq- namespace (RETIRED_PREFIX below).
 ]);
 
 // Networks whose PM2.5 we humidity-correct before publishing (US-EPA 2021).
@@ -69,10 +69,25 @@ const CORRECTED_SOURCES = new Set(['AirGradient', 'PurpleAir']);
 // HIDDEN_STATION_IDS in functions/api/history.js so the API and the site agree
 // on what counts as a station.
 const HIDDEN_STATION_IDS = [
-  'iq-Seminyak town', 'iq-Dajan Tangluk', 'iq-Banjar',
-  'iq-Subagan', 'iq-Munduk', 'iq-Jimbaran',
+  // The six IQAir town-level ids formerly listed here are covered, together
+  // with iq-kopernik and iq-Ubud, by RETIRED_PREFIX below.
   'ag-77247',
 ];
+
+// Town-level aggregates. The iq- namespace belonged only to IQAir's retired
+// nearest_city probe, so every id in it is a whole-town value, never a device.
+// Excluded from every listing by PREFIX, and refused with 410 Gone when asked
+// for by id. Deliberately stronger than HIDDEN_STATION_IDS, which hides real
+// duplicate devices from listings but still serves them by id: right for a
+// genuine sensor, wrong for data that was never a measurement. A prefix also
+// cannot forget an id the way the list forgot iq-Ubud. See
+// DATA-METHODOLOGY.md §8.5.
+const RETIRED_PREFIX = 'iq-';
+const isRetiredAggregate = (id) => typeof id === 'string' && id.startsWith(RETIRED_PREFIX);
+const RETIRED_MESSAGE =
+  'This id belonged to an IQAir town-level value (nearest_city), not to a ' +
+  'physical sensor. Town-level values were withdrawn in September 2026; see ' +
+  'DATA-METHODOLOGY.md §8.5.';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -327,6 +342,7 @@ async function routeStations(db, url) {
     FROM stations s
     WHERE s.station_id NOT IN (${holes})
       AND s.station_id NOT LIKE 'iqs-%'
+      AND s.station_id NOT LIKE 'iq-%'
     ORDER BY s.name
   `).bind(...hidden).all();
 
@@ -413,6 +429,7 @@ async function routeLatest(db, url) {
     JOIN stations s ON s.station_id = n.sid
     WHERE s.station_id NOT IN (${holes})
       AND s.station_id NOT LIKE 'iqs-%'
+      AND s.station_id NOT LIKE 'iq-%'
   `).bind(...hidden).all();
 
   const scraped = await db.prepare(`
@@ -491,6 +508,7 @@ function hiddenClause(next) {
 // full scan. Hence the little builder below.
 async function routeMeasurements(db, url) {
   const station = url.searchParams.get('station');
+  if (isRetiredAggregate(station)) return fail('retired_station', RETIRED_MESSAGE, 410, { station });
   const interval = (url.searchParams.get('interval') || 'daily').toLowerCase();
   const format = (url.searchParams.get('format') || 'json').toLowerCase();
   const limit = clampLimit(url.searchParams.get('limit'));
@@ -593,6 +611,7 @@ async function routeMeasurements(db, url) {
                d.aqi_max, d.sample_n, s.source
           FROM station_daily d LEFT JOIN stations s ON s.station_id = d.station_id
          WHERE d.station_id NOT LIKE 'nafas-%' AND d.station_id NOT LIKE 'iqs-%'
+           AND d.station_id NOT LIKE 'iq-%'
            AND d.station_id NOT IN (${hiddenClause(next)})
         UNION ALL
         SELECT 'nafas-' || uuid, date, pm25, NULL, NULL, aqi, NULL, 'Nafas'
@@ -647,7 +666,8 @@ async function routeMeasurements(db, url) {
       sourceTable = 'station_snapshots (hourly buckets) + nafas_hourly + iq_scrape_hourly';
       const c2 = [];
       c2.push(`sn.ts >= ${next(from)}`, `sn.ts <= ${next(to)}`, 'sn.pm25 IS NOT NULL',
-              `sn.station_id NOT LIKE 'nafas-%'`, `sn.station_id NOT IN (${hiddenClause(next)})`);
+              `sn.station_id NOT LIKE 'nafas-%'`, `sn.station_id NOT LIKE 'iq-%'`,
+              `sn.station_id NOT IN (${hiddenClause(next)})`);
       const uni = `SELECT sn.station_id, (sn.ts / 3600) * 3600 AS key,
                           ROUND(AVG(sn.pm25),2) AS pm25_mean, ROUND(MIN(sn.pm25),2) AS pm25_min,
                           ROUND(MAX(sn.pm25),2) AS pm25_max, MAX(sn.aqi) AS aqi_max,
@@ -677,7 +697,7 @@ async function routeMeasurements(db, url) {
     }
     sourceTable = 'station_snapshots';
     if (station) conds.push(`sn.station_id = ${next(station)}`);
-    else conds.push(`sn.station_id NOT IN (${hiddenClause(next)})`);
+    else conds.push(`sn.station_id NOT IN (${hiddenClause(next)})`, `sn.station_id NOT LIKE 'iq-%'`);
     if (from != null) conds.push(`sn.ts >= ${next(from)}`);
     if (to != null) conds.push(`sn.ts <= ${next(to)}`);
     if (cursor) {

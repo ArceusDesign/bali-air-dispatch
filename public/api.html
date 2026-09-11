@@ -582,7 +582,7 @@ iqs-bali-umalas-villa-fusion,IQAir,2026-07-05,28.1,,,86,,false</code></pre>
 
     <div class="note warn">
       <span class="label" data-i18n="api.x.iqsLabel">The one real limitation</span>
-      <p data-i18n-html="api.x.iqsP1">IQAir publishes its city pages hourly, so the stations we scrape from it — every <code class="k">station_id</code> beginning <code class="k">iqs-</code> — have no sub-hourly series to hand you. Asking for <code class="k">interval=raw</code> on one of them returns HTTP 400 with the code <code class="k">no_raw_for_source</code> and the intervals that will work. This is not a gap we can fill by trying harder; the data does not exist at that resolution upstream.</p>
+      <p data-i18n-html="api.x.iqsP1">IQAir publishes its station pages hourly, so the stations we scrape from it — every <code class="k">station_id</code> beginning <code class="k">iqs-</code> — have no sub-hourly series to hand you. Asking for <code class="k">interval=raw</code> on one of them returns HTTP 400 with the code <code class="k">no_raw_for_source</code> and the intervals that will work. This is not a gap we can fill by trying harder; the data does not exist at that resolution upstream.</p>
       <p data-i18n-html="api.x.iqsP2">Everything else about those stations behaves normally, and they carry some of the longest records in the archive — the Umalas station reaches back to November 2024. Use <code class="k">interval=hourly</code> or <code class="k">interval=daily</code> and they behave like any other station.</p>
     </div>
 
