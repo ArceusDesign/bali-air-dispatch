@@ -265,6 +265,7 @@ A reading older than its network's threshold is marked stale, rendered muted on 
 | Network | Threshold | Reason |
 |---|---|---|
 | AirGradient | 6 hours | Normally reports every few minutes; a 6-hour gap is a dead sensor, not a slow one |
+| PurpleAir | 6 hours | Reports every two minutes; the same reasoning. Added 11 September 2026 (see §8.2) |
 | OpenAQ | 6 hours | Republishes hourly and its timestamps are honest, so an old timestamp means genuinely old data |
 | All others | 24 hours | Hourly and daily-aggregate networks can legitimately lag |
 
@@ -275,6 +276,7 @@ Staleness is computed as the **greater** of two ages: the upstream timestamp, an
 - **Frozen sensors.** If a device's own reported reading time is more than **48 hours** behind the present, the catalogue entry is updated but no snapshot is written. This prevents a stuck sensor from filling the archive with a repeated stale value stamped as though fresh.
 - **Null readings coerced to zero.** A device whose PM module has failed while its network connection persists reports a null value. These are rejected explicitly. Numeric coercion would turn null into a finite `0.0` and archive a false "clean air" record — the most damaging possible failure direction.
 - **Missing or unparseable timestamps.** A reading that cannot demonstrate its own freshness is rejected rather than treated as current.
+- **PurpleAir sensors that have stopped, or whose channels disagree.** A PurpleAir sensor that PurpleAir itself has not heard from for more than 6 hours at the moment we poll is not published or archived at all, and neither is one whose own two-channel agreement score (`confidence`) is below 50. Added 11 September 2026 after a newly registered unit sat on the map at 739 µg/m³ for sixteen hours with a frozen timestamp and a raw value that never moved — one dead laser channel — while PurpleAir's own map had already stopped showing it. Its rows were removed from the archive (recorded in `archive_corrections`); if it reports properly again it will reappear on its own.
 
 ### 8.3 Quality flags
 
