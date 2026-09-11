@@ -220,8 +220,12 @@ cd workers/d1-backup && wrangler deploy
 # first run now rather than at 19:23 UTC, and check it
 wrangler dev --remote --test-scheduled      # then, in another shell:
 curl "http://localhost:8787/__scheduled?cron=23+19+*+*+*"
-wrangler r2 object get baliair-backups/latest.json --pipe
+wrangler r2 object get baliair-backups/latest.json --remote --pipe
 ```
+
+`wrangler r2 object get`/`put` default to the **local** simulator, so without
+`--remote` the last command reports an empty bucket whether or not the backup
+ran. Same reason `wrangler d1 execute` needs it.
 
 Optional phone alert on failure: `wrangler secret put PUSHOVER_TOKEN` and
 `wrangler secret put PUSHOVER_USER` in the worker folder. Without them a failed

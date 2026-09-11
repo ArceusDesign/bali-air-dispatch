@@ -32,9 +32,16 @@ laptop. It is one of three layers, each covering what the others cannot:
 ## Checking it
 
 ```bash
-wrangler r2 object get baliair-backups/latest.json --pipe
+wrangler r2 object get baliair-backups/latest.json --remote --pipe
 wrangler d1 execute bali-air-archive --remote --command "SELECT datetime(ts,'unixepoch') AS started, ok, tables, rows, bytes_gzip, duration_ms, error FROM backup_runs ORDER BY ts DESC LIMIT 7"
 ```
+
+**`--remote` is not optional.** `wrangler r2 object get` and `put` read and
+write the *local* simulator by default (the `.wrangler` folder of whatever
+directory you are standing in), so without it these commands quietly report an
+empty bucket — which looks exactly like a backup that never ran. `wrangler d1
+execute` behaves the same way, hence `--remote` there too. Checked against
+wrangler 4.125.
 
 ## Running it by hand
 
@@ -58,14 +65,14 @@ curl "http://localhost:8787/__scheduled?cron=23+19+*+*+*"
    ```bash
    DAY=2026-09-12
    mkdir -p restore/$DAY && cd restore/$DAY
-   wrangler r2 object get baliair-backups/daily/$DAY/manifest.json --pipe > manifest.json
+   wrangler r2 object get baliair-backups/daily/$DAY/manifest.json --remote --pipe > manifest.json
    python3 - <<'PY'
    import json, subprocess
    m = json.load(open('manifest.json'))
    for table, info in m['tables'].items():
        for i in range(info['parts']):
            key = f"daily/{m['day']}/{table}/part-{i:05d}.jsonl.gz"
-           subprocess.run(['wrangler', 'r2', 'object', 'get', f'baliair-backups/{key}', '--file', key.replace('/', '__')], check=True)
+           subprocess.run(['wrangler', 'r2', 'object', 'get', f'baliair-backups/{key}', '--remote', '--file', key.replace('/', '__')], check=True)
    PY
    ```
 
