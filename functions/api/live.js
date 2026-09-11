@@ -1057,22 +1057,87 @@ function shapeAirGradient(d) {
 }
 
 // The two ways to get Bali's AirGradient devices.
-async function fetchAirGradient() {
-  let list;
+//
+// 1. The world feed, every time: the only way to DISCOVER a device (see above).
+// 2. If the world feed fails — timeout, non-200, unparseable — the devices the
+//    archive already knows are read one at a time from the per-device endpoint
+//    (~500 B, ~0.6 s each, in parallel). That cannot discover a new device, but
+//    it keeps every known one live. Added 2026-09-11, when the world feed began
+//    failing on two of every three archive ticks from the worker's datacentre
+//    while succeeding from others: for two hours every AirGradient pin showed
+//    as "not reporting", because this function returned [] silently, the fold
+//    suppressed each unit's OpenAQ relay as designed, and nothing recorded why.
+//    The failure is now written to `errors` whether or not the fallback covers
+//    it, so the archive worker's run log and the response both say what happened.
+async function fetchAirGradient(env, errors) {
+  let why = null;
   try {
     const r = await fetch(
       'https://api.airgradient.com/public/api/v1/world/locations/measures/current',
       { headers: { Accept: 'application/json' }, cf: { cacheTtl: 300, cacheEverything: true } }
     );
-    if (!r.ok) return [];
-    list = await r.json();
-  } catch (_) { return []; }
-  if (!Array.isArray(list)) return [];
-  const out = [];
-  for (const d of list) {
-    const shaped = shapeAirGradient(d);
-    if (shaped) out.push(shaped);
+    if (r.ok) {
+      const list = await r.json();
+      if (Array.isArray(list)) {
+        const out = [];
+        for (const d of list) {
+          const shaped = shapeAirGradient(d);
+          if (shaped) out.push(shaped);
+        }
+        return out;
+      }
+      why = 'world feed returned a non-array body';
+    } else {
+      why = `world feed HTTP ${r.status}`;
+    }
+  } catch (e) {
+    why = 'world feed ' + ((e && e.name === 'TimeoutError')
+      ? `timed out after ${UPSTREAM_TIMEOUT_MS / 1000} s`
+      : String((e && e.message) || e).slice(0, 80));
   }
+  const known = await fetchAirGradientKnownDevices(env);
+  if (Array.isArray(errors)) {
+    errors.push({
+      source: 'AirGradient',
+      error: `${why}; ` + (known.length
+        ? `served ${known.length} known device(s) from per-device reads`
+        : 'per-device fallback returned nothing'),
+    });
+  }
+  return known;
+}
+
+// Per-device fallback. The roster is the archive's own catalog: every ag-*
+// station the worker has listed within TWIN_CATALOG_MAX_AGE_MS (36 h, the same
+// window after which a relay twin counts as departed). One small request per
+// device, in parallel, each under the usual upstream timeout; a device whose
+// read fails is simply absent from this update, exactly as before.
+async function fetchAirGradientKnownDevices(env) {
+  if (!env || !env.ARCHIVE_DB) return [];
+  let ids = [];
+  try {
+    const floorSec = Math.floor((Date.now() - TWIN_CATALOG_MAX_AGE_MS) / 1000);
+    const rows = await env.ARCHIVE_DB.prepare(
+      `SELECT station_id FROM stations WHERE station_id LIKE 'ag-%' AND last_seen >= ?1`
+    ).bind(floorSec).all();
+    ids = (rows.results || [])
+      .map(r => Number.parseInt(String(r.station_id).slice(3), 10))
+      .filter(Number.isFinite);
+  } catch (_) {
+    return [];
+  }
+  if (!ids.length) return [];
+  const settled = await Promise.allSettled(ids.map(async (id) => {
+    const r = await fetch(
+      `https://api.airgradient.com/public/api/v1/world/locations/${id}/measures/current`,
+      { headers: { Accept: 'application/json' }, cf: { cacheTtl: 120, cacheEverything: true } }
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    return shapeAirGradient(Array.isArray(d) ? d[0] : d);
+  }));
+  const out = [];
+  for (const s of settled) if (s.status === 'fulfilled' && s.value) out.push(s.value);
   return out;
 }
 
@@ -2037,9 +2102,11 @@ async function handleLive(context) {
   // base sources + SC so the 300 m de-dup defers to every established pin;
   // before the scraped-IQAir fold and tombstones, which both de-dup against
   // the full list including AG. The 15-min worker archives AG stations via
-  // the universal pass, which also carries them into the D1 fast path.
+  // the universal pass, which also carries them into the D1 fast path. When
+  // the world feed fails, fetchAirGradient falls back to per-device reads of
+  // the catalog's known units and records the failure in results.errors.
   try {
-    const ag = await fetchAirGradient();
+    const ag = await fetchAirGradient(env, results.errors);
     const agKept = dedupAirGradient(ag, results.stations);
     if (agKept.length) {
       results.sources++;

@@ -520,8 +520,17 @@ async function archiveOnce(env) {
 
   // ── Universal pass: snapshot every station from /api/live ────────────
   let universalWarning = null;
+  let liveErrorsNote = null;
   try {
     const live = await fetchUnifiedLive(env.LIVE_ORIGIN, env.LIVE_FRESH_TOKEN);
+    // The aggregator lists per-source failures in `errors`. Record them, or an
+    // outage like AirGradient's on 2026-09-11 — two of every three ticks for
+    // hours, every pin grey — leaves no trace in this log at all.
+    if (Array.isArray(live.errors) && live.errors.length) {
+      liveErrorsNote = 'live_errors: ' + live.errors
+        .map(e => `${e.source}: ${e.error}`).join(' | ').slice(0, 400);
+      console.warn(liveErrorsNote);
+    }
     const u = await snapshotUniversal(db, live, nowSec);
     universalStations = u.stationsSeen;
     universalSnaps = u.snapshots;
@@ -646,7 +655,7 @@ async function archiveOnce(env) {
       // archive_runs schema only knows about Nafas counters; encode universal
       // counts into the higher columns via simple addition for visibility.
       // Combine errors: Nafas-specific failure + universal-pass warning.
-      const combinedErr = [errMsg, universalWarning, reportsNote, extraNote]
+      const combinedErr = [errMsg, universalWarning, liveErrorsNote, reportsNote, extraNote]
         .filter(Boolean).join(' | ') || null;
       await db.prepare(`
         INSERT OR REPLACE INTO archive_runs
