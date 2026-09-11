@@ -454,10 +454,11 @@ const isIndoorId = (id) => INDOOR_IDS.has(id);
 // page is where someone goes to judge a sensor's record for themselves.
 // Mirrors MALFUNCTION_IDS in public/index.html + functions/api/v1.
 const MALFUNCTION_IDS = new Set([
-  // Empty since September 2026. Its only entry, iq-kopernik, turned out to be
-  // IQAir's Ubud town value under a borrowed name, not a sensor at all. It is
-  // retired with the whole iq- namespace (functions/api/history.js never lists
-  // it and refuses it by id). The group does not render while this is empty.
+  // Klungkung by Lumi Clinic (PurpleAir) — flagged 2026-09-11: channel A dead
+  // since 26 August (A 0.1 / B 35), so its published figure runs at about a
+  // quarter of its prior level. Readings through 25 August are sound; later
+  // ones are too low. Series stays fully chartable. Mirrors index.html + v1.
+  'pa-46949',
 ]);
 const isMalfunctionId = (id) => MALFUNCTION_IDS.has(id);
 // Community-contributed sensors (cs-*): residents running their own hardware,
