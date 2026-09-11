@@ -71,6 +71,7 @@ functions/              Pages Functions — the API layer
 workers/
   nafas-archive/          cron */15: archives every station into D1, daily rollups
   iqair-scrape/           cron, optional: renders IQAir pages via Firecrawl
+  d1-backup/              cron, daily: copies every table to R2 as gzipped JSONL, keeps 90 days
 schema.sql, schema-v*.sql   D1 schema and additive migrations, in order
 scripts/basemap/        OSM → Planetiler → MapLibre raster tile pipeline
 scripts/generate-favicons.py
@@ -81,7 +82,8 @@ D1-SETUP.md             standing up the database and archive worker
 
 The two workers watch each other: each one checks whether the other's cron has
 gone quiet and revives it through a service binding. A change to either should
-keep that reciprocal property intact.
+keep that reciprocal property intact. A third worker, `d1-backup`, copies the
+whole database into R2 once a day and takes no part in that pair.
 
 ## Running it locally
 
@@ -104,7 +106,7 @@ rather than breaking it. Nafas and Smart Citizen need no key at all, so you
 get live data out of the box. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
 full list of environment variables and which components need them.
 
-Copy `wrangler.toml.example` (and the two under `workers/`) to `wrangler.toml`
+Copy `wrangler.toml.example` (and the three under `workers/`) to `wrangler.toml`
 and fill in your own database ID if you deploy your own instance.
 
 ## Deploying
@@ -115,6 +117,7 @@ Deploys are deliberately manual — nothing deploys on merge:
 wrangler pages deploy public               # the site and API
 (cd workers/nafas-archive && wrangler deploy)
 (cd workers/iqair-scrape  && wrangler deploy)
+(cd workers/d1-backup     && wrangler deploy)
 ```
 
 ## Contributing

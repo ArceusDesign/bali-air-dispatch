@@ -1,0 +1,46 @@
+#:schema node_modules/wrangler/config-schema.json
+# Cloudflare Worker — daily copy of the archive database into R2.
+# See src/index.js for why, and README.md in this folder for how to restore.
+#
+# One-time setup, then deploy (D1-SETUP.md section 8 walks through it):
+#   wrangler r2 bucket create baliair-backups
+#   wrangler d1 execute bali-air-archive --remote --file ../../schema-v11-backup-runs.sql
+#   cd workers/d1-backup && wrangler deploy
+#
+# Optional phone alert when a run fails (nothing is sent otherwise):
+#   wrangler secret put PUSHOVER_TOKEN
+#   wrangler secret put PUSHOVER_USER
+
+name = "d1-backup"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# No public URL. The worker only runs on its cron; the fetch handler is a 404.
+workers_dev = false
+
+# Once a day, 19:23 UTC (03:23 WITA). Deliberately off the quarter hour, so it
+# never coincides with the archive worker's own tick.
+[triggers]
+crons = ["23 19 * * *"]
+
+# The same database as the Pages project and the archive worker.
+# Replace `database_id` with the real ID on your machine only (D1-SETUP.md §7).
+[[d1_databases]]
+binding = "ARCHIVE_DB"
+database_name = "bali-air-archive"
+database_id = "REPLACE_WITH_REAL_D1_ID"
+
+# Private bucket. Nothing serves it; the site's tiles live in a different one.
+[[r2_buckets]]
+binding = "BACKUPS"
+bucket_name = "baliair-backups"
+
+# A full copy is ~300,000 rows of JSON and gzip; well under a minute of CPU,
+# but the default 30 s cron budget leaves too little headroom as the archive
+# grows. Workers Paid allows up to 300 000 ms.
+[limits]
+cpu_ms = 120000
+
+# Same posture as the other workers: no observability sink, no third party.
+[observability]
+enabled = false
