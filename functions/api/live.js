@@ -1054,9 +1054,13 @@ const AG_BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
 // alone would only have meant a missing pin. What made it serious is what sits
 // downstream: an OpenAQ relay is suppressed only while its ag-* twin is in the
 // same payload (see dropOpenAQNearAirGradient). No ag-* pin meant no pair,
-// meant the relay rendered — and OpenAQ carries the sensor's RAW figure while
-// we publish the humidity-corrected one. So the map showed materially inflated
-// numbers, on exactly the newest sensors, intermittently. Measured on
+// meant the relay rendered — and at the time OpenAQ relays were published RAW
+// while we publish the humidity-corrected direct figure. So the map showed
+// materially inflated numbers, on exactly the newest sensors, intermittently.
+// (Since 2026-09-16 fetchOpenAQ corrects a relay from the humidity OpenAQ
+// carries for the device, which narrows that gap — but the direct feed is
+// still the primary: 15-min, un-aggregated, and never dependent on a relay's
+// humidity channel, so a missing ag-* pin is still a regression.) Measured on
 // production before the revert: three consecutive /api/live?fresh=1 calls
 // returned 14, 10 and 10 AirGradient stations against 15 upstream.
 //
@@ -1406,11 +1410,13 @@ function dropAirlyNearNafas(stations) {
 // every ~1.3-1.4 h despite 15-min polling) while the direct feed is
 // instantaneous and timestamped to the minute — a live spot-check had Tabanan
 // at 10.3 via OpenAQ against 6.5 raw via AirGradient at the same moment. The
-// direct feed is also the one we humidity-correct (see epaCorrectPm25); OpenAQ
-// rows are published exactly as OpenAQ supplies them and are never corrected,
-// so preferring the relay would quietly show an uncorrected number instead.
+// direct feed is also corrected from its own 15-min humidity (see
+// epaCorrectPm25). A relay is corrected too where OpenAQ carries the device's
+// humidity (fetchOpenAQ, since 2026-09-16) — but from hourly means, and raw
+// whenever that channel is missing or misaligned — so preferring the relay
+// would still quietly show a coarser, older and sometimes uncorrected number.
 // So: collapse each relay pair onto ONE pin — the direct feed, always. There is
-// deliberately NO numeric failover to the relay: swapping in the uncorrected
+// deliberately NO numeric failover to the relay: swapping in the relay's
 // figure whenever AirGradient pauses made the same pin jump 20-45% between two
 // different numbers for the same air. Measured over each pair's coexistence,
 // AirGradient was up 91-100% of hours, so the relay was buying at most a few
@@ -1822,8 +1828,9 @@ function agAbsentPlaceholder(row) {
     absent: true,
     reasonKey: 'panel.absentSub',
     reason: 'The direct feed is missing from this update. Its co-located relay ' +
-            'is held back while it is out, because the relay publishes an ' +
-            'uncorrected figure. Historical data is preserved below.',
+            'is held back while it is out: it is an hourly re-publication of the ' +
+            'same device, and uncorrected whenever no humidity accompanies it. ' +
+            'Historical data is preserved below.',
   };
 }
 // Collapse each discovered pair to the direct AirGradient pin, whether that pin
@@ -1835,7 +1842,8 @@ function agAbsentPlaceholder(row) {
 // A pair whose ag-* half is MISSING FROM THIS PAYLOAD but known to the catalog
 // (see knownRelayPairsFromD1) is dropped just the same, and leaves a grey
 // "not reporting" placeholder where the twin would have been so the location is
-// never blank and never carries a number we know to be uncorrected. The pair
+// never blank and never carries the relay's coarser (and possibly uncorrected)
+// number in the direct feed's place. The pair
 // itself expires on TWIN_CATALOG_MAX_AGE_MS — a twin with no archived reading
 // for 36 h has DEPARTED, no pair forms, and the relay stands on its own again.
 // That expiry is the whole of the "when does an OpenAQ number publish" rule.
@@ -1874,8 +1882,9 @@ function dropOpenAQNearAirGradient(stations, knownRelays, errors) {
       // publish the relay when ag.pm25 was null, on the reasoning that a blank
       // pin should not bury a reading. Under the AirGradient-only rule that is
       // backwards: a present-but-blank ag-* is still an AirGradient sensor at
-      // that location, and the relay's number is uncorrected, so publishing it
-      // was the one remaining path by which a raw figure reached a paired spot.
+      // that location, and the relay's number is an hourly re-aggregation (raw
+      // whenever OpenAQ carries no humidity for it), so publishing it was the
+      // one remaining path by which a relay figure reached a paired spot.
       // The location now shows the direct pin with no number, which is the
       // honest statement — the sensor is there and is not reporting a value.
       drop.add(oqId);
@@ -1887,9 +1896,10 @@ function dropOpenAQNearAirGradient(stations, knownRelays, errors) {
     // and a ratio guard — on the reasoning that a mistaken suppression here
     // leaves NO number at that location rather than merely a different one. The
     // owner's decision is that a grey "not reporting" pin IS the right answer
-    // when the only figure available is an uncorrected relay: it is a gap the
-    // visitor can see and interpret, where the relay's number is a wrong answer
-    // they cannot. So: no thresholds, no reference reading, no ratio.
+    // when the only figure available is the relay: it is a gap the visitor can
+    // see and interpret, where the relay's hourly (and possibly uncorrected)
+    // number standing in for the direct feed is a wrong answer they cannot.
+    // So: no thresholds, no reference reading, no ratio.
     const row = pair.catalogRow;
     if (!row) continue;   // in-payload pair with a vanished twin: impossible, but never suppress blind
     drop.add(oqId);
@@ -1902,6 +1912,12 @@ function dropOpenAQNearAirGradient(stations, knownRelays, errors) {
   for (const p of placeholders.values()) kept.push(p);
   return kept;
 }
+
+// How far apart a relay's PM2.5 and humidity readings may be and still count
+// as the same air. OpenAQ republishes AirGradient relays hourly, so the two
+// normally share a timestamp exactly; 90 min tolerates one skipped hour and
+// nothing more. Beyond it the relay is published raw and flagged (fetchOpenAQ).
+const OPENAQ_RH_ALIGN_MS = 90 * 60 * 1000;
 
 async function fetchOpenAQ(env) {
   // 6 search centers, parallel discovery, then parallel detail per station.
@@ -1946,57 +1962,107 @@ async function fetchOpenAQ(env) {
   const out = [];
   for (const { loc, ld } of latest) {
     if (!ld) continue;
-    // Match PM2.5 readings robustly across BOTH OpenAQ /latest response shapes:
+    // Match readings robustly across BOTH OpenAQ /latest response shapes:
     //   (a) legacy: each result embeds r.parameter.name === "pm25"
     //   (b) v3:     results carry only { sensorsId, value, datetime }; the
     //               parameter↔sensor mapping lives on loc.sensors[] from the
     //               /locations discovery call.
-    // The previous code only read r.parameter.name. If OpenAQ has moved to
-    // shape (b) that field is undefined → pm25 stayed null → the 30-day filter
-    // dropped every sensor (hypothesis for the OpenAQ=0 outage — NOT yet
-    // confirmed against the live key). Honouring both shapes is strictly safer.
-    const pm25SensorIds = new Set(
+    // Confirmed v3 sensor shape: { id, name:"pm25 µg/m³", parameter:{ name:"pm25",
+    // displayName:"PM2.5" } }; the humidity sensor is parameter.name
+    // "relativehumidity" (units "%"), temperature is "temperature".
+    const sensorIds = (test) => new Set(
       (loc.sensors || [])
-        .filter(s => {
-          // Confirmed v3 sensor shape: { id, name:"pm25 µg/m³", parameter:{ name:"pm25", displayName:"PM2.5" } }.
-          // Check parameter.name first, then fall back to the sensor's own name.
-          const pn = (s.parameter?.name || s.name || '').toString().toLowerCase();
-          return pn === 'pm25' || pn.startsWith('pm25') || pn.includes('pm2.5');
-        })
+        .filter(s => test((s.parameter?.name || s.name || '').toString().toLowerCase()))
         .map(s => s.id)
     );
-    // Pick the PM2.5 reading with the NEWEST timestamp, not the last one in
-    // array order. OpenAQ's docs warn that a /latest "result" is the last value
-    // in the stored series, and that upstream providers may ingest measurements
+    const isPm25Name = (pn) => pn === 'pm25' || pn.startsWith('pm25') || pn.includes('pm2.5') || pn.includes('pm2');
+    const isRhName   = (pn) => pn === 'rh' || pn.startsWith('relativehumidity') || pn.startsWith('humidity');
+    const isTempName = (pn) => pn.startsWith('temperature');
+    const pm25Ids = sensorIds(isPm25Name), rhIds = sensorIds(isRhName), tempIds = sensorIds(isTempName);
+    const matches = (ids, nameTest) => (r) => {
+      const pn = (r.parameter?.name || '').toString().toLowerCase();
+      return (pn !== '' && nameTest(pn))                       // shape (a)
+          || (ids.size > 0 && ids.has(r.sensorsId));           // shape (b)
+    };
+    // Pick the reading with the NEWEST timestamp, not the last one in array
+    // order. OpenAQ's docs warn that a /latest "result" is the last value in
+    // the stored series, and that upstream providers may ingest measurements
     // out of time order — so iterating and overwriting would keep whatever
     // happened to come last in the array, which is not necessarily the most
     // recent reading. We compare datetime (utc) and keep the max.
-    let pm25=null, lastSeen=null, bestMs=-Infinity;
-    for (const r of (ld.results||[])) {
-      const pn = (r.parameter?.name || '').toString().toLowerCase();
-      const isPm25 = (pn.includes('pm25') || pn.includes('pm2'))                  // shape (a)
-                  || (pm25SensorIds.size > 0 && pm25SensorIds.has(r.sensorsId));  // shape (b)
-      if (!isPm25) continue;
-      // Require a FINITE numeric value. r.value can be null/undefined, an empty
-      // string ("" coerces to 0 — that's "no data", not zero pollution), or a
-      // non-numeric string ("n/a" → NaN). Reject all of those; otherwise a
-      // value-less reading would survive and draw a blank/zero pin.
-      const val = (r.value == null || r.value === '') ? NaN : +r.value;
-      if (!Number.isFinite(val)) continue;
-      const tsRaw = r.datetime?.utc || r.datetime?.local || null;
-      const ms = tsRaw ? Date.parse(tsRaw) : NaN;
-      // Keep the reading with the newest valid timestamp. If a reading has no
-      // parseable timestamp, only accept it when we have nothing else yet.
-      if (Number.isFinite(ms)) {
-        if (ms <= bestMs) continue;
-        bestMs = ms;
-      } else if (bestMs > -Infinity) {
-        continue;
+    const newest = (isMatch) => {
+      let val = null, ms = -Infinity, local = null;
+      for (const r of (ld.results || [])) {
+        if (!isMatch(r)) continue;
+        // Require a FINITE numeric value. r.value can be null/undefined, an
+        // empty string ("" coerces to 0 — that's "no data", not zero
+        // pollution), or a non-numeric string ("n/a" → NaN). Reject all of
+        // those; otherwise a value-less reading would survive and draw a
+        // blank/zero pin — or, for humidity, correct at RH=0%.
+        const v = (r.value == null || r.value === '') ? NaN : +r.value;
+        if (!Number.isFinite(v)) continue;
+        const tsRaw = r.datetime?.utc || r.datetime?.local || null;
+        const t = tsRaw ? Date.parse(tsRaw) : NaN;
+        // Keep the reading with the newest valid timestamp. If a reading has
+        // no parseable timestamp, only accept it when we have nothing else yet.
+        if (Number.isFinite(t)) {
+          if (t <= ms) continue;
+          ms = t;
+        } else if (ms > -Infinity) {
+          continue;
+        }
+        val = v;
+        local = r.datetime?.local || r.datetime?.utc || null;
       }
-      pm25 = +val.toFixed(1);
-      lastSeen = r.datetime?.local || r.datetime?.utc || null;
-    }
+      return { val, ms, local };
+    };
+    const pm = newest(matches(pm25Ids, isPm25Name));
+    if (pm.val == null) continue;
+    const lastSeen = pm.local;
     if (!lastSeen || (Date.now() - new Date(lastSeen).getTime()) > 30*24*60*60*1000) continue;
+
+    // ── Relay correction ──────────────────────────────────────────────────
+    // OpenAQ carries, for every AirGradient location it relays, the device's
+    // own relative humidity alongside its PM2.5 — hourly, from the same unit,
+    // in the same air. That is exactly the co-location the EPA correction
+    // requires (DATA-METHODOLOGY §5), so a relay is corrected with the same
+    // formula as the direct feed. Until September 2026 this function read only
+    // the PM2.5 sensor and published the relay raw; the "OpenAQ is never
+    // corrected" rule that grew around that described what we fetched, not
+    // what OpenAQ offers. It matters because a relay is published on its own
+    // whenever the device has no direct feed — AirGradient's public API does
+    // not list every unit its map and OpenAQ carry (Community park, Cactus
+    // House, Sept 2026) — and an uncorrected Plantower figure in Bali's
+    // humidity runs ~1.6x high (§5.5).
+    //
+    // Gates, each of which falls back to publishing the raw figure, flagged
+    // uncorrected exactly as before:
+    //   • the provider must be AirGradient — the formula is for Plantower
+    //     modules, and OpenAQ's provider field is the only instrument evidence
+    //     a relay carries;
+    //   • an RH reading must exist AND sit within OPENAQ_RH_ALIGN_MS of the
+    //     PM2.5 reading, so a dead humidity channel's last value is never
+    //     applied to live PM — the confidently-wrong case §5.6 warns about;
+    //   • both inputs must be finite (epaCorrectPm25 enforces the type check).
+    // pm25_raw is set ONLY when the correction is applied: the fast path
+    // derives pm25_corrected from pm25_raw != null (fastPathFromD1), so an
+    // uncorrected relay must archive a NULL pm25_raw or it would resurface
+    // mislabelled as corrected. The humidity itself is kept whenever it was
+    // read — it is a real measurement, and it is what lets the correction be
+    // applied to history later (the backfill needs it).
+    const rh = newest(matches(rhIds, isRhName));
+    const tp = newest(matches(tempIds, isTempName));
+    const humidity    = rh.val != null ? +rh.val.toFixed(1) : null;
+    const temperature = tp.val != null ? +tp.val.toFixed(1) : null;
+    const isAirGradientRelay = /airgradient/i.test(loc.provider?.name || '');
+    const raw = +pm.val.toFixed(1);
+    let pm25 = raw, pm25Raw = null, corrected = false;
+    if (isAirGradientRelay && humidity != null &&
+        Number.isFinite(rh.ms) && Number.isFinite(pm.ms) &&
+        Math.abs(rh.ms - pm.ms) <= OPENAQ_RH_ALIGN_MS) {
+      const c = epaCorrectPm25(raw, humidity);
+      if (c != null) { pm25 = c; pm25Raw = raw; corrected = true; }
+    }
     const { cat, cls } = pm25Category(pm25);
     out.push({
       id: `oq-${loc.id}`,
@@ -2005,7 +2071,12 @@ async function fetchOpenAQ(env) {
       type: `${loc.provider?.name || '?'} sensor`,
       lat: loc.coordinates?.latitude,
       lon: loc.coordinates?.longitude,
-      pm25, aqi: null,
+      pm25,
+      pm25_raw: pm25Raw,
+      pm25_corrected: corrected,
+      humidity,
+      temperature,
+      aqi: null,
       category: cat, cls,
       lastSeen,
       stale: !isRecent(lastSeen),
@@ -2063,8 +2134,9 @@ async function handleLive(context) {
   // unguarded database call on the path.
   // Failing open here is deliberate — a catalog outage must never blank the map
   // — but it is NOT harmless: with no catalog, a relay whose twin is missing
-  // publishes its raw figure again, which is the leak this whole mechanism
-  // exists to close. So record it. A silent fallback that quietly reverts the
+  // publishes on its own again — hourly, and raw wherever OpenAQ carries no
+  // humidity for it — which is the leak this whole mechanism exists to close.
+  // So record it. A silent fallback that quietly reverts the
   // site to the buggy behaviour is exactly the kind of thing that goes
   // unnoticed for weeks.
   let relayPairsFailed = false;
@@ -2095,9 +2167,9 @@ async function handleLive(context) {
         // Collapse co-located Airly (Nafas-sponsored) onto its live Nafas twin.
         fast.stations = dropAirlyNearNafas(fast.stations);
         // Collapse OpenAQ-relayed AirGradient units onto their direct feed
-        // (fresher, 15-min, un-aggregated, and the one we humidity-correct).
+        // (fresher, 15-min, un-aggregated, corrected from its own humidity).
         // AG-only: if AirGradient goes quiet the pin shows muted STALE rather
-        // than borrowing the relay's uncorrected number; the relay returns on
+        // than borrowing the relay's hourly number; the relay returns on
         // its own only once the AG unit has produced no archived reading for
         // 36 h, and until then a grey placeholder holds its spot.
         //
@@ -2113,7 +2185,7 @@ async function handleLive(context) {
         fast.stations = dropOpenAQNearAirGradient(fast.stations, await relayPairs(), foldErrors);
         if (relayPairsFailed) {
           foldErrors.push({ source: 'relay-catalog',
-            error: 'known-relay catalog read failed; relays fall back to publishing raw figures' });
+            error: 'known-relay catalog read failed; relays whose twin is missing publish on their own' });
         }
         if (foldErrors.length) fast.errors = foldErrors;
         // Fold in Smart Citizen OFFLINE tombstones (off:true) — dead or
@@ -2242,7 +2314,7 @@ async function handleLive(context) {
   }
   if (relayPairsFailed) {
     results.errors.push({ source: 'relay-catalog',
-      error: 'known-relay catalog read failed; relays fall back to publishing raw figures' });
+      error: 'known-relay catalog read failed; relays whose twin is missing publish on their own' });
   }
   if (results.errors.length === 0) delete results.errors;
   return jsonResponse(results);
