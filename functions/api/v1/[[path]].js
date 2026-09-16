@@ -67,6 +67,12 @@ const MALFUNCTION_IDS = new Set([
 // Networks whose PM2.5 we humidity-correct before publishing (US-EPA 2021).
 // See /appendix#methodology. `pm25_raw` carries the uncorrected figure.
 const CORRECTED_SOURCES = new Set(['AirGradient', 'PurpleAir']);
+// OpenAQ relays of AirGradient units are corrected the same way, from the
+// humidity OpenAQ carries for that device, since this date (functions/api/
+// live.js fetchOpenAQ). Per-station rather than per-network: the OpenAQ row's
+// `type` names the provider, and only AirGradient relays are Plantower units.
+const OPENAQ_RELAY_CORRECTED_SINCE = '2026-09-16';
+const isAirGradientRelay = (r) => r.source === 'OpenAQ' && /airgradient/i.test(r.type || '');
 
 // Placeholder/duplicate catalog rows the site does not publish. Mirrors
 // HIDDEN_STATION_IDS in functions/api/history.js so the API and the site agree
@@ -303,8 +309,11 @@ function routeIndex(origin) {
       corrected:
         'AirGradient and PurpleAir readings are humidity-corrected (US-EPA 2021) ' +
         'before publication; `pm25_raw` carries the uncorrected sensor figure. ' +
-        'All other networks are as-supplied, apart from the unit conversion ' +
-        'described under pm25_from_aqi. See /appendix#methodology.',
+        'OpenAQ relays of AirGradient units are corrected the same way, from the ' +
+        'humidity OpenAQ carries for that device, since 2026-09-16 — on rows where ' +
+        'that humidity was present; earlier rows are as-supplied. All other ' +
+        'networks are as-supplied, apart from the unit conversion described ' +
+        'under pm25_from_aqi. See /appendix#methodology.',
       pm25_from_aqi:
         'AQICN / WAQI publishes the US-EPA AQI sub-index for each pollutant, not ' +
         'a concentration. Rows and stations flagged `pm25_from_aqi` carry PM2.5 ' +
@@ -385,8 +394,12 @@ async function routeStations(db, url) {
     suspected_malfunctioning: MALFUNCTION_IDS.has(r.station_id),
     // Network POLICY, not a per-row claim: rows archived before 2026-07-21
     // are uncorrected even for these networks. Per-row truth is pm25_raw
-    // being present on a /measurements or /latest row.
-    pm25_correction_applied_since: CORRECTED_SOURCES.has(r.source) ? '2026-07-21' : null,
+    // being present on a /measurements or /latest row. An OpenAQ relay of an
+    // AirGradient unit is corrected from OpenAQ's own humidity for that device
+    // from OPENAQ_RELAY_CORRECTED_SINCE, and only on rows where that humidity
+    // was present and aligned — again, pm25_raw is the per-row truth.
+    pm25_correction_applied_since: CORRECTED_SOURCES.has(r.source) ? '2026-07-21'
+      : (isAirGradientRelay(r) ? OPENAQ_RELAY_CORRECTED_SINCE : null),
     // AQICN / WAQI hands out the AQI sub-index, so its PM2.5 is a unit
     // conversion of an integer index, not a measurement (notes.pm25_from_aqi).
     pm25_from_aqi: r.source === 'AQICN',

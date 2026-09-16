@@ -30,7 +30,7 @@ Three things are worth stating at the outset, because they shape everything that
 | **Government reference stations available** | 1 (Denpasar Lumintang, KLHK, via AQICN) |
 | **Archive depth** | Earliest record 27 September 2023; 4,197 station-days total; longest single station 572 days |
 | **Collection interval** | 15 minutes, continuous |
-| **Correction applied** | US-EPA 2021 humidity correction, on 2 of 8 networks, since 21 July 2026 |
+| **Correction applied** | US-EPA 2021 humidity correction: AirGradient and PurpleAir since 21 July 2026; OpenAQ relays of AirGradient units, from the humidity OpenAQ carries for the device, since 16 September 2026 |
 | **Directly-contributed (pushed) stations** | 1 — Amed, East Bali; published raw, uncorrected — see §5.6 |
 | **Published intervals** | Raw (15-min), hourly, daily |
 | **Licence** | Open, attribution requested; full archive downloadable as JSON or CSV |
@@ -44,7 +44,7 @@ Each network is polled independently. A network that fails or times out is simpl
 | Network | What it is | Instrument | Access | Catalogued stations |
 |---|---|---|---|---|
 | **AirGradient** | Open community network; the densest source in Bali | AirGradient O-1PST (Plantower PM module) | Public API, no key | 19 |
-| **OpenAQ** | Aggregator. **In Bali, every OpenAQ station is an AirGradient unit relayed onward** — see §6 | (relayed) | Public API, key | 22 |
+| **OpenAQ** | Aggregator. **In Bali, every OpenAQ station is an AirGradient unit relayed onward** — see §6; relays with no direct feed are published, corrected from OpenAQ's own humidity for the device (§5.7) | (relayed) | Public API, key | 22 |
 | **IQAir** | Commercial network; mixture of private hosts and contributors | Various | Public station pages, one device each — town-level values are not used (§8.5) | 10 |
 | **PurpleAir** | Open community network | PurpleAir (Plantower PM module) | Public API, key | 2 |
 | **Smart Citizen** | Open citizen-science platform (Fab Lab Barcelona) | SmartCitizen Kit 2.3 | Public API | 11 |
@@ -119,7 +119,9 @@ We apply exactly one correction: the **US-EPA 2021 humidity correction for Plant
 
 **All six other networks are published exactly as supplied.** We do not adjust, scale, calibrate or reconcile them. The one change of *units* is AQICN, whose feed carries an index rather than a concentration (§10.2); converting it is arithmetic, not a correction.
 
-Correction has been applied since **21 July 2026**. Rows archived before that date are uncorrected, and the API reports this per station in the field `pm25_correction_applied_since`.
+**One extension, since 16 September 2026:** an AirGradient unit that reaches us only as an OpenAQ relay is corrected the same way, using the humidity OpenAQ carries for that same device (§5.7). It is the same instrument and the same formula; only the route differs.
+
+Correction has been applied since **21 July 2026** (AirGradient, PurpleAir) and **16 September 2026** (OpenAQ relays of AirGradient units). Rows archived before those dates are uncorrected, and the API reports the applicable date per station in the field `pm25_correction_applied_since`.
 
 ### 5.2 Why the correction is necessary
 
@@ -188,6 +190,20 @@ These figures should be read against the **Raw** column in §5.5, not the Correc
 
 **Statistical treatment.** A contributed reading is unverified by construction: this project did not site the device and cannot inspect it. Consistent with every other unverified or non-ambient reading on this network (§8.3), `cs-amed-01` is shown on the public map and published through the API from its first reading onward, but it is **excluded from every island-wide statistic** — median, worst-current-reading, WHO exceedance share — until co-location is confirmed. This is the same treatment given to stations flagged `suspected_indoor`: published in full, held out of ambient claims.
 
+### 5.7 The relay route: OpenAQ carries the device's own humidity
+
+AirGradient relays its units to OpenAQ with more than PM2.5: each relayed location carries the device's **relative humidity** and temperature as separate sensors, hourly. That humidity comes from the same unit, in the same air, as the particulate reading — the co-location the correction requires (§5.6) — so from **16 September 2026** an AirGradient relay is corrected with the identical formula (§5.3) from OpenAQ's own humidity, and `pm25_raw` retains the as-supplied figure exactly as for a direct reading.
+
+Three conditions gate it, and each falls back to publishing the as-supplied figure, flagged uncorrected:
+
+- the OpenAQ provider must be AirGradient — the formula is for Plantower modules, and the provider field is the only instrument evidence a relay carries;
+- the humidity reading must fall within **90 minutes** of the PM2.5 reading, so a dead humidity channel's last value is never applied to live particulate data;
+- both inputs must be present and finite.
+
+**Why it was not done earlier.** Until September 2026 the pipeline read only the PM2.5 sensor from OpenAQ, so no humidity was available to correct with, and "OpenAQ rows are as supplied" described what was fetched rather than what OpenAQ offers. The change matters most for the units that have *no* direct feed (§6.4): for them the relay is the only published figure, and uncorrected it runs about 1.6× high in Bali's humidity (§5.5). Relay readings archived before 16 September 2026 are being corrected retrospectively from OpenAQ's hourly humidity for the same hours, with the change recorded in `archive_corrections`; rows for which no matching humidity hour exists stay as supplied.
+
+The relay remains the coarser record: hourly, and republished with a lag (§6.3). Where a direct feed exists it still wins outright (§6.4).
+
 ---
 
 ## 6. The AirGradient / OpenAQ duplication, and why it matters
@@ -200,8 +216,8 @@ This section is the most consequential in the document, because it determines wh
 
 The two copies are not equivalent:
 
-- The **direct** feed is timestamped to the minute and carries the humidity inputs, so **we correct it**.
-- The **relayed** copy arrives without those inputs and is published **exactly as OpenAQ supplies it — uncorrected**.
+- The **direct** feed is timestamped to the minute and carries the humidity inputs at 15-minute resolution, so **we correct it**.
+- The **relayed** copy is an hourly re-publication. Until 16 September 2026 it was published **exactly as OpenAQ supplies it — uncorrected**; since then it is corrected from the hourly humidity OpenAQ carries for the same device (§5.7), and published raw only where that humidity is absent. The comparison in §6.2 was measured before that change and is unaffected: the as-supplied figure is retained in `pm25_raw` on every corrected row.
 
 ### 6.2 Measured difference, same physical device
 
@@ -237,6 +253,7 @@ On the public map, a confirmed pair is collapsed to **one pin: the direct feed, 
 - There is **no numeric failover** to the relay. If the direct feed goes quiet, the pin is shown as stale and excluded from published figures — it does not silently switch to the higher uncorrected number. Swapping between the two made a single pin jump 20–45% for the same air.
 - Pairing is confirmed against our own archive, not a single poll, so a pair survives a temporarily missing reading. A twin that has produced no archived reading for **36 hours** is treated as departed and the relay stands alone again.
 - If the AirGradient unit leaves the network permanently, no pair forms and the OpenAQ record is published normally.
+- A relay that has **no** direct twin at all — AirGradient's public API does not list every unit its own map and OpenAQ carry (two Bali units, September 2026) — is published on its own, **corrected from OpenAQ's humidity for that device** (§5.7), and labelled raw only on readings where that humidity was missing.
 
 **Both series are archived in full and both remain published through the API, under their own station IDs.** The de-duplication above is a *display* decision on the public map only. No historical data is discarded, and a researcher can retrieve either or both.
 
