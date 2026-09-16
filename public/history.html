@@ -470,6 +470,76 @@ const isContributedId = (id) => typeof id === 'string' && id.startsWith('cs-');
 // One test for "flagged, and pulled out of the ordinary live groups".
 const isDiscreditedId = (id) => isIndoorId(id) || isMalfunctionId(id) || isContributedId(id);
 
+// ── Relayed duplicates of a direct feed ───────────────────────────────────
+// Every Bali OpenAQ station is an AirGradient device relayed through OpenAQ, so
+// whenever we ALSO read that device straight from AirGradient the archive holds
+// the same hardware twice: one `ag-*` series and one `oq-*` series at identical
+// coordinates. The map has folded those to the direct feed since August 2026.
+// This page did not, so the picker listed two rows carrying the same name and
+// the same air, and selecting both drew two indistinguishable lines. They are
+// hidden here from 2026-09-16 (owner decision): a reader comparing sensors
+// cannot learn anything from a second copy of one of them.
+//
+// IDENTIFIED STRUCTURALLY, by the same test the map fold uses (TWIN_M in
+// functions/api/live.js): an OpenAQ row within one metre of an AirGradient row
+// in our own D1 catalog. Measured across the whole catalog, every pair sits at
+// 0.000 m and every non-pair is at least 1,083 m away — these are not "nearby
+// sensors", they are one device arriving twice — so the threshold is about
+// float representation, not proximity. Structural rather than a hardcoded id
+// list because AirGradient units appear in Bali every few days, and a list
+// would silently stop covering them.
+//
+// NOT "every OpenAQ row". A relay whose device AirGradient's public API does
+// not carry has no `ag-*` twin and is the only record of that site: Community
+// park and Cactus House (1.6 km and 3.3 km from the nearest AirGradient unit,
+// both humidity-corrected here since 2026-09-16) and the three retired `oaq-*`
+// stations (1-4 km). Hiding by source would have deleted those from the archive
+// UI altogether.
+//
+// DISPLAY ONLY, exactly like HIDDEN_STATION_IDS in functions/api/history.js.
+// Every relay keeps being fetched, corrected and archived on the same 15-minute
+// tick; `/api/history?id=oq-…` still serves the full series to anyone who asks
+// for it by id; `/api/v1` still publishes it. Nothing about the data changes —
+// only which rows this page's sidebar offers.
+const RELAY_TWIN_M = 1;
+// Bali bbox, identical to AG_BALI in functions/api/live.js. A catalog row is
+// not more trustworthy than a payload row: a NULL coordinate coerces to a
+// finite 0, so without this an `oq-*` and an `ag-*` row that both lack
+// coordinates would "pair" at (0,0) and hide a real, correctly-located station.
+const RELAY_BBOX = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
+function _relayCoord(u){
+  if (!u || u.lat === null || u.lat === undefined || u.lon === null || u.lon === undefined) return null;
+  const lat = +u.lat, lon = +u.lon;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < RELAY_BBOX.latMin || lat > RELAY_BBOX.latMax) return null;
+  if (lon < RELAY_BBOX.lonMin || lon > RELAY_BBOX.lonMax) return null;
+  return { lat, lon };
+}
+let relayDuplicateIds = new Set();  // oq-* ids standing behind an ag-* twin
+// Recomputed from the D1 catalog on every load, so a device that starts or
+// stops being read directly moves groups on its own. Fails OPEN: if the catalog
+// is missing or unreadable the set is empty and every station is listed, which
+// is the behaviour this page had before — a duplicate row is a nuisance, a
+// missing station is a hole in the record.
+function buildRelayDuplicateIds(){
+  const ag = [], oq = [];
+  for (const u of (universalCatalog || [])){
+    if (!u || !u.station_id) continue;
+    const c = _relayCoord(u);
+    if (!c) continue;
+    if (u.source === 'AirGradient')  ag.push(c);
+    else if (u.source === 'OpenAQ')  oq.push({ id: u.station_id, ...c });
+  }
+  const dupes = new Set();
+  if (ag.length){
+    for (const s of oq){
+      if (ag.some(a => metresApart(s.lat, s.lon, a.lat, a.lon) <= RELAY_TWIN_M)) dupes.add(s.id);
+    }
+  }
+  relayDuplicateIds = dupes;
+}
+const isRelayDuplicateId = (id) => relayDuplicateIds.has(id);
+
 /* ---------- date helpers ---------- */
 function updateDate(){
   // Today's date in WITA (Asia/Makassar, UTC+8) — uppercased for the masthead.
@@ -527,6 +597,10 @@ async function loadCatalogs(){
   for (const a of archNafas)      if (a.uuid) archivedIds.add('nafas-' + a.uuid);
   for (const u of archUniversal)  if (u.station_id && (+u.daily_n) > 0) archivedIds.add(u.station_id);
 
+  // Which oq-* rows are a second copy of a station we already show directly.
+  // Must run before buildStationList(), which filters every group through it.
+  buildRelayDuplicateIds();
+
   buildStationList();
   buildRegionDropdown();
   // Default selection: top-3 worst current PM2.5 from chartable stations
@@ -554,10 +628,13 @@ function renderMetaInfo(){
   const el = document.getElementById('metaInfo');
   if (!el) return;
   if (!metaCounts){
-    const chartableLive = liveCatalog.filter(s => !s.off && isArchived(s)).length;
+    // Same filtered view the sidebar is built from, so the count and the rows
+    // below it can never disagree: a relayed duplicate is not a station here.
+    const _rows = liveCatalog.filter(s => s && !isRelayDuplicateId(s.id));
+    const chartableLive = _rows.filter(s => !s.off && isArchived(s)).length;
     metaCounts = {
       // off:true tombstones ride in the live payload but aren't live sensors.
-      live: liveCatalog.filter(s => !s.off).length,
+      live: _rows.filter(s => !s.off).length,
       archived: chartableLive,
       silenced: Object.keys(OFFLINE_HISTORY).length + OFFLINE_OTHER.length
     };
@@ -734,24 +811,37 @@ function buildStationList(){
   // nor disappear from the sidebar altogether.
   const isSilenced = s => isForcedSilenced(s) || isLongSilent(s);
 
-  const liveFresh    = liveCatalog.filter(s => !isStale(s) && !isSilenced(s) && !isDiscreditedId(s.id) && !s.off);
-  const liveStale    = liveCatalog.filter(s =>  isStale(s) && !isSilenced(s) && !isDiscreditedId(s.id) && !s.off);
+  // Relayed duplicates are removed ONCE, here, rather than in each group's
+  // predicate. The groups below are built from two different catalogs and a
+  // relay reaching either one is the same mistake, so both read this array and
+  // the universal-catalog groups test isRelayDuplicateId directly.
+  //
+  // The live feed normally suppresses a paired relay itself, so this filter is
+  // usually a no-op on it. It is not decoration: if AirGradient's API and our
+  // D1 catalog read both fail on the same tick, live.js can form no pair and
+  // publishes the relay — while the ag-* twin, with months of daily history,
+  // is still in the archive catalog and still in this sidebar. That is exactly
+  // when a duplicate row would reappear, and this is what stops it.
+  const liveRows     = liveCatalog.filter(s => s && !isRelayDuplicateId(s.id));
+
+  const liveFresh    = liveRows.filter(s => !isStale(s) && !isSilenced(s) && !isDiscreditedId(s.id) && !s.off);
+  const liveStale    = liveRows.filter(s =>  isStale(s) && !isSilenced(s) && !isDiscreditedId(s.id) && !s.off);
   const liveArchived = liveFresh.filter(s =>  isArchived(s));
   const liveNoArch   = liveFresh.filter(s => !isArchived(s));
   // Suspected-indoor monitors — pulled out of the live groups into their own group.
-  const indoorMons   = liveCatalog.filter(s => isIndoorId(s.id) && !isSilenced(s) && !s.off);
+  const indoorMons   = liveRows.filter(s => isIndoorId(s.id) && !isSilenced(s) && !s.off);
   // Suspected-malfunctioning monitors — same treatment, separate group + label.
-  const brokenMons   = liveCatalog.filter(s => isMalfunctionId(s.id) && !isSilenced(s) && !s.off);
+  const brokenMons   = liveRows.filter(s => isMalfunctionId(s.id) && !isSilenced(s) && !s.off);
   // Community-contributed monitors — same treatment, own group + label. Kept
   // separate from indoor/malfunctioning: those say something is wrong with the
   // reading, this says only that we didn't site the device ourselves.
-  const contributedMons = liveCatalog.filter(s => isContributedId(s.id) && !isSilenced(s) && !s.off);
+  const contributedMons = liveRows.filter(s => isContributedId(s.id) && !isSilenced(s) && !s.off);
   // Recently-offline tombstones (off:true from /api/live): dead or
   // indoor-retagged units whose archived record stays selectable. Always
   // chartable — the server only emits a tombstone when D1 daily history exists.
   // "Recently" is now literal: once a tombstone passes SILENCE_AFTER_DAYS it
   // falls through to Silenced.
-  const recentOffline = liveCatalog.filter(s => s.off && !isSilenced(s))
+  const recentOffline = liveRows.filter(s => s.off && !isSilenced(s))
     .map(s => ({ ...s, offline: true, archived: true }));
 
   // Relayed duplicates — stations STILL being archived every tick, but hidden
@@ -774,7 +864,7 @@ function buildStationList(){
   //     Silenced / Recently offline instead.
   //   • within 300 m of a station that IS displayed — i.e. the same site
   relayedSources = new Map();
-  const _liveIds = new Set(liveCatalog.map(s => s.id));
+  const _liveIds = new Set(liveRows.map(s => s.id));
   // Anchors INCLUDE off:true pins. The anchor test asks "is some station of
   // ours displayed at this site", and a grey tombstone is displayed — it is a
   // pin on the map and a row in this sidebar. Excluding them opened a hole the
@@ -794,11 +884,18 @@ function buildStationList(){
   // been suppressed by a display fold — which is exactly what this group is
   // for. Widening the corroborating radius test cannot pull in a quiet sensor;
   // those fail on last_date and land in Silenced / Recently offline as before.
-  const _liveGeo = liveCatalog.filter(s => Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  const _liveGeo = liveRows.filter(s => Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
   const _witaDay = (back) => new Date(Date.now() + 8*3600*1000 - back*86400000).toISOString().slice(0, 10);
   const _fresh = new Set([_witaDay(0), _witaDay(1)]);
   const relayedDupes = (universalCatalog || []).filter(u => {
     if (!u || !u.station_id || _liveIds.has(u.station_id)) return false;
+    // An OpenAQ relay standing behind its own AirGradient twin is not shown at
+    // all any more (isRelayDuplicateId). This group now holds only the other
+    // kind — a relay across two DIFFERENT networks, where the hidden series is
+    // the only copy that network published (a Nafas-sponsored Airly beside its
+    // Nafas twin). Today it is empty; it stays because that case is real and
+    // its record would otherwise be unreachable from this page.
+    if (isRelayDuplicateId(u.station_id)) return false;
     if (!(+u.daily_n > 0)) return false;
     // Belt and braces: the last_date test below already excludes anything the
     // age rule would catch, but keep the same predicate every other group uses
@@ -829,12 +926,12 @@ function buildStationList(){
   // Live feed — the source every one of groups 1-6 is built from, so this sweep
   // is what guarantees an age-silenced station reappears under Silenced rather
   // than dropping out of the sidebar entirely.
-  liveCatalog.forEach(s => {
+  liveRows.forEach(s => {
     if (isForcedSilenced(s))  _addSil(s.id, s.name, s.source);
     else if (isLongSilent(s)) _addSil(s.id, s.name, s.source, isArchived(s));
   });
   (archiveCatalog || []).forEach(s => { if (SILENCED_NAMES.has(normName(s))) _addSil('nafas-' + s.uuid, s.name, 'Nafas'); });
-  (universalCatalog || []).forEach(s => { if (SILENCED_NAMES.has(normName(s))) _addSil(s.station_id, s.name, s.source); });
+  (universalCatalog || []).forEach(s => { if (SILENCED_NAMES.has(normName(s)) && !isRelayDuplicateId(s.station_id)) _addSil(s.station_id, s.name, s.source); });
 
   const silenced     = [
     ...Object.entries(OFFLINE_HISTORY).map(([key,s])=>({
