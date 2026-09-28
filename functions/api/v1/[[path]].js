@@ -62,6 +62,12 @@ const MALFUNCTION_IDS = new Set([
   // (The earlier entry, iq-kopernik, was a town value, not a sensor: retired
   // with the iq- namespace, RETIRED_PREFIX below.)
   'pa-46949',
+  // Tonja (Nafas). Flagged 2026-09-28: at 13:30 WITA on 25 September its
+  // reading stepped from 12.1 to 1.5 µg/m³ and has stayed at 1.0-2.0 since,
+  // about 0.05 of stations 3-7 km away (0.7-1.1 before). Rows up to 05:15 UTC
+  // on 2026-09-25 are sound; later rows are far too low. Same unit read a flat
+  // 0.0 from 27 Jul to 2 Aug 2026 (see INDOOR_IDS above).
+  'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',
 ]);
 
 // Networks whose PM2.5 we humidity-correct before publishing (US-EPA 2021).

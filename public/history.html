@@ -459,6 +459,10 @@ const MALFUNCTION_IDS = new Set([
   // quarter of its prior level. Readings through 25 August are sound; later
   // ones are too low. Series stays fully chartable. Mirrors index.html + v1.
   'pa-46949',
+  // Tonja (Nafas) — flagged 2026-09-28: stepped from 12.1 to 1.5 µg/m³ at 13:30
+  // WITA on 25 September and has read 1.0-2.0 since, against 26-40 at stations
+  // 3-7 km away. Readings before that stand. Also read a flat 0.0 27 Jul-2 Aug.
+  'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',
 ]);
 const isMalfunctionId = (id) => MALFUNCTION_IDS.has(id);
 // Community-contributed sensors (cs-*): residents running their own hardware,

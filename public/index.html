@@ -1249,6 +1249,14 @@ const MALFUNCTION_IDS = new Set([
   // and is retired with the whole iq- namespace (DATA-METHODOLOGY §8.5).
   // Mirrors functions/api/v1 and public/history.html.
   'pa-46949',
+  // Tonja (Nafas). Flagged 2026-09-28. At 13:30 WITA on 25 September its
+  // reading stepped from 12.1 to 1.5 µg/m³ in a single quarter hour and has sat
+  // between 1.0 and 2.0 ever since, while the stations around it (Shiva
+  // Industries 3.4 km, Segara Ayu and Sibang 6.6 km) read 26-40: about 0.05 of
+  // its neighbours, against 0.7-1.1 before. Readings up to 13:15 WITA on 25
+  // September stand. This unit's second fault of the kind: from 27 July to
+  // 2 August 2026 it read a flat 0.0 (tagged indoor at the time, see INDOOR_IDS).
+  'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',
 ]);
 const isMalfunctioning = (s) => MALFUNCTION_IDS.has(typeof s === 'string' ? s : (s && s.id));
 // THE ONE TEST for "this device is not reporting trustworthy ambient air".
