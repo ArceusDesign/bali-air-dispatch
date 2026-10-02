@@ -932,6 +932,36 @@ function scPickSensor(sensors, re) {
 function scClean(s) {
   return String(s == null ? '' : s).replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 80);
 }
+// What a Smart Citizen device IS, as one label: its hardware and its PM2.5
+// sensor, e.g. "SmartCitizen Kit 2.3 · Sensirion SEN5X" or "Custom hardware ·
+// Seeed HM-3301". The platform reports both: hardware.name names the kit model
+// ("Unknown" for anything registered on it that isn't one of its kits — Fab
+// Lab Bali's "Bayu" sensors and DIY nodes), and each sensor's name carries the
+// sensor model ("Sensirion SEN5X - PM2.5"). Stored as the station's `type`, so
+// the map panel shows it, the History page lists it, the archive keeps it, and
+// foldSmartCitizenSites can rank kits by it on the D1 fast path as well.
+function scDeviceType(d) {
+  const sensors = d?.data?.sensors;
+  const pmEntry = Array.isArray(sensors) ? sensors.find(x => /PM2\.5/i.test(String(x?.name || ''))) : null;
+  const m = String(pmEntry?.name || '').match(/^(.*?)\s+-\s+PM\s*2\.5/i);
+  const pmModel = m ? scClean(m[1]) : '';
+  const hwName = scClean(d?.hardware?.name);
+  const hw = (hwName && !/^unknown$/i.test(hwName)) ? hwName : 'Custom hardware';
+  return pmModel ? `${hw} · ${pmModel}` : hw;
+}
+// PM2.5 sensor quality, best first, for choosing which kit represents a shared
+// site on the map. Fab Lab Bali's own ranking (Tomas, 2026-10-02): the
+// Sensirion SEN5X in the SmartCitizen Kit 2.3 is the best PM sensor in the
+// network, ahead of the Plantower PMS5003 (SCK 2.1, some DIY builds) and the
+// Seeed HM-3301 on the "Bayu" and DIY nodes. Ranked on the SENSOR, not the
+// hardware label: "Fablab Bali" reports SmartCitizen Kit 2.3 hardware but
+// carries an HM-3301, and one unit with a SEN5X reports hardware "Unknown".
+const SC_SENSOR_RANK = [/SEN5/i, /PMS\s*5003|Plantower/i, /HM-?3301|Seeed/i];
+function scSensorRank(type) {
+  const t = String(type || '');
+  const i = SC_SENSOR_RANK.findIndex(re => re.test(t));
+  return i < 0 ? SC_SENSOR_RANK.length : i;
+}
 async function fetchSmartCitizen() {
   // Bali centre + 80 km radius covers the whole island in a single request.
   const r = await fetch(
@@ -983,7 +1013,7 @@ async function fetchSmartCitizen() {
       id: `sc-${devId}`,
       name: scClean(d.name) || `Smart Citizen #${devId}`,
       source: 'Smart Citizen',
-      type: scClean(d.hardware?.name) || 'Citizen sensor',
+      type: scDeviceType(d),
       lat, lon,
       pm25,
       pm10: scPickSensor(sensors, /PM10/i),
@@ -1024,9 +1054,12 @@ function dedupSmartCitizen(scStations, existing) {
 // Atik in Serangan (with more there that come and go). Counted separately, one
 // bench would weigh as several neighbourhoods in the island median, so the map
 // shows ONE pin per site: a kit within SC_SITE_M of a kept pin folds onto it.
-// The tiebreak is the lowest device id — stable, so the map pin's history
-// never splits, and the oldest kit, so the longest record. If the kept kit
-// goes quiet, its sibling is the lowest live id next tick and takes the pin.
+// The pin goes to the kit with the best PM2.5 sensor (scSensorRank: SEN5X,
+// then PMS5003, then HM-3301), and among equals to the lowest device id —
+// stable, so the map pin's history never splits, and the oldest kit, so the
+// longest record. If the kept kit goes quiet, the next-ranked live sibling
+// takes the pin next tick. Until 2026-10-02 the lowest id alone decided; at
+// both shared sites it happened to pick the SmartCitizen Kit anyway.
 //
 // Folding is a DISPLAY decision, so it runs only on visitor-served paths (the
 // D1 fast path and the slow path when !noFast), never for the archive worker's
@@ -1042,7 +1075,8 @@ function foldSmartCitizenSites(stations) {
     Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
   const kept = [];
   const folded = new Set();
-  for (const s of live.sort((a, b) => devNum(a) - devNum(b))) {   // lowest id first
+  const order = (a, b) => (scSensorRank(a.type) - scSensorRank(b.type)) || (devNum(a) - devNum(b));
+  for (const s of live.sort(order)) {   // best PM sensor first, then lowest id
     if (kept.some(k => metresBetween(+s.lat, +s.lon, +k.lat, +k.lon) < SC_SITE_M)) {
       folded.add(s.id);
       continue;

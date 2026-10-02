@@ -922,7 +922,7 @@ function buildStationList(){
     colocatedSites.set(u.station_id, (site.name || site.id).split(' (')[0]);
     return true;
   }).map(u => ({ id: u.station_id, name: u.name || u.station_id, source: u.source || '',
-                 pm25: null, lastSeen: null, archived: true, colocated: true,
+                 type: u.type || '', pm25: null, lastSeen: null, archived: true, colocated: true,
                  siteName: colocatedSites.get(u.station_id) }));
   const relayedDupes = (universalCatalog || []).filter(u => {
     if (!u || !u.station_id || _liveIds.has(u.station_id)) return false;
@@ -1019,12 +1019,18 @@ function buildStationList(){
     // browser un-escapes `data-id` back to the raw string for the click
     // handler, so the downstream Set membership and fetch URL stay correct.
     const safeId = escapeHtml(s.id);
+    // Smart Citizen hosts both its own kits and other hardware (Fab Lab Bali's
+    // "Bayu" and DIY nodes), with different PM sensors; say which this is.
+    // `type` is "<hardware> · <PM2.5 sensor>" (scDeviceType in live.js).
+    const hwLine = (s.source === 'Smart Citizen' && s.type)
+      ? `<div class="stn-meta">${escapeHtml(s.type)}</div>` : '';
     return `<div class="h-stn ${cls}" data-id="${safeId}" data-archived="${chartable?1:0}">
       <input type="checkbox" data-id="${safeId}" ${selectedIds.has(s.id)?'checked':''}>
       <span class="swatch" style="background:${colour}"></span>
       <div>
         <div class="stn-name">${escapeHtml(s.offline ? (s.name||'') : (s.name||'').split(' (')[0])}</div>
         <div class="stn-meta">${escapeHtml(subtitle)}</div>
+        ${hwLine}
       </div>
       <div class="stn-pm">${pmTxt}</div>
     </div>`;
