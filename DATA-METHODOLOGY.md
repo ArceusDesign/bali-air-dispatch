@@ -266,7 +266,8 @@ On the public map, a confirmed pair is collapsed to **one pin: the direct feed, 
 | **AirGradient ↔ OpenAQ relay pairing** | 1 m | Exact-coordinate identity; direct feed always wins (§6) |
 | **AirGradient vs. other networks** | 300 m | An AirGradient pin is dropped if a *different* network already holds that location, so established station identities and their longer histories win. OpenAQ is exempt from this rule, for the reason in §6 |
 | **Airly vs. Nafas** | 300 m | Airly is dropped near a *live* Nafas station. If Nafas is not reporting, Airly is retained as failover |
-| **Smart Citizen** | — | De-duplicated against existing stations on the same basis |
+| **Smart Citizen vs. other networks** | 300 m | A Smart Citizen pin is dropped if a *different* network already holds that location, as for AirGradient |
+| **Smart Citizen kits at one site** | 120 m | Kits within 120 m of each other — Fab Lab Bali's test benches — are one site on the map: the lowest-numbered kit (the oldest, with the longest record) is shown, so a bench of several kits is not counted as several neighbourhoods. Every kit is archived under its own id, and the History page lists the others under "Co-located · not on map". Since 2 October 2026; before then the other kits were not archived at all |
 | **IQAir mirrors** | — | Where IQAir republishes a sensor already ingested directly (e.g. a PurpleAir unit), both copies are flagged together so a filtered analysis cannot lose one and keep the other |
 
 The tightest rule is deliberately the 1 m relay rule. A wider radius is unsafe for identity matching: anyone can register a device on a public network and enter arbitrary coordinates, and a 300 m rule could allow an unrelated registration to suppress a genuine station. At 1 m, with the relay reporting the device's own coordinates unchanged, nothing unrelated can qualify.

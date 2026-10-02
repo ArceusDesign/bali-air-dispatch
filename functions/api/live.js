@@ -906,10 +906,12 @@ async function fetchNafas() {
 // device that comes online in Bali appears automatically; there is no hardcoded
 // device list to maintain. Indoor devices can never slip in.
 //
-// De-dup: SC's Jimbaran test cluster has two units ~11 m apart — collapse
-// SC-internal near-duplicates here (keep the freshest). Cross-source de-dup
-// (drop an SC pin sitting on an existing PurpleAir/Nafas/etc. sensor) is applied
-// by the caller via dedupSmartCitizen(), mirroring scrapedIQAirFromD1.
+// De-dup happens later, in two places. Cross-source (drop an SC pin sitting on
+// an existing PurpleAir/Nafas/etc. sensor) is applied by the caller via
+// dedupSmartCitizen(), mirroring scrapedIQAirFromD1. Kits within SC_SITE_M of
+// each other (Fab Lab's test benches) are folded to one pin per site by
+// foldSmartCitizenSites() — on visitor-served paths only, so the archive worker
+// still receives, and archives, every kit.
 const SC_BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
 function scPickSensor(sensors, re) {
   if (!Array.isArray(sensors)) return null;
@@ -994,20 +996,11 @@ async function fetchSmartCitizen() {
       lastSeen: d.last_reading_at || null,
     });
   }
-  // SC-internal co-location de-dup: collapse pins within 120 m of each other
-  // (the Jimbaran twins sit ~11 m apart). Tiebreak is the LOWEST device id —
-  // a STABLE choice (the same station_id always wins, so history never splits),
-  // and lowest id == oldest device == longest history. Liveness is already
-  // handled upstream: offline units are filtered out before this runs, so if the
-  // winning unit goes dark its co-located sibling is naturally kept next tick.
-  const INTERNAL_M = 120;
-  const devNum = (s) => { const n = +String(s.id).slice(3); return Number.isFinite(n) ? n : Infinity; };
-  const kept = [];
-  for (const s of out.sort((a, b) => devNum(a) - devNum(b))) {  // lowest id first
-    if (kept.some(k => metresBetween(s.lat, s.lon, k.lat, k.lon) < INTERNAL_M)) continue;
-    kept.push(s);
-  }
-  return kept;
+  // Every kit that passed the gates above is returned, co-located ones
+  // included: the one-pin-per-site fold now runs on visitor-served paths only
+  // (foldSmartCitizenSites), so the archive worker's ?fresh=1 read archives
+  // each kit under its own id.
+  return out;
 }
 
 // Drop Smart Citizen pins within 300 m of an already-present DIFFERENT-source
@@ -1023,6 +1016,40 @@ function dedupSmartCitizen(scStations, existing) {
       metresBetween(s.lat, s.lon, o.lat, o.lon) < DEDUP_M
     )
   );
+}
+
+// One pin per Smart Citizen SITE on the map, but every kit in the archive.
+// Fab Lab Bali runs kits side by side as test benches: on 2026-10-02 two live
+// outdoor kits 31 m apart at its Ungasan lab, and two 25 m apart at Kios Utak
+// Atik in Serangan (with more there that come and go). Counted separately, one
+// bench would weigh as several neighbourhoods in the island median, so the map
+// shows ONE pin per site: a kit within SC_SITE_M of a kept pin folds onto it.
+// The tiebreak is the lowest device id — stable, so the map pin's history
+// never splits, and the oldest kit, so the longest record. If the kept kit
+// goes quiet, its sibling is the lowest live id next tick and takes the pin.
+//
+// Folding is a DISPLAY decision, so it runs only on visitor-served paths (the
+// D1 fast path and the slow path when !noFast), never for the archive worker's
+// ?fresh=1 read. Every live outdoor kit is therefore archived under its own id,
+// and the History page lists the folded ones under "Co-located · not on map".
+// Until 2026-10-02 this fold ran inside fetchSmartCitizen, before the archive
+// worker saw the payload, so a folded kit was never archived at all.
+const SC_SITE_M = 120;
+function foldSmartCitizenSites(stations) {
+  const devNum = (s) => { const n = +String(s.id).slice(3); return Number.isFinite(n) ? n : Infinity; };
+  const live = stations.filter(s =>
+    s && s.source === 'Smart Citizen' && !s.off &&
+    Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  const kept = [];
+  const folded = new Set();
+  for (const s of live.sort((a, b) => devNum(a) - devNum(b))) {   // lowest id first
+    if (kept.some(k => metresBetween(+s.lat, +s.lon, +k.lat, +k.lon) < SC_SITE_M)) {
+      folded.add(s.id);
+      continue;
+    }
+    kept.push(s);
+  }
+  return folded.size ? stations.filter(s => !(s && folded.has(s.id))) : stations;
 }
 
 // ── AirGradient — direct public world feed (keyless) ─────────────────────
@@ -1267,7 +1294,7 @@ function dedupAirGradient(agStations, existing) {
 async function scOfflineFromD1(db, baseStations) {
   const RETENTION_DAYS = 90;
   const MIN_DAILY_DAYS = 5;
-  const NEAR_M = 120;          // matches the SC-internal live de-dup radius
+  const NEAR_M = SC_SITE_M;    // the one-pin-per-site radius (foldSmartCitizenSites)
   try {
     const rows = await db.prepare(`
       SELECT st.station_id AS id, st.name, st.lat, st.lon, st.type,
@@ -2166,6 +2193,9 @@ async function handleLive(context) {
         } catch (_) { /* scraped optional; serve base fast path */ }
         // Collapse co-located Airly (Nafas-sponsored) onto its live Nafas twin.
         fast.stations = dropAirlyNearNafas(fast.stations);
+        // One pin per Smart Citizen site. The archive holds every kit, so the
+        // fast path (built from it) needs the same fold the slow path applies.
+        fast.stations = foldSmartCitizenSites(fast.stations);
         // Collapse OpenAQ-relayed AirGradient units onto their direct feed
         // (fresher, 15-min, un-aggregated, corrected from its own humidity).
         // AG-only: if AirGradient goes quiet the pin shows muted STALE rather
@@ -2306,6 +2336,7 @@ async function handleLive(context) {
   // falls back to in-payload pairs, exactly as it behaved before.
   if (!noFast) {
     results.stations = dropAirlyNearNafas(results.stations);
+    results.stations = foldSmartCitizenSites(results.stations);
     // results.errors is the fold's outage sink: a payload with zero ag-* while
     // the catalog knows of twins is our own fetch failing, and the map going
     // grey at every relay location is the correct outcome — but not a silent one.
