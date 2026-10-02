@@ -427,6 +427,12 @@ let relayedSources = new Map(); // station_id → source, for stations still bei
                                 // displayed instead. Populated by buildStationList();
                                 // read by nameFor() to tag them "(VIA <SOURCE>)",
                                 // since a relay usually carries the identical name.
+let colocatedSites = new Map(); // station_id → name of the Smart Citizen pin
+                                // shown on the map for its site. Kits within
+                                // 120 m of each other are one site there (see
+                                // foldSmartCitizenSites in functions/api/live.js);
+                                // every kit is archived, and the folded ones are
+                                // listed under "Co-located · not on map".
 let currentRange = '30d';
 let chartInstance = null;
 // Suspected-indoor monitors (consistently far below nearby outdoor sensors):
@@ -891,8 +897,36 @@ function buildStationList(){
   const _liveGeo = liveRows.filter(s => Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
   const _witaDay = (back) => new Date(Date.now() + 8*3600*1000 - back*86400000).toISOString().slice(0, 10);
   const _fresh = new Set([_witaDay(0), _witaDay(1)]);
+  // Smart Citizen kits archived but folded off the map because another kit of
+  // the same site is shown there (foldSmartCitizenSites, live.js). Same three
+  // tests as the relayed group below — archived, still producing data, absent
+  // from /api/live — plus the site test itself: within SC_SITE_M of a Smart
+  // Citizen pin that IS on the map. Built first so the relayed group, whose
+  // 300 m test would also match them, can exclude them.
+  const SC_SITE_M = 120;
+  colocatedSites = new Map();
+  const _liveSc = liveRows.filter(s => s && s.source === 'Smart Citizen' && !s.off &&
+    Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  const colocatedKits = (universalCatalog || []).filter(u => {
+    if (!u || !u.station_id || _liveIds.has(u.station_id)) return false;
+    if (u.source !== 'Smart Citizen' || !(+u.daily_n > 0)) return false;
+    if (isSilenced(u) || isDiscreditedId(u.station_id)) return false;
+    if (!_fresh.has(String(u.last_date || ''))) return false;
+    if (!Number.isFinite(+u.lat) || !Number.isFinite(+u.lon)) return false;
+    let site = null, best = Infinity;
+    for (const s of _liveSc) {
+      const d = metresApart(+u.lat, +u.lon, +s.lat, +s.lon);
+      if (d < SC_SITE_M && d < best) { best = d; site = s; }
+    }
+    if (!site) return false;
+    colocatedSites.set(u.station_id, (site.name || site.id).split(' (')[0]);
+    return true;
+  }).map(u => ({ id: u.station_id, name: u.name || u.station_id, source: u.source || '',
+                 pm25: null, lastSeen: null, archived: true, colocated: true,
+                 siteName: colocatedSites.get(u.station_id) }));
   const relayedDupes = (universalCatalog || []).filter(u => {
     if (!u || !u.station_id || _liveIds.has(u.station_id)) return false;
+    if (colocatedSites.has(u.station_id)) return false;
     // An OpenAQ relay standing behind its own AirGradient twin is not shown at
     // all any more (isRelayDuplicateId). This group now holds only the other
     // kind — a relay across two DIFFERENT networks, where the hidden series is
@@ -955,7 +989,7 @@ function buildStationList(){
   // swatch takes its colour from render position, while a region pick seeds
   // selectedIds straight from this array and the chart colours datasets in that
   // order. Let the two orders drift and every swatch disagrees with the legend.
-  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...recentOffline, ...indoorMons, ...brokenMons, ...contributedMons, ...relayedDupes, ...silenced]
+  selectableMonitors = [...liveArchived, ...liveNoArch, ...liveStale, ...recentOffline, ...indoorMons, ...brokenMons, ...contributedMons, ...colocatedKits, ...relayedDupes, ...silenced]
     .map(s => { const c = coordOf(s.id); return c ? { id: s.id, name: s.name, lat: c.lat, lon: c.lon } : null; })
     .filter(Boolean);
 
@@ -976,6 +1010,7 @@ function buildStationList(){
     const cls = chartable ? '' : 'no-data';
     let subtitle = s.source || '';
     if (s.relayed) subtitle += ' · ' + T('history.x.tag.relayed','relayed duplicate');
+    else if (s.colocated) subtitle += ' · ' + T('history.x.tag.colocated','same site as {name}').replace('{name}', s.siteName || '');
     else if (s.offline) subtitle += ' · ' + (s.off ? T('history.x.tag.offline','offline') : T('history.x.tag.silenced','silenced'));
     else if (opts.staleHours) subtitle += ` · ${T('history.x.tag.stale','stale')} ${Math.round(opts.staleHours)}h`;
     // Defense-in-depth: escape s.id when interpolating into HTML attributes.
@@ -1031,6 +1066,10 @@ function buildStationList(){
   if (contributedMons.length){
     html += groupHeader(T('history.x.grp.contributed','Community-contributed · unverified siting'));
     contributedMons.forEach(s => { html += renderRow(s, idx); idx++; });
+  }
+  if (colocatedKits.length){
+    html += groupHeader(T('history.x.grp.colocated','Co-located · not on map'));
+    colocatedKits.forEach(s => { html += renderRow(s, idx, { forceArchived: true }); idx++; });
   }
   if (relayedDupes.length){
     html += groupHeader(T('history.x.grp.relayed','Relayed duplicate'));
@@ -1421,6 +1460,7 @@ function nameFor(id){
             : isOffId        ? ' ' + T('history.x.offlineTag', '(OFFLINE)')
             : relaySrc       ? ' ' + T('history.x.relayTag', '(VIA {src})')
                                        .replace('{src}', String(relaySrc).toUpperCase())
+            : colocatedSites.has(id) ? ' ' + T('history.x.colocatedTag', '(CO-LOCATED)')
             : '';
   let base = id;
   if (id.startsWith('off-')){
