@@ -940,23 +940,33 @@ function scClean(s) {
 // sensor model ("Sensirion SEN5X - PM2.5"). Stored as the station's `type`, so
 // the map panel shows it, the History page lists it, the archive keeps it, and
 // foldSmartCitizenSites can rank kits by it on the D1 fast path as well.
+//
+// One declared sensor is not taken at its word: Plantower PMS5003. Fab Lab
+// Bali (Tomas, 2026-10-09): no Smart Citizen kit or Bayu sensor in Bali carries
+// one; the declaration comes from a planned version meant to add a PMS5003 for
+// compatibility with AirGradient and PurpleAir. The only hardware that really
+// shipped with it is the old SCK 2.1, so a PMS5003 is named on an SCK 2.1 and
+// left out elsewhere — "Pangkung Tibah" declares one on "Unknown" hardware and
+// is labelled plain "Custom hardware" rather than with a sensor it lacks.
 function scDeviceType(d) {
   const sensors = d?.data?.sensors;
   const pmEntry = Array.isArray(sensors) ? sensors.find(x => /PM2\.5/i.test(String(x?.name || ''))) : null;
   const m = String(pmEntry?.name || '').match(/^(.*?)\s+-\s+PM\s*2\.5/i);
-  const pmModel = m ? scClean(m[1]) : '';
   const hwName = scClean(d?.hardware?.name);
+  let pmModel = m ? scClean(m[1]) : '';
+  if (/PMS\s*5003|Plantower/i.test(pmModel) && !/^SCK\s*2\.1\b/i.test(hwName)) pmModel = '';
   const hw = (hwName && !/^unknown$/i.test(hwName)) ? hwName : 'Custom hardware';
   return pmModel ? `${hw} · ${pmModel}` : hw;
 }
 // PM2.5 sensor quality, best first, for choosing which kit represents a shared
 // site on the map. Fab Lab Bali's own ranking (Tomas, 2026-10-02): the
 // Sensirion SEN5X in the SmartCitizen Kit 2.3 is the best PM sensor in the
-// network, ahead of the Plantower PMS5003 (SCK 2.1, some DIY builds) and the
-// Seeed HM-3301 on the "Bayu" and DIY nodes. Ranked on the SENSOR, not the
+// network, ahead of the Seeed HM-3301 on the "Bayu" and DIY nodes. Those are
+// the only two PM sensors in Bali's current kits (Tomas, 2026-10-09); any
+// other label, or none, ranks after them. Ranked on the SENSOR, not the
 // hardware label: "Fablab Bali" reports SmartCitizen Kit 2.3 hardware but
 // carries an HM-3301, and one unit with a SEN5X reports hardware "Unknown".
-const SC_SENSOR_RANK = [/SEN5/i, /PMS\s*5003|Plantower/i, /HM-?3301|Seeed/i];
+const SC_SENSOR_RANK = [/SEN5/i, /HM-?3301|Seeed/i];
 function scSensorRank(type) {
   const t = String(type || '');
   const i = SC_SENSOR_RANK.findIndex(re => re.test(t));
@@ -1055,7 +1065,7 @@ function dedupSmartCitizen(scStations, existing) {
 // bench would weigh as several neighbourhoods in the island median, so the map
 // shows ONE pin per site: a kit within SC_SITE_M of a kept pin folds onto it.
 // The pin goes to the kit with the best PM2.5 sensor (scSensorRank: SEN5X,
-// then PMS5003, then HM-3301), and among equals to the lowest device id —
+// then HM-3301, then anything else), and among equals to the lowest device id —
 // stable, so the map pin's history never splits, and the oldest kit, so the
 // longest record. If the kept kit goes quiet, the next-ranked live sibling
 // takes the pin next tick. Until 2026-10-02 the lowest id alone decided; at
