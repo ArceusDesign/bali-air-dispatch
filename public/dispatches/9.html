@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dispatch VI — The fix, in order of impact. A practical guide. · Bali Air Dispatch</title>
-<meta name="description" content="Dispatch VI of the Bali Air Dispatch — what would actually help. A practical guide to the technologies and the sequencing.">
+<title>Dispatch IX — How to report a fire, and stay safe doing it. · Bali Air Dispatch</title>
+<meta name="description" content="Dispatch IX of the Bali Air Dispatch — how to report open waste burning through official channels, what evidence to collect, and how to stay safe doing it.">
 <meta name="referrer" content="no-referrer">
 <!-- Favicons. Tab icons (favicon.ico + the two PNGs) carry the PAGODA MARK
      ALONE, redrawn onto a fresh circular badge — no wordmark (owner decision,
@@ -248,6 +248,14 @@ body::before{
 .foot-strip{margin-top:18px;padding-top:16px;border-top:1px solid var(--hairline);font-size:10.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;text-align:center}
 .foot-rights,.foot-sources{margin-top:14px;font-size:11px;line-height:1.55;color:var(--ink-faint);max-width:920px;margin-left:auto;margin-right:auto;text-align:center;letter-spacing:.02em}
 .foot-rights strong,.foot-sources strong{color:var(--ink-soft);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px;margin-right:6px}
+/* ===== DISPATCH IX ===== */
+pre.tpl{white-space:pre-wrap;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;line-height:1.6;color:var(--ink-soft);background:var(--paper-dark);border:1px solid var(--hairline);padding:18px 20px;margin:4px 0 8px}
+@media(max-width:700px){#dispatch-9 .chapter-body{grid-template-columns:1fr}#dispatch-9 .chapter-body>div[style*="span 2"]{grid-column:auto!important}}
+ul.safety{list-style:none;padding:0;margin:10px 0 0}
+ul.safety li{padding:12px 0 12px 22px;border-bottom:1px solid var(--hairline);position:relative;font-family:"Source Serif 4",serif;font-size:15.5px;line-height:1.6;color:var(--ink-soft)}
+ul.safety li:last-child{border-bottom:none}
+ul.safety li::before{content:"";position:absolute;left:2px;top:21px;width:8px;height:8px;background:var(--crimson)}
+ul.safety li b{color:var(--ink)}
 </style>
 <style>
 /* WhatsApp community button — green box (matches Dispatch VI / --forest accent) */
@@ -283,7 +291,7 @@ body::before{
     </div>
     <div class="nameplate">
       <h1>Bali&nbsp;Air&nbsp;Dispatch</h1>
-      <div class="sub" data-i18n="disp.6.x.sub">Dispatch VI — The fix, in order of impact. A practical guide.</div>
+      <div class="sub" data-i18n="disp.9.x.sub">Dispatch IX — How to report a fire, and stay safe doing it.</div>
     </div>
     <div class="folio">
       <div data-i18n="mast.editionXXII">Edition XXII</div>
@@ -306,180 +314,165 @@ body::before{
 
   <!-- BULLETIN -->
   <div class="bulletin">
-    <div class="tag" data-i18n="disp.6.x.bulTag">Bulletin · Dispatch VI</div>
-    <div data-i18n="disp.6.x.bulLine">What would actually help — a practical guide</div>
+    <div class="tag" data-i18n="disp.9.x.bulTag">Bulletin · Dispatch IX</div>
+    <div data-i18n="disp.9.x.bulLine">How to report open burning — a practical guide</div>
     <div class="when" id="bul-when">—</div>
   </div>
 
   <!-- DISPATCH CONTENT -->
-  <section class="chapter" id="dispatch-6">
+  <section class="chapter" id="dispatch-9">
     <div class="chapter-head">
-      <div class="chapter-no" data-i18n="disp.6.x.chapNo">Dispatch · VI</div>
-      <div class="chapter-title" data-i18n-html="disp.6.title">The <em>fix</em>, in order of impact. A practical guide.</div>
-      <div class="chapter-meta" data-i18n-html="disp.6.x.meta">Filed · 30 May 2026<br>Approx. 7-minute read</div>
+      <div class="chapter-no" data-i18n="disp.9.x.chapNo">Dispatch · IX</div>
+      <div class="chapter-title" data-i18n-html="disp.9.title">How to <em>report a fire</em>, and stay safe doing it.</div>
+      <div class="chapter-meta" data-i18n-html="disp.9.x.meta">Filed · October 2026<br>Approx. 6-minute read</div>
     </div>
-    <p class="chapter-lede" data-i18n-html="disp.6.lede">The technology to address Bali's waste-and-air problem is largely off the shelf. Some of it is already running on the island. The shortfall, on the present evidence, is one of sequencing and finance more than invention — and Gianyar, on the same island, has already shown what the order should be.</p>
+    <p class="chapter-lede" data-i18n-html="disp.9.lede">Open burning of household waste is illegal in Indonesia. Official complaint channels exist, they are free, and one of them lets you report anonymously. This dispatch explains how to report in a way that is most likely to stop the smoke.</p>
 
     <div class="chapter-body">
       <div>
-        <h3 class="sub-h" data-i18n-html="disp.6.sub.1"><span class="sub-kicker">§ I</span>This is a sequencing problem, not a tech gap.</h3>
-        <p class="first" data-i18n-html="disp.6.body.p1">The honest framing of Bali's April–May 2026 burning pattern is that the technology to fix the underlying waste flow already exists, and a meaningful portion of it has been deployed somewhere on the island already. Each extension of the Suwung landfill's organics-closure timeline, reported in the local press through the first half of the year, has named the same constraint: Bali's processing alternatives are not yet sized to absorb the more than one thousand tonnes a day the province generates, and households have resorted to open burning in the gap.</p>
-        <p data-i18n-html="disp.6.body.p2">The point matters because it changes what "doing something on the ground" should look like. It is not a question of inventing a new method. It is a question of sequencing, financing, and building in the right order. The rest of this dispatch is organised around that point — the technologies that work, listed in roughly the order of how much of the burn problem each would actually absorb, then a four-step sequence drawn from local experience.</p>
+        <h3 class="sub-h" data-i18n-html="disp.9.sub.1"><span class="sub-kicker">§ I · The basis</span>What the law says.</h3>
+        <p class="first" data-i18n-html="disp.9.body.p1">National Law 18 of 2008 on Waste Management prohibits burning waste in a way that does not meet technical standards for waste processing (Article 29). In practice, that covers a household or business burning its rubbish in a pile, a barrel or a pit. The regency governments and the Province of Bali are responsible for enforcing it, alongside their own regulations. Bali's provincial waste regulation (Perda 5/2011) and Badung's (Perda 7/2013) repeat the ban, with penalties of up to Rp&nbsp;50 million or a short custodial sentence.</p>
+        <p data-i18n-html="disp.9.body.p2">Enforcement depends almost entirely on complaints. Environment officers rarely patrol. They act on reports. A single well-documented complaint in Gianyar in early October brought a field inspection within days, no-burning banners at the reported spot from the village government, and a written reply from the regency environment agency promising follow-up monitoring.</p>
+        <p data-i18n-html="disp.9.body.p3">That outcome is not typical. In a community survey of 501 residents carried out in October 2026, 192 people said they had contacted a local authority about burning. Only 38 of them said any action followed. A report is a reasonable first step, not a guarantee.</p>
       </div>
 
       <div>
-        <h3 class="sub-h" data-i18n-html="disp.6.sub.2"><span class="sub-kicker">§ II · The big lever</span>Organic processing first.</h3>
-        <p data-i18n-html="disp.6.body.p3">Roughly two-thirds of Bali's household waste is organic. Denpasar's own figures put food scraps and garden debris at about <strong>68 per cent</strong> of the city's stream. If that fraction is diverted from the household pile, the volume left for the burn-it-yourself default shrinks dramatically. Three proven technologies operate on Bali at small or pilot scale right now:</p>
-        <ul class="tools">
-          <li>
-            <span class="name" data-i18n="disp.6.x.tool1name">Black Soldier Fly bioconversion</span>
-            <span class="desc" data-i18n-html="disp.6.x.tool1desc"><b>BSF larvae</b> eat food waste fast in a tropical climate, yielding animal feed and an organic soil amendment. Bali's provincial environmental agency has explicitly named BSF technology in its solution set.</span>
-          </li>
-          <li>
-            <span class="name" data-i18n="disp.6.x.tool2name">Anaerobic biogas digesters</span>
-            <span class="desc" data-i18n-html="disp.6.x.tool2desc">Capture the methane from organic decomposition and produce a clean <b>cooking fuel</b> as output. Suitable at household, banjar, or facility scale.</span>
-          </li>
-          <li>
-            <span class="name" data-i18n="disp.6.x.tool3name">Decentralised composting</span>
-            <span class="desc" data-i18n-html="disp.6.x.tool3desc">The lowest-tech of the three, the most labour-intensive, and the easiest to set up at <b>banjar-level</b> scale with limited capital. The output goes back into Bali's gardens and rice paddies.</span>
-          </li>
-        </ul>
+        <h3 class="sub-h" data-i18n-html="disp.9.sub.2"><span class="sub-kicker">§ II · Before you report</span>Talk first, if you safely can.</h3>
+        <p data-i18n-html="disp.9.body.p4">Many households burn because their collection service has stopped, costs more than they can afford, or will not take mixed rubbish. A complaint does not change that. Where you already have a friendly relationship, a quiet conversation can sometimes do more than a report. Ask what happens to their rubbish and what would help. Some residents have stopped a neighbour's burning by paying for collection and buying bins, together with a calm explanation of the health effects.</p>
+        <p data-i18n-html="disp.9.body.p5">Leaves and garden waste can be composted. Seasonal rice-straw burning is a farming practice with its own pressures, and is better addressed through the farmer group (<em>subak</em>) or the village than through a complaint about an individual.</p>
+        <p data-i18n-html="disp.9.body.p6">Burning that is <strong>repeated</strong>, involves <strong>plastic or mixed rubbish</strong>, or comes from a <strong>business or construction site</strong> is the clearest case for a formal report. Construction sites and businesses can pay for collection.</p>
       </div>
-
-      <!-- FIGURE -->
-      <div class="figure-box" style="grid-column:span 2">
-        <div class="figure-grid">
-          <div class="figure-cell">
-            <div class="n">~68<small>%</small></div>
-            <div class="l" data-i18n-html="disp.6.fig.l1">Organic share of Denpasar's household waste stream. The single biggest lever — divert the organic fraction and the burn pile shrinks dramatically.</div>
-          </div>
-          <div class="figure-cell">
-            <div class="n">1,000<small> t/day</small></div>
-            <div class="l" data-i18n-html="disp.6.fig.l2">Pre-ban Suwung throughput. The volume the alternatives need to absorb. Bali generates roughly this much waste every day of the year.</div>
-          </div>
-          <div class="figure-cell">
-            <div class="n">~$200<small> /unit</small></div>
-            <div class="l" data-i18n-html="disp.6.fig.l3">Approximate cost of a community-grade laser-scatter PM2.5 sensor. Deployable in weeks, reporting to a public dashboard — sufficient density to map burn hotspots in real time.</div>
-          </div>
-          <div class="figure-cell">
-            <div class="n">1</div>
-            <div class="l" data-i18n-html="disp.6.fig.l4">Working model already in operation on Bali. Gianyar built its waste system <em>before</em> the landfill ban; that order is the lesson.</div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h3 class="sub-h" data-i18n-html="disp.6.sub.3"><span class="sub-kicker">§ III · The backbone</span>Neighbourhood-scale infrastructure.</h3>
-        <p data-i18n-html="disp.6.body.p4">The layered model already on Bali's planning paper distinguishes <strong>TPS3R</strong> — small recycling and recovery centres at the neighbourhood level — from <strong>TPST</strong>, larger integrated facilities that handle sorting and consolidation at urban scale. The two are designed to work together: TPS3R captures and pre-sorts at source, TPST consolidates the streams. This is the backbone of a functioning municipal waste system. It works when built ahead of any disposal ban, not after one.</p>
-        <p data-i18n-html="disp.6.body.p5">The Indonesian Institute for Essential Services Reform has placed all three of the organic technologies — BSF, biogas, decentralised composting — within the recognised provincial planning framework, alongside TPS3R/TPST. None of this is speculative. The plan exists. The question is sequencing.</p>
-      </div>
-
-      <div>
-        <h3 class="sub-h" data-i18n-html="disp.6.sub.4"><span class="sub-kicker">§ IV · Recovering the rest</span>Material recovery, formalised.</h3>
-        <p data-i18n-html="disp.6.body.p6">For the inorganic fraction — plastic, glass, metal, paper — material-recovery facilities paired with buy-back schemes can turn refuse into a small but reliable income stream. The opportunity here is to <strong>formalise</strong> the substantial work already done by informal waste pickers, who, by hand, recover an enormous share of Indonesia's recyclables. A buy-back scheme gives that workforce a price floor and an accountable counterparty. <em>Sungai Watch's</em> separate three-tonnes-a-day plastic-processing operation at its Bali headquarters demonstrates that the throughput can scale.</p>
-      </div>
-
-      <div>
-        <h3 class="sub-h" data-i18n-html="disp.6.sub.5"><span class="sub-kicker">§ V · With a caveat</span>Waste-to-energy.</h3>
-        <p data-i18n-html="disp.6.body.p7">The Suwung <em>PSEL</em> waste-to-energy facility is expected to begin operating in 2028. As a politically attractive, big-ticket option, it has obvious appeal. The cautionary footnote — common to incineration projects globally — is that a PSEL plant needs a steady stream of waste to remain financially viable, and that need can quietly discourage the upstream reduction, composting, and recycling that actually pull the problem down.</p>
-        <p data-i18n-html="disp.6.body.p8">Used for true <em>residuals</em> — the small fraction that none of the earlier steps can handle — incineration has a defensible role. Used as the first move, it tends to ossify the very volumes it was meant to retire. Sequencing, again, is the operative word.</p>
-      </div>
-
-      <div>
-        <h3 class="sub-h" data-i18n-html="disp.6.sub.6"><span class="sub-kicker">§ VI · To see what you are fixing</span>Low-cost sensors.</h3>
-        <p data-i18n-html="disp.6.body.p9">None of the above can be measured against a baseline without a record. Cheap laser-scatter sensors at around <strong>US$200–300 per unit</strong>, deployed by community organisations and reporting to a public dashboard, would let Bali map burn hotspots in real time, target collection routes and enforcement at the streets where it would actually matter, and give residents and visitors an honest health figure during the smoke-heavy hours of the day.</p>
-        <p data-i18n-html="disp.6.body.p10">These sensors are not reference-grade — Dispatch I covered their limits in detail — but their density and openness more than compensate for the slack. They can be deployed in weeks. The model is the PurpleAir-style network already in use across the United States and parts of Europe, in which thousands of $200 instruments, taken together, produce a public-health-grade picture of urban air better than the small number of regulatory monitors ever did alone.</p>
-      </div>
-    </div>
-
-    <div class="pull">
-      <blockquote data-i18n="disp.6.x.pullQ">"In Gianyar, the infrastructure came first. Then the ban. That is the difference."</blockquote>
-      <cite data-i18n="disp.6.x.pullCite">Synthesis · The Diplomat, May 2026</cite>
     </div>
 
     <div class="chapter-body" style="margin-top:14px">
       <div style="grid-column:span 2">
-        <h3 class="sub-h" data-i18n-html="disp.6.sub.7"><span class="sub-kicker">§ VII · The sequence</span>A four-step order of operations.</h3>
-        <p data-i18n-html="disp.6.body.p11">Drawing the steps together — and drawing on the local expertise quoted in <em>The Diplomat</em>, <em>Asia News Network</em>, and the published submissions of researchers at IESR and CCAC — the practical order of operations looks like this. None of it requires inventing a new technology. All of it requires choosing what to build in what order.</p>
-      </div>
-
-      <div style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.9.sub.3"><span class="sub-kicker">§ III · The evidence</span>What a strong report contains.</h3>
         <ol class="steps">
           <li>
-            <span class="lab" data-i18n-html="disp.6.step.1.lab"><em>Stop the bleeding.</em> Restore reliable collection first.</span>
-            <span class="body" data-i18n-html="disp.6.step.1.body">The burning is, in significant part, a direct response to trucks that have stopped showing up since 1 April. Re-establish a temporary or alternative collection arrangement — even an interim one — before anything else. People burn when there is nowhere else for the rubbish to go.</span>
+            <span class="lab" data-i18n-html="disp.9.step.1.lab"><em>Where.</em> An exact location.</span>
+            <span class="body" data-i18n-html="disp.9.step.1.body">A map pin, plus the banjar and desa name if you know them. Officers cannot act on "near the big temple".</span>
           </li>
           <li>
-            <span class="lab" data-i18n-html="disp.6.step.2.lab"><em>Flood the zone</em> with BSF and composters at banjar scale.</span>
-            <span class="body" data-i18n-html="disp.6.step.2.body">Bali has an asset other Indonesian provinces do not — the <em>desa adat</em> customary village system. Empowering desa adat is a unique lever for both implementation and enforcement. Door-to-door collection plus on-site composting and BSF processing is already running in parts of Gianyar at scale.</span>
+            <span class="lab" data-i18n-html="disp.9.step.2.lab"><em>When.</em> Dates and times, more than once.</span>
+            <span class="body" data-i18n-html="disp.9.step.2.body">Keep a short log over a week or two. "Burns most mornings around 6 a.m." is far stronger than a single incident. Use a camera app that stamps the date, time and location on each photo.</span>
           </li>
           <li>
-            <span class="lab" data-i18n-html="disp.6.step.3.lab"><em>Copy Gianyar's sequence</em>, not Suwung's.</span>
-            <span class="body" data-i18n-html="disp.6.step.3.body">The single most important lesson is timing. In Gianyar, the new waste infrastructure was built and proven <em>before</em> the corresponding ban took effect. That order — infrastructure first, then enforcement — is the difference between the working model and the present crisis. It is also imitable, and the model already exists on the same island.</span>
+            <span class="lab" data-i18n-html="disp.9.step.3.lab"><em>What.</em> Photos or a short video of the fire and the material.</span>
+            <span class="body" data-i18n-html="disp.9.step.3.body">Show what is burning, such as plastic, mixed rubbish or building waste, and the smoke drifting toward homes or a road. Film the fire, not people's faces, and only from a public road or your own property.</span>
           </li>
           <li>
-            <span class="lab" data-i18n-html="disp.6.step.4.lab"><em>Fund it and enforce it.</em></span>
-            <span class="body" data-i18n-html="disp.6.step.4.body">One local expert quoted in <em>Asia News Network</em> framed it bluntly: this is solvable, provided policy is matched with funding and enforcement. A small tourism levy, in an economy whose primary export is the climate itself, would underwrite the capital cost without distorting visitor flows. Bali's economic dependence on tourism is also its strongest argument for action — the smoke is also a tourism risk.</span>
+            <span class="lab" data-i18n-html="disp.9.step.4.lab"><em>Impact.</em> One or two plain sentences.</span>
+            <span class="body" data-i18n-html="disp.9.step.4.body">Describe who is affected: children, elderly residents, a school, a clinic, a busy road. If you have a doctor's note about smoke-related symptoms, mention it. A screenshot of a nearby sensor on the <a href="/">live monitor</a> can show how bad the air was, but a sensor cannot show where smoke came from. Do not present a reading as proof against a particular house.</span>
           </li>
         </ol>
       </div>
+    </div>
 
+    <div class="chapter-body" style="margin-top:14px">
       <div style="grid-column:span 2">
-        <h3 class="sub-h" data-i18n-html="disp.6.sub.8"><span class="sub-kicker">§ VIII · A funding proposal</span>A foreign-visitor levy that would settle the bill in a year.</h3>
-        <p data-i18n-html="disp.6.body.p12">The province already operates a tourism levy of IDR&nbsp;150,000 per foreign arrival, introduced in February 2024 — a useful precedent, but a rate small enough that collection lapses have been forgiven on both sides. Raising the levy to <strong>IDR&nbsp;1,000,000 per foreign arrival</strong> — and collecting it consistently at the airport, port, and immigration counter — would generate revenue more than sufficient to finance the entire waste-and-air transition within a single year.</p>
-        <p data-i18n-html="disp.6.body.p13">The math is not large in tourism terms. IDR 1 million is roughly <strong>USD $60</strong> — about three per cent of what a typical visitor already spends across a one-week trip to Bali. The province received approximately <strong>6.3 million</strong> foreign arrivals in 2024, per BPS Bali; at one million rupiah a head, that is on the order of <strong>IDR 6.3 trillion (~USD $380 million)</strong> a year. By comparison, a neighbourhood TPS3R facility costs around IDR 1–3 billion to build, and an island-wide low-cost sensor network well under IDR 1 billion. Banjar-scale BSF deployment, decentralised composting, and a buy-back recycling programme together would still leave most of the levy untouched.</p>
+        <h3 class="sub-h" data-i18n-html="disp.9.sub.4"><span class="sub-kicker">§ IV · The channels</span>Where to send it.</h3>
+        <ol class="steps">
+          <li>
+            <span class="lab" data-i18n-html="disp.9.chan.1.lab"><em>LAPOR!</em>, the national public complaints service.</span>
+            <span class="body" data-i18n-html="disp.9.chan.1.body">File at <a href="https://www.lapor.go.id/" rel="noopener noreferrer" target="_blank">lapor.go.id</a>, through the SP4N LAPOR! app, or by SMS to 1708. You need to register once. Every report is routed to the responsible agency, which has to reply, and you can track its status. Two options protect you. <strong>Anonymous</strong> (<em>Anonim</em>) hides your identity from the agency you are reporting to and from the public. <strong>Confidential</strong> (<em>Rahasia</em>) hides the contents of the report from the public. For a complaint about a neighbour, choose both.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.9.chan.2.lab"><em>The regency environment agency</em> (DLH).</span>
+            <span class="body" data-i18n-html="disp.9.chan.2.body">Each regency's environment agency takes complaints directly. LAPOR! reports about waste are usually forwarded to the same agency. In Badung, that is the Environment and Sanitation Agency (DLHK Badung): <a href="https://dislhk.badungkab.go.id/kontak-pengaduan-dan-pelayanan" rel="noopener noreferrer" target="_blank">dislhk.badungkab.go.id</a>, telephone 0361&nbsp;900926, office hours Monday to Thursday 09:00–15:00 and Friday 08:00–12:00. In other regencies, search for "DLH" and the regency name. The provincial environment agency (DKLH Bali) takes complaints at infodklh@baliprov.go.id.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.9.chan.3.lab"><em>Emergencies</em>, when a fire is spreading.</span>
+            <span class="body" data-i18n-html="disp.9.chan.3.body">If a fire threatens buildings, power lines or dry vegetation, call the fire service on <strong>113</strong> or the national emergency number <strong>112</strong>. This is a safety call, not a complaint.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.9.chan.4.lab"><em>The community burn map.</em></span>
+            <span class="body" data-i18n-html="disp.9.chan.4.body">Logging a fire with the <a href="https://bali-aq.fab.city/report" rel="noopener noreferrer" target="_blank">community burn report</a> adds it to a public record of where and when burning happens, alongside the sensor data. It is not an official complaint, so send one through the channels above as well.</span>
+          </li>
+          <li>
+            <span class="lab" data-i18n-html="disp.9.chan.5.lab"><em>The banjar or desa</em>, with care.</span>
+            <span class="body" data-i18n-html="disp.9.chan.5.body">The banjar can adopt and enforce a local no-burning rule (<em>perarem</em>) at its monthly meeting, which makes it the most lasting fix. It is also the most personal channel. It works best when the request comes from, or with, a Balinese neighbour, landlord or colleague. Frame it as a health concern for the whole banjar, not a complaint about one family.</span>
+          </li>
+        </ol>
+      </div>
+    </div>
 
-        <div class="figure-box">
-          <div class="figure-grid">
-            <div class="figure-cell">
-              <div class="n">IDR&nbsp;1<small>&nbsp;m</small></div>
-              <div class="l" data-i18n-html="disp.6.fig2.l1">Proposed per-arrival levy on foreign visitors — roughly <strong>USD&nbsp;$60</strong> at current exchange. A meaningful figure, but small relative to the trip it would attach to.</div>
-            </div>
-            <div class="figure-cell">
-              <div class="n">~6.3<small>&nbsp;m</small></div>
-              <div class="l" data-i18n-html="disp.6.fig2.l2">Foreign arrivals to Bali in 2024, per BPS Bali. The 2025 and 2026 projected figures are higher; the calculations here use the conservative 2024 baseline.</div>
-            </div>
-            <div class="figure-cell">
-              <div class="n">~$380<small>&nbsp;m</small></div>
-              <div class="l" data-i18n-html="disp.6.fig2.l3">Annual revenue at IDR&nbsp;1&nbsp;m × 6.3&nbsp;m arrivals ≈ <strong>IDR&nbsp;6.3 trillion</strong>. Comfortably above the combined capital cost of BSF, TPS3R, sensors, and material recovery.</div>
-            </div>
-            <div class="figure-cell">
-              <div class="n">~3<small>%</small></div>
-              <div class="l" data-i18n-html="disp.6.fig2.l4">Share of an average week-long visitor's total spend in Bali represented by the levy. Not a number that changes whether a trip is bookable.</div>
-            </div>
-          </div>
-        </div>
+    <div class="chapter-body" style="margin-top:14px">
+      <div style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.9.sub.5"><span class="sub-kicker">§ V · A template</span>A complaint you can copy.</h3>
+        <p data-i18n-html="disp.9.body.p7">This letter has been used successfully. Replace the bracketed parts, attach your evidence, and send the Indonesian version. The English is for reference.</p>
+      </div>
+      <div>
+        <pre class="tpl" lang="id">Yth. Bapak/Ibu,
 
-        <p data-i18n-html="disp.6.body.p14">The argument is straightforward. Visitors come to Bali for an environment that the present waste flow is visibly degrading. Asking them to contribute a small share of their trip's cost to preserve what they came for is not punitive — it is the cleanest way to align the people who benefit from the climate with the people who pay to keep it functioning. Those who would rather not pay have an alternative: they need not come. The tourism economy can absorb the choice in either direction. The waste-and-air transition cannot wait either way.</p>
+Saya ingin melaporkan adanya pembakaran sampah rumah tangga, termasuk sampah plastik, secara terbuka dan berulang di [LOKASI].
+
+Pembakaran tersebut terjadi secara rutin di lokasi tersebut, terakhir pada [TANGGAL dan JAM]. Asap yang dihasilkan menyebar ke lingkungan sekitar dan menyebabkan polusi udara serta menimbulkan kekhawatiran terhadap kesehatan warga dan pengguna jalan.
+
+Kami memohon agar instansi yang berwenang dapat melakukan inspeksi di lokasi tersebut, menghentikan pembakaran sampah secara terbuka, dan bekerja sama dengan desa/banjar setempat untuk menyediakan solusi yang aman dan berkelanjutan bagi pengumpulan, pemilahan, dan pengelolaan sampah.
+
+Saya melampirkan foto/video, tanggal dan waktu kejadian, serta lokasi yang tepat sebagai bukti pendukung.
+
+Terima kasih atas perhatian dan tindak lanjutnya.</pre>
+      </div>
+      <div>
+        <pre class="tpl" lang="en">Dear Sir/Madam,
+
+I would like to report the repeated open burning of household waste, including plastic waste, at [LOCATION].
+
+The burning occurs regularly at this location, most recently on [DATE and TIME]. The resulting smoke spreads into the surrounding area, causing air pollution and raising health concerns for local residents and road users.
+
+We respectfully request that the relevant authorities inspect the location, stop the open burning of waste, and work with the local village/banjar to provide a safe and sustainable solution for the collection, sorting and management of waste.
+
+I have attached photos/videos, the dates and times of the incidents, and the exact location as supporting evidence.
+
+Thank you for your attention and follow-up.</pre>
+      </div>
+    </div>
+
+    <div class="pull">
+      <blockquote data-i18n="disp.9.x.pullQ">"Report the fire, not the family."</blockquote>
+      <cite data-i18n="disp.9.x.pullCite">The principle behind every step below</cite>
+    </div>
+
+    <div class="chapter-body" style="margin-top:14px">
+      <div style="grid-column:span 2">
+        <h3 class="sub-h" data-i18n-html="disp.9.sub.6"><span class="sub-kicker">§ VI · Safety</span>Protect yourself, and your neighbours.</h3>
+        <p data-i18n-html="disp.9.body.p8">Most reports pass without incident. But several residents have described being threatened after reporting, including warnings from local figures once enforcement officers had left, and in one case a threat involving immigration. Take these precautions.</p>
+        <ul class="safety">
+          <li data-i18n-html="disp.9.safe.1"><b>Do not confront anyone at the fire.</b> Tempers may run high near a burn, and a public argument costs the other person face. Leave, document from a distance, and report later.</li>
+          <li data-i18n-html="disp.9.safe.2"><b>Do not try to put out a large fire yourself.</b> Call 113 if it is spreading.</li>
+          <li data-i18n-html="disp.9.safe.3"><b>Use LAPOR!'s Anonymous and Confidential options.</b> Remember that in a small street the agency's visit can still point to you, especially if you are the only household that has complained. Reports from several households are safer and carry more weight.</li>
+          <li data-i18n-html="disp.9.safe.4"><b>Never post the burner's face, house or name online.</b> Indonesia's Electronic Information and Transactions Law (UU ITE) has been used to bring criminal defamation charges over social-media posts. Send evidence to the authorities, not to Instagram.</li>
+          <li data-i18n-html="disp.9.safe.5"><b>Go with someone.</b> If you need to visit the banjar or the burner, bring a Balinese neighbour, landlord or colleague, and keep the tone polite and about health. Residents report that a calm request in Bahasa Indonesia from someone with standing in the community goes much further than a complaint from a newcomer. People who live alone may feel safer letting a trusted local make the approach.</li>
+          <li data-i18n-html="disp.9.safe.6"><b>If you are a foreign resident, keep it personal and factual.</b> Filing your own complaint about smoke affecting your home is ordinary use of a public service. Organising patrols, campaigns or drone surveillance of neighbours can be read differently. If you are unsure, take advice before going further.</li>
+          <li data-i18n-html="disp.9.safe.7"><b>If you are threatened, do not escalate on the spot.</b> Write down what was said, when and by whom, and keep any messages. Some residents found the local police (<em>Polsek</em>) more responsive than village officials. Foreign residents threatened with immigration action should get advice from an immigration lawyer or their consulate before responding.</li>
+          <li data-i18n-html="disp.9.safe.8"><b>Remember the other side.</b> The person burning is often your neighbour, with nowhere affordable to take their rubbish. A report that leads to a fine without a working collection service may move the fire rather than stop it. Where you can, pair a report with an offer of help.</li>
+        </ul>
       </div>
 
       <div style="grid-column:span 2">
         <div class="closing-note">
-          <p data-i18n-html="disp.6.close.p1"><b>The closing point.</b> The model already exists on Bali. Gianyar — a short drive from Denpasar — has shown the order. The technologies that would pull the burn pile down are the ones the provincial environment agency has already named in its own plans. The crisis is what happens when the destination is mandated before the road is built. Reverse the order, and the rest is execution.</p>
-          <p data-i18n-html="disp.6.close.p2"><b>What an individual can do, now.</b> If you live in Bali and want to contribute directly: separate your household organics and arrange a banjar-level composting drop or BSF feed; support a TPS3R if one operates near you; back any community air-monitor that publishes its data openly; and, on the heavy-smoke days, follow the practical mask guidance in Dispatch V. None of these alone solves the problem. Together, they shorten the bridge between the ban and the infrastructure that should have preceded it.</p>
+          <p data-i18n-html="disp.9.close.p1"><b>What happens next.</b> An officer may visit, warn the household, ask the village to put up signs and clear the burn site, and promise follow-up monitoring. Track your LAPOR! report and add a comment if the burning returns. Repeat reports from the same location are what move a case up the list.</p>
+          <p data-i18n-html="disp.9.close.p2"><b>Why the data matters.</b> Each report on its own is a story. Together with the community sensor record, which shows the morning spikes rising and falling across the island, they become evidence that the problem is widespread, persistent and measurable. That is the case regency governments need to fund collection rather than leave it to each banjar.</p>
         </div>
       </div>
     </div>
 
     <!-- SOURCES -->
     <div class="dispatch-sources">
-      <h4 data-i18n="disp.6.x.srcH">Sources · Dispatch VI</h4>
+      <h4 data-i18n="disp.9.x.srcH">Sources · Dispatch IX</h4>
       <ol>
-        <li data-i18n-html="disp.6.x.src1"><em>The Diplomat</em> — coverage of Bali's waste-rule rollout, Gianyar's working model, the role of <em>desa adat</em>, and the sequencing failure at Suwung. <a href="https://thediplomat.com/" rel="noopener">thediplomat.com</a>.</li>
-        <li data-i18n-html="disp.6.x.src2"><em>Asia News Network</em> — local expert framing: solvable problem, contingent on funding and enforcement. <a href="https://asianews.network/" rel="noopener">asianews.network</a>.</li>
-        <li data-i18n-html="disp.6.x.src3">Indonesian Institute for Essential Services Reform (IESR) — programme materials placing BSF, biogas, and TPS3R/TPST within the provincial recognised solution set. <a href="https://iesr.or.id/en" rel="noopener">iesr.or.id</a>.</li>
-        <li data-i18n-html="disp.6.x.src4"><em>What's New Indonesia</em> — provincial environment-agency statements naming BSF larvae, biogas, and community-scale TPS3R/TPST facilities. <a href="https://whatsnewindonesia.com/" rel="noopener">whatsnewindonesia.com</a>.</li>
-        <li data-i18n-html="disp.6.x.src5"><em>VOI</em> — coverage of Bali's PSEL waste-to-energy facility, expected 2028. <a href="https://voi.id/en" rel="noopener">voi.id</a>.</li>
-        <li data-i18n-html="disp.6.x.src6">Climate &amp; Clean Air Coalition (CCAC), CLOCC programme (Indonesia) — open burning as a dominant PM2.5 source in Indonesian communities with incomplete collection coverage. <a href="https://www.ccacoalition.org/resources/reducing-open-burning-waste-through-clean-oceans-through-clean-communities-clocc-programme-indonesia" rel="noopener">ccacoalition.org</a>.</li>
-        <li data-i18n-html="disp.6.x.src7">Sungai Watch cleanups programme — ~3 t/day plastic processed at the Bali HQ, distinct from the city's river-clearance figure. <a href="https://sungai.watch/pages/cleanups" rel="noopener">sungai.watch/pages/cleanups</a>.</li>
-        <li data-i18n-html="disp.6.x.src8">PurpleAir — community sensor network model, the deployment pattern referenced in §&nbsp;VI. <a href="https://www2.purpleair.com/" rel="noopener">purpleair.com</a>.</li>
-        <li data-i18n-html="disp.6.x.src9">Centre for Research on Energy and Clean Air (CREA), <em>Indonesia Air Quality 2024</em> — provincial coverage gaps and the case for a denser monitoring network. <a href="https://energyandcleanair.org/publication/indonesia-air-quality-2024/" rel="noopener">energyandcleanair.org/publication/indonesia-air-quality-2024</a>.</li>
-        <li data-i18n-html="disp.6.x.src10"><em>Hey Bali News</em> and <em>Bali.live</em> — April 2026 ground reporting referenced for the burn pattern this dispatch is responding to. See Dispatch III for the source links.</li>
-        <li data-i18n-html="disp.6.x.src11">BPS Statistics Indonesia — Bali foreign tourist arrivals, 2024 ≈ 6.33 million. <a href="https://bali.bps.go.id/en" rel="noopener">bali.bps.go.id</a>. Used as the conservative baseline for the levy revenue estimate in §&nbsp;VIII.</li>
-        <li data-i18n-html="disp.6.x.src12">Bali Provincial Government — foreign-tourist levy of IDR 150,000 per visitor introduced February 2024 (Perda 6/2023). Used as the precedent referenced in §&nbsp;VIII.</li>
+        <li data-i18n-html="disp.9.x.src1">Law 18 of 2008 on Waste Management, Article 29(1)(g). <a href="https://pasal.id/peraturan/uu/uu-no-18-tahun-2008/pasal-29" rel="noopener">pasal.id</a>.</li>
+        <li data-i18n-html="disp.9.x.src2">Bali Provincial Regulation 5 of 2011 on Waste Management, Articles 31(c) and 38. <a href="https://peraturan.bpk.go.id/Download/11085/Perda%20Nomor%205%20Tahun%202011.pdf" rel="noopener">peraturan.bpk.go.id</a>.</li>
+        <li data-i18n-html="disp.9.x.src3">Badung Regency Regulation 7 of 2013 on Waste Management, Articles 47(c) and 50. <a href="https://peraturan.bpk.go.id/Download/15792/PERDA_7_2013.pdf" rel="noopener">peraturan.bpk.go.id</a>.</li>
+        <li data-i18n-html="disp.9.x.src4">SP4N LAPOR!, the national public complaints service, including the Anonymous and Confidential options. <a href="https://www.lapor.go.id/" rel="noopener">lapor.go.id</a>.</li>
+        <li data-i18n-html="disp.9.x.src5">DLHK Badung, complaints and services contact page. <a href="https://dislhk.badungkab.go.id/kontak-pengaduan-dan-pelayanan" rel="noopener">dislhk.badungkab.go.id</a>. DKLH Bali: <a href="https://dklh.baliprov.go.id" rel="noopener">dklh.baliprov.go.id</a>.</li>
+        <li data-i18n-html="disp.9.x.src6">Bali Air Quality &amp; Community Wellbeing Survey, 501 submissions, 4–7 October 2026. Voluntary sample, mostly foreign residents in Badung. Figures on contacting authorities from questions 22–23.</li>
+        <li data-i18n-html="disp.9.x.src7">Accounts of reports, outcomes and threats from residents in the Bali Air Dispatch community, September–October 2026. Shared without names at the residents' request.</li>
       </ol>
     </div>
   </section>
+
 
 
 
@@ -498,10 +491,10 @@ body::before{
 </style>
 
   <nav class="disp-pager wrap" aria-label="Dispatch navigation">
-    <a class="disp-pager-link prev" href="/dispatches/5"><span class="lab" data-i18n="disp.6.x.pPrev">← Previous</span><span class="ttl" data-i18n="disp.6.x.pPrevT">Dispatch V</span></a>
-    <a class="disp-pager-link next" href="/dispatches/7"><span class="lab" data-i18n="disp.6.x.pNext">Next →</span><span class="ttl" data-i18n="disp.6.x.pNextT">Dispatch VII</span></a>
+    <a class="disp-pager-link prev" href="/dispatches/8"><span class="lab" data-i18n="disp.9.x.pPrev">← Previous</span><span class="ttl" data-i18n="disp.9.x.pPrevT">Dispatch VIII</span></a>
+    <a class="disp-pager-link next" href="/articles"><span class="lab" data-i18n="disp.9.x.pAll">All dispatches →</span><span class="ttl" data-i18n="disp.9.x.pAllT">Back to the index</span></a>
   </nav>
-  <div class="disp-back wrap"><a href="/articles" data-i18n="disp.6.x.index">Index of dispatches</a></div>
+  <div class="disp-back wrap"><a href="/articles" data-i18n="disp.9.x.index">Index of dispatches</a></div>
 
 
   <!-- UNIVERSAL FOOTER · keep in sync across all pages -->

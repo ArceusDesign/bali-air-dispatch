@@ -399,12 +399,12 @@
   "articles.x.row8Title": "What two hundred and forty <em>neighbours</em> worked out.",
   "articles.x.row8Deck": "Four months, 2,900 messages, 240 residents — and a working knowledge base nobody had written down. Seal the room before you buy a second purifier. Buy the filters, not the mask body, from the official store. Talk to the neighbour before the banjar, and the banjar before the agency. What was tested, what is merely reported, what the group still argues about — and the nine questions four months of collective effort could not answer.",
   "articles.x.row8Meta": "<b>Filed</b>3 September 2026\n          <b>Read</b>≈ 28 minutes",
-  "articles.x.sub": "An index of the dispatches — eight readings from the unmonitored island.",
-  "articles.x.bulBody": "Seven dispatches · filed April – July 2026",
-  "articles.x.leadKicker": "Dispatch collection · April – September 2026",
+  "articles.x.sub": "An index of the dispatches — nine readings from the unmonitored island.",
+  "articles.x.bulBody": "Nine dispatches · filed April – October 2026",
+  "articles.x.leadKicker": "Dispatch collection · April – October 2026",
   "articles.x.leadDeck": "A community sensor logged four hundred and sixty-nine days of Bali's breath before it fell silent. A single government monitor reports intermittently for 4.4&nbsp;million residents. Since the first of April, seven tons of waste a day have been pulled from Denpasar's rivers. The smoke in the alleys rises without an instrument to record it. The science underneath, the practical mask guide, what would actually help, in the order it should be deployed — and now, ninety days into the burn season, the first full data review: what the network actually recorded — followed by what four months of residents worked out for themselves.",
-  "articles.x.metaReadingVal": "~69 minutes total",
-  "articles.x.indexCount": "Eight entries · ordered by chapter",
+  "articles.x.metaReadingVal": "~75 minutes total",
+  "articles.x.indexCount": "Nine entries · ordered by chapter",
   "disp.6.x.pNext": "Next →",
   "disp.6.x.pNextT": "Dispatch VII",
   "history.x.grp.relayed": "Relayed duplicate",
@@ -908,5 +908,8 @@
   "roll.uncorrectedTip": "Relayed by OpenAQ without humidity for this reading, so it is not corrected and reads high in Bali’s humidity. Shown only because no direct feed exists here.",
   "panel.uncorrected": "· raw, not corrected",
   "nav.report": "Submit a burn report",
-  "foot.report": "Submit a burn report"
+  "foot.report": "Submit a burn report",
+  "foot.disp.9": "IX — How to report a fire.",
+  "disp.8.x.pNext": "Next →",
+  "disp.8.x.pNextT": "Dispatch IX"
 }
