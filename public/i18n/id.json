@@ -1521,6 +1521,8 @@
   "panel.uncorrected": "· mentah, tanpa koreksi",
   "nav.report": "Laporkan pembakaran",
   "foot.report": "Laporkan pembakaran",
+  "nav.alerts": "Dapatkan notifikasi kualitas udara (Telegram)",
+  "foot.alerts": "Dapatkan notifikasi kualitas udara (Telegram)",
   "foot.disp.9": "IX — Cara melaporkan pembakaran.",
   "disp.8.x.pNext": "Berikutnya →",
   "disp.8.x.pNextT": "Laporan IX",
