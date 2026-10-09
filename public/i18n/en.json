@@ -909,6 +909,8 @@
   "panel.uncorrected": "· raw, not corrected",
   "nav.report": "Submit a burn report",
   "foot.report": "Submit a burn report",
+  "nav.alerts": "Get air quality notifications (Telegram)",
+  "foot.alerts": "Get air quality notifications (Telegram)",
   "foot.disp.9": "IX — How to report a fire.",
   "disp.8.x.pNext": "Next →",
   "disp.8.x.pNextT": "Dispatch IX",
