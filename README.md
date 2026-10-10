@@ -41,7 +41,7 @@ says how it was arrived at and what it does not claim.
 | Network | How it is read |
 |---|---|
 | Nafas | Public JSON feed (no key) |
-| AirGradient | Public feed; humidity-corrected (see methodology §6) |
+| AirGradient | Public feed; humidity-corrected (see methodology §6). Units shared only to AirGradient's map are read from the map, and only while the public feed does not carry them (§6.5) |
 | OpenAQ | API key; used to pair and de-duplicate AirGradient relays. A relay with no direct feed is published, humidity-corrected from the RH OpenAQ carries for that device (methodology §5.7) |
 | PurpleAir | API key; humidity-corrected |
 | AQICN / GAIA | Free token; the feed carries AQI sub-indices, converted to µg/m³ (methodology §10.2) |

@@ -79,6 +79,49 @@ const CORRECTED_SOURCES = new Set(['AirGradient', 'PurpleAir']);
 // `type` names the provider, and only AirGradient relays are Plantower units.
 const OPENAQ_RELAY_CORRECTED_SINCE = '2026-09-16';
 const isAirGradientRelay = (r) => r.source === 'OpenAQ' && /airgradient/i.test(r.type || '');
+// Per-row "was this reading humidity-corrected". The truth is pm25_raw being
+// present — EXCEPT agm-* rows (AirGradient MAP feed): AirGradient publishes
+// only its corrected figure there, computed with exactly our formula (verified
+// 23/23 against the public feed, 10 Oct 2026), and we never reconstruct a raw
+// value we did not receive. See functions/api/live.js fetchAirGradientMap.
+const isCorrectedRow = (r) => r.pm25_raw != null || String(r.station_id || '').startsWith('agm-');
+// Which upstream route a station's readings arrive by, from its id prefix. Ids
+// never change route: a device that moves from AirGradient's map to its public
+// API gets a new ag-* id, linked through `same_device_as`. Kept in sync by hand
+// with FEED_BY_PREFIX in functions/api/live.js.
+const FEED_BY_PREFIX = [
+  ['agm-', 'airgradient_map'], ['ag-', 'airgradient_api'],
+  ['oq-', 'openaq_api'], ['oaq-', 'openaq_api'],
+  ['pa-', 'purpleair_api'], ['sc-', 'smartcitizen_api'], ['nafas-', 'nafas_feed'],
+  ['aq-', 'aqicn_api'], ['airly-', 'airly_api'], ['iqs-', 'iqair_station_page'],
+  ['cs-', 'contributed'],
+];
+function feedFor(id) {
+  const s = String(id == null ? '' : id);
+  for (const [p, f] of FEED_BY_PREFIX) if (s.startsWith(p)) return f;
+  return null;
+}
+// Other catalogue ids within this distance are the same physical device: an
+// OpenAQ relay of an AirGradient unit, IQAir republishing a PurpleAir sensor,
+// or an AirGradient device's map-feed (agm-*) and public-API (ag-*) records.
+// 1 m, the identity radius the live map's relay fold uses — a relay reports
+// its device's coordinates unchanged, and nothing unrelated sits that close.
+const SAME_DEVICE_M = 1;
+// An AirGradient device's map (agm-*) and public-API (ag-*) records are matched
+// by the wider radius live.js uses for that pair (AG_MAP_NEAR_PUBLIC_M): the
+// two routes update a device's position on different schedules.
+const SAME_DEVICE_AGM_M = 100;
+function sameDeviceRadius(a, b) {
+  const am = String(a).startsWith('agm-'), bm = String(b).startsWith('agm-');
+  const ap = String(a).startsWith('ag-'), bp = String(b).startsWith('ag-');
+  return ((am && bp) || (bm && ap)) ? SAME_DEVICE_AGM_M : SAME_DEVICE_M;
+}
+function metresApart(aLat, aLon, bLat, bLon) {
+  const R = 6371000, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(bLat - aLat), dLon = toRad(bLon - aLon);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
 
 // Placeholder/duplicate catalog rows the site does not publish. Mirrors
 // HIDDEN_STATION_IDS in functions/api/history.js so the API and the site agree
@@ -319,7 +362,27 @@ function routeIndex(origin) {
         'humidity OpenAQ carries for that device, since 2026-09-16 — on rows where ' +
         'that humidity was present; earlier rows are as-supplied. All other ' +
         'networks are as-supplied, apart from the unit conversion described ' +
-        'under pm25_from_aqi. See /appendix#methodology.',
+        'under pm25_from_aqi. Exception: agm-* rows (AirGradient map feed) carry ' +
+        'AirGradient\'s own corrected figure, computed with the same formula, and ' +
+        'no raw value — `pm25_corrected` is true and `pm25_raw` null on every ' +
+        'such row. See /appendix#methodology.',
+      feed:
+        'Each station\'s `feed` names the route its readings arrive by: ' +
+        'airgradient_api, airgradient_map, openaq_api, purpleair_api, ' +
+        'smartcitizen_api, nafas_feed, aqicn_api, airly_api, iqair_station_page ' +
+        'or contributed. A station never changes feed. airgradient_map (agm-*) ' +
+        'is used only for AirGradient devices shared to AirGradient\'s map but ' +
+        'not its public API; when an owner turns public sharing on, the device ' +
+        'continues under a new ag-* id and the agm-* record ends. Readings from ' +
+        'both AirGradient routes are CC BY-SA 4.0.',
+      same_device_as:
+        'Other station_ids in this catalogue whose coordinates are within 1 m ' +
+        '(100 m between an AirGradient device\'s agm-* and ag-* records): ' +
+        'in practice the same physical device — an OpenAQ relay of an ' +
+        'AirGradient unit, IQAir republishing a sensor we read directly, or an ' +
+        'AirGradient device\'s map and public-API records. It is a positional ' +
+        'test, not a guarantee; check it before treating two ids as two devices ' +
+        'in any aggregate. In CSV the ids are separated by \';\'.',
       pm25_from_aqi:
         'AQICN / WAQI publishes the US-EPA AQI sub-index for each pollutant, not ' +
         'a concentration. Rows and stations flagged `pm25_from_aqi` carry PM2.5 ' +
@@ -410,20 +473,33 @@ async function routeStations(db, url) {
     // conversion of an integer index, not a measurement (notes.pm25_from_aqi).
     pm25_from_aqi: r.source === 'AQICN',
     interval_source: familyFor(r.station_id),
+    feed: feedFor(r.station_id),
   });
 
   let rows = [...(universal.results || []), ...(scraped.results || [])].map(shape);
+  // Before any source filter, so a relay still names its twin on another network.
+  for (const r of rows) {
+    r.same_device_as = (r.latitude == null || r.longitude == null) ? [] : rows
+      .filter(o => o !== r && o.latitude != null && o.longitude != null &&
+                   metresApart(r.latitude, r.longitude, o.latitude, o.longitude) <= sameDeviceRadius(r.station_id, o.station_id))
+      .map(o => o.station_id).sort();
+  }
   if (wantSource) rows = rows.filter(r => (r.source || '').toLowerCase() === wantSource);
   rows.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   if (format === 'csv') {
-    return csvResponse(rows, [
+    // ';' — station ids may contain spaces (IQAir city ids do), never ';'.
+    const flat = rows.map(r => ({ ...r, same_device_as: r.same_device_as.join(';') }));
+    return csvResponse(flat, [
       'station_id', 'name', 'source', 'latitude', 'longitude', 'type',
       'first_date', 'last_date', 'days_of_data', 'suspected_indoor', 'suspected_malfunctioning',
       // Must track the property name emitted by shape() above — when this said
       // 'pm25_corrected' after the field was renamed, the CSV carried a header
       // that was blank on every row, which reads as "false" to anyone loading it.
       'pm25_correction_applied_since', 'pm25_from_aqi', 'interval_source',
+      // Appended, so existing column positions are unchanged. same_device_as
+      // is ';'-separated in CSV.
+      'feed', 'same_device_as',
     ], 'baliair-stations.csv', 900);
   }
   return json({ version: VERSION, count: rows.length, licence: LICENCE, stations: rows }, { maxAge: 900 });
@@ -499,8 +575,9 @@ async function routeLatest(db, url) {
     humidity: num(r.humidity),
     suspected_indoor: INDOOR_IDS.has(r.station_id),
     suspected_malfunctioning: MALFUNCTION_IDS.has(r.station_id),
-    pm25_corrected: r.pm25_raw != null,
+    pm25_corrected: isCorrectedRow(r),
     pm25_from_aqi: r.source === 'AQICN',
+    feed: feedFor(r.station_id),
   });
 
   let rows = [...(universal.results || []), ...(scraped.results || [])].map(shape);
@@ -512,7 +589,7 @@ async function routeLatest(db, url) {
       'station_id', 'name', 'source', 'latitude', 'longitude', 'observed_at',
       'age_hours', 'stale', 'pm25', 'pm25_raw', 'pm10', 'pm1', 'aqi',
       'temperature', 'humidity', 'suspected_indoor', 'suspected_malfunctioning', 'pm25_corrected',
-      'pm25_from_aqi',
+      'pm25_from_aqi', 'feed',
     ], 'baliair-latest.csv', 300);
   }
   return json({
@@ -766,8 +843,9 @@ async function routeMeasurements(db, url) {
       Object.assign(base, {
         pm25: num(r.pm25), pm25_raw: num(r.pm25_raw),
         // Per-row truth, not a network-wide claim: only rows carrying a raw
-        // figure actually had the humidity correction applied.
-        pm25_corrected: r.pm25_raw != null,
+        // figure actually had the humidity correction applied — plus agm-*
+        // rows, corrected upstream by AirGradient (isCorrectedRow).
+        pm25_corrected: isCorrectedRow(r),
         pm10: num(r.pm10), pm1: num(r.pm1), aqi: num(r.aqi),
         temperature: num(r.temperature), humidity: num(r.humidity),
         upstream_timestamp: r.station_till || null,
