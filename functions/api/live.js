@@ -1990,35 +1990,54 @@ function dropOpenAQNearAirGradient(stations, knownRelays, errors) {
 // nothing more. Beyond it the relay is published raw and flagged (fetchOpenAQ).
 const OPENAQ_RH_ALIGN_MS = 90 * 60 * 1000;
 
+// Discovery is ONE bounding-box query over the same Bali box every other
+// source here uses (west,south,east,north), paged. It replaced six 25 km
+// radius searches capped at limit=20 each, which silently lost stations:
+// OpenAQ returns locations in ascending id order and reports an overflow only
+// as meta.found ">20", so the cap cut the NEWEST locations first. Measured
+// 2026-10-10: three of the six centres held 24–39 locations, and four
+// reporting AirGradient relays (oq-6529420 Yeh Gangga, oq-6548499 Pejaten
+// Bedha, oq-6549689 Kulat Black Palms, oq-6551221 Madas Uluwatu) had never
+// reached the archive. All four have a direct twin, so no pin was missing —
+// but the next relay with NO direct feed (as Community park has none) would
+// have been dropped from the map entirely, and the archive, which
+// keeps relay series by design (DATA-METHODOLOGY §6.4), was already short.
+// The circles also left gaps (Kintamani, Gilimanuk, Nusa Penida). Bali was 39
+// locations in one 1000-row page; OPENAQ_MAX_PAGES only bounds a runaway.
+const OPENAQ_BALI_BBOX = '114.4,-9.2,115.8,-8.0';
+const OPENAQ_PAGE_LIMIT = 1000;          // OpenAQ's maximum (422 above it)
+const OPENAQ_MAX_PAGES = 5;
+// A location whose newest reading of ANY sensor is older than this cannot
+// pass the 30-day PM2.5 cutoff below, so its /latest is not fetched. OpenAQ
+// never retires a location, and without the old cap the dead ones would
+// otherwise cost a subrequest each forever. No datetimeLast → fetched anyway.
+const OPENAQ_MAX_SILENT_MS = 30 * 24 * 60 * 60 * 1000;
+
 async function fetchOpenAQ(env) {
-  // 6 search centers, parallel discovery, then parallel detail per station.
-  // De-dup by id.
-  const centers = [
-    {lat:-8.16, lon:115.10},
-    {lat:-8.50, lon:115.26},
-    {lat:-8.65, lon:115.22},
-    {lat:-8.80, lon:115.14},
-    {lat:-8.35, lon:114.65},
-    {lat:-8.45, lon:115.65},
-  ];
   const headers = { Accept: 'application/json', 'X-API-Key': env.OPENAQ_API_KEY };
-  const centerHits = await Promise.all(centers.map(async (c) => {
+  const unique = [];
+  const seen = new Set();
+  for (let page = 1; page <= OPENAQ_MAX_PAGES; page++) {
+    let list;
     try {
       const r = await fetch(
-        `https://api.openaq.org/v3/locations?coordinates=${c.lat},${c.lon}&radius=25000&limit=20`,
+        `https://api.openaq.org/v3/locations?bbox=${OPENAQ_BALI_BBOX}&limit=${OPENAQ_PAGE_LIMIT}&page=${page}`,
         { headers, cf: { cacheTtl: 1800, cacheEverything: true } }
       );
       const d = await r.json();
-      return d.results || [];
-    } catch { return []; }
-  }));
-  const seen = new Set();
-  const unique = [];
-  for (const list of centerHits) {
+      list = d.results || [];
+    } catch { break; }
     for (const loc of list) {
       if (seen.has(loc.id)) continue;
       seen.add(loc.id);
+      const last = Date.parse(loc.datetimeLast?.utc || '');
+      if (Number.isFinite(last) && Date.now() - last > OPENAQ_MAX_SILENT_MS) continue;
       unique.push(loc);
+    }
+    if (list.length < OPENAQ_PAGE_LIMIT) break;
+    if (page === OPENAQ_MAX_PAGES) {
+      console.warn(`openaq: discovery stopped at ${OPENAQ_MAX_PAGES} full pages — ` +
+                   'locations beyond them were not read');
     }
   }
   const latest = await Promise.all(unique.map(async (loc) => {
