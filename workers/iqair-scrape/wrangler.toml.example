@@ -35,5 +35,11 @@ database_id = "<your-d1-database-id>"
 binding = "NAFAS_ARCHIVE"
 service = "nafas-archive"
 
+# Optional. Discovery of IQAir stations not on the seed list (src/discover.js,
+# needs schema-v12-iqair-discovery.sql): "auto" (default) admits and captures
+# them, "review" holds admissible ones for a person, "off" disables it.
+# [vars]
+# IQAIR_DISCOVERY = "auto"
+
 [triggers]
 crons = ["7,22,37,52 * * * *"]   # every 15 min at :07/:22/:37/:52 (offset from the *:00/15/30/45 nafas cron); one rotating station group per tick

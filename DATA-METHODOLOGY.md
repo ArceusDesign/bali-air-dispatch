@@ -45,7 +45,7 @@ Each network is polled independently. A network that fails or times out is simpl
 |---|---|---|---|---|
 | **AirGradient** | Open community network; the densest source in Bali | AirGradient O-1PST (Plantower PM module) | Public API, no key | 19 |
 | **OpenAQ** | Aggregator. **In Bali, every OpenAQ station is an AirGradient unit relayed onward** — see §6; relays with no direct feed are published, corrected from OpenAQ's own humidity for the device (§5.7) | (relayed) | Public API, key | 22 |
-| **IQAir** | Commercial network; mixture of private hosts and contributors | Various | Public station pages, one device each — town-level values are not used (§8.5) | 10 |
+| **IQAir** | Commercial network; mixture of private hosts and contributors | Various | Public station pages, one device each — town-level values are not used (§8.5); stations IQAir adds are found automatically (§8.6) | 11 |
 | **PurpleAir** | Open community network | PurpleAir (Plantower PM module) | Public API, key | 2 |
 | **Smart Citizen** | Open citizen-science platform (Fab Lab Barcelona) | SmartCitizen Kit 2.3 (Sensirion SEN5X); also Fab Lab Bali's own "Bayu" and DIY nodes (Seeed HM-3301). Each station's `type` names its hardware and PM sensor. A Plantower PMS5003 declared on the platform is named only on an old SCK 2.1: no current kit in Bali carries one, and the declaration comes from a planned version (Fab Lab Bali, 9 October 2026) | Public API | 11 |
 | **Nafas** | Indonesian commercial network | Nafas Foundation sensor | Public JSON feed | 7 |
@@ -100,7 +100,8 @@ Three scheduled processes run continuously on Cloudflare's edge network.
 | Process | Schedule | Function |
 |---|---|---|
 | **Universal archive** | `*/15 * * * *` — every 15 minutes, on the hour and at :15, :30, :45 | Polls all live networks, writes one snapshot row per reporting station, upserts the station catalogue, rolls up hourly and daily aggregates |
-| **IQAir capture** | `7,22,37,52 * * * *` — every 15 minutes, offset by 7 minutes | IQAir publishes only via station pages, so these are captured separately. One rotating group of ≤3 stations per tick (4 groups, full cycle each hour) to stay inside execution limits |
+| **IQAir capture** | `7,22,37,52 * * * *` — every 15 minutes, offset by 7 minutes | IQAir publishes only via station pages, so these are captured separately. One rotating quarter of the stations per tick (≤3 today; full cycle each hour) to stay inside execution limits |
+| **IQAir discovery** | Within the :52 IQAir tick, after its capture | Looks for IQAir stations in Bali that are not yet captured (§8.6): IQAir's Bali page daily, each of its Bali area pages weekly, and all of them, four an hour, when IQAir's station count for Bali rises |
 | **Archive watchdog** | Runs within the IQAir tick | If the universal archive has not written for **90 minutes**, the watchdog triggers a recovery run. Added after a CPU-limit failure caused a 60-minute hole in the record |
 
 **Deliberate offset.** The IQAir schedule is offset from the universal archive so the two never contend for the same execution window.
@@ -268,6 +269,7 @@ On the public map, a confirmed pair is collapsed to **one pin: the direct feed, 
 | **Airly vs. Nafas** | 300 m | Airly is dropped near a *live* Nafas station. If Nafas is not reporting, Airly is retained as failover |
 | **Smart Citizen vs. other networks** | 300 m | A Smart Citizen pin is dropped if a *different* network already holds that location, as for AirGradient |
 | **Smart Citizen kits at one site** | 120 m | Kits within 120 m of each other — Fab Lab Bali's test benches — are one site on the map: the kit with the best PM2.5 sensor is shown — Sensirion SEN5X, then Seeed HM-3301, then anything else, Fab Lab Bali's own ranking — and among equals the lowest-numbered (the oldest, with the longest record), so a bench of several kits is not counted as several neighbourhoods. Every kit is archived under its own id, and the History page lists the others under "Co-located · not on map". Since 2 October 2026; before then the other kits were not archived at all |
+| **IQAir vs. other networks** | 300 m | A captured IQAir pin is dropped if a *different* network already holds that location, as for AirGradient. Discovery applies the same radius before admitting a station (§8.6), so nothing it adds is then hidden here |
 | **IQAir mirrors** | — | Where IQAir republishes a sensor already ingested directly (e.g. a PurpleAir unit), both copies are flagged together so a filtered analysis cannot lose one and keep the other |
 
 The tightest rule is deliberately the 1 m relay rule. A wider radius is unsafe for identity matching: anyone can register a device on a public network and enter arbitrary coordinates, and a 300 m rule could allow an unrelated registration to suppress a genuine station. At 1 m, with the relay reporting the device's own coordinates unchanged, nothing unrelated can qualify.
@@ -324,6 +326,23 @@ On 27 August it was flagged `suspected_malfunctioning` (§8.3). That was the wro
 **What was done.** The `nearest_city` request was removed. Every id in the `iq-` namespace, which only that endpoint ever produced, is excluded from every listing and returns `410 Gone` instead of data. That is eight ids: the "Kopernik" series, its earlier id `iq-Ubud`, and six other town values already hidden in May 2026 (five satellite-model estimates, and a Jimbaran value that duplicated a PurpleAir device we ingest directly). Their archived rows are withheld from publication but retained, so the withdrawal itself stays auditable: they were moved out of the live tables into three `retired_*` tables (`schema-v9-retired-aggregates.sql`) that no endpoint reads. IQAir's real stations are unaffected: each is read from its own station page and carries an `iqs-` id.
 
 This is unrelated to the AirGradient units that OpenAQ lists under the name "Kopernik" (October 2025 – March 2026). Those were physical devices, and their record remains in the archive.
+
+### 8.6 Finding new IQAir stations
+
+Until October 2026 the IQAir stations we captured were a hand-kept list, so a device IQAir began publishing reached the map only if someone noticed it. On 10 October 2026 IQAir listed 33 stations in Bali. 32 were already on our map: 7 through IQAir itself, 24 AirGradient units that IQAir republishes from OpenAQ, and 1 OpenAQ unit, all three of which we read directly. The one missing, **Seminyak Beach – Hotel Indigo**, was added that day. A discovery step now looks for the next one.
+
+**Where it looks.** IQAir organises Bali as one state page, about forty area pages ("Badung", "Ubud", "Kuta" and so on) and the station pages under them. Most area pages have no device at all; their figure is IQAir's own estimate. Area pages are read only for the links to station pages they carry, and are never ingested.
+
+**What it admits.** A page found this way is admitted only if all of the following hold, checked on the page itself:
+
+- **It is one device.** A station page reads "Station from *contributor*" and links to one map position, its own. Any page reading "*N* station(s) from …" is an area value, even when *N* is 1: a town with one station reads "1 station from …", a single character from a station page. Where the page carries IQAir's own description, its type must be `station`, with no more than one active station. Area values are refused at capture as well, so a station address that ever starts serving one stops updating rather than publishing it.
+- **The data is IQAir's.** A page with a "Data sources" line, such as "AirGradient via OpenAQ", is republishing another network's device. Every such page in Bali today is a device we already read at source.
+- **It is not already on the map.** It must be more than 300 m from every station, on any network, that has reported in the past 30 days. A dead station does not hold its spot against a new device there. IQAir keeps its own copy of a relayed device's coordinates, and they can drift: one sits 194 m from the AirGradient unit it relays.
+- **It has a position inside Bali, and is reporting,** with a reading less than 24 hours old.
+
+A station that passes is captured from that tick on, under its own `iqs-` id. Every candidate and the reason for each decision is recorded in the database (`iq_discovery`, `schema-v12-iqair-discovery.sql`). Stations refused for a reason that can change, such as not reporting, are looked at again a week later. An operator can block a station permanently, admit one by hand, or switch discovery to a review mode in which admissible stations wait for a person.
+
+**What it cannot find.** Discovery sees only what IQAir publishes. A monitor whose owner has not made it public appears on no IQAir page, map or count, so neither IQAir's public figures nor this archive can say how many such monitors exist.
 
 ---
 

@@ -208,12 +208,84 @@ function cleanSeries(list) {
   return [...byTs.values()].sort((a, b) => a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0);
 }
 
+// ── One device, or a town value? ─────────────────────────────────────────
+// Every station we publish is one physical device (DATA-METHODOLOGY §8.5).
+// IQAir renders station pages and city/state pages from one template, so a
+// page has to prove which it is. The attribution line alone is not proof: a
+// city with a single station reads "1 station from <contributor>", one
+// character from a station page's "Station from <contributor>". Verified on
+// IQAir's Bali pages, 10 Oct 2026, raw and rendered:
+//   station page   "Station from <contributor>" (no count), and exactly one
+//                  /air-quality-map?lat=..&lng=.. link — the device's own spot
+//   city / state   "<N> station(s) from <…>" (Bali 33, Badung 7, Nusa Dua 1)
+//                  and no map link at all
+// A relayed device additionally carries "Data sources: <network> via <…>"
+// (e.g. "AirGradient via OpenAQ") — a station, but someone else's data.
+const GAP = '(?:\\s|&nbsp;|&#160;|<!--\\s*-->)+';
+const GAP0 = '(?:\\s|&nbsp;|&#160;|<!--\\s*-->)*';
+// Both markers are tied to the attribution line's own structure — the text is
+// followed directly by the contributor <span> — so a device NAMED "1 station
+// from home" in some list elsewhere on the page cannot trip either of them.
+const AGGREGATE_RE = new RegExp('>\\s*\\d+' + GAP + 'stations?' + GAP + 'from' + GAP0 + '<span\\b', 'i');
+// Case-sensitive on purpose: capital S with nothing counted in front of it.
+const STATION_RE = new RegExp('>\\s*Station' + GAP + 'from' + GAP0 + '<span\\b');
+const CONTRIBUTOR_RE = new RegExp('>\\s*Station' + GAP + 'from' + GAP0 + '<span[^>]*>([^<]{1,160})</span>');
+const MAP_LINK_RE = /air-quality-map\?lat=(-?\d{1,3}(?:\.\d+)?)(?:&amp;|&#38;|&)lng=(-?\d{1,3}(?:\.\d+)?)/g;
+// The label alone decides relay-or-not; the names after it are only for the
+// log, so a longer block or a reworded tail can never make a relay look native.
+const DATA_SOURCES_LABEL_RE = new RegExp('Data sources?' + GAP0 + ':', 'i');
+const DATA_SOURCES_RE = new RegExp('Data sources?' + GAP0 + ':([\\s\\S]{0,4000}?)</p>', 'i');
+
+// The single position the page's map card points at, or null if there is no
+// such link or more than one distinct position (then we cannot tell which is
+// this station's). Raw HTML carries lat/lng only; the hydrated page adds a
+// placeId — both match.
+function mapLinkCoords(html) {
+  if (typeof html !== 'string') return null;
+  const seen = new Map();
+  for (const m of html.matchAll(MAP_LINK_RE)) {
+    const lat = parseFloat(m[1]), lon = parseFloat(m[2]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
+    seen.set(lat + ',' + lon, { lat, lon });
+  }
+  return seen.size === 1 ? [...seen.values()][0] : null;
+}
+
+// 'aggregate' on any positive sign of a town/area value; 'station' only on
+// both positive signs of a single device; 'unknown' otherwise (a page we
+// already scrape keeps working through a cosmetic redesign — but discovery
+// admits nothing that is not 'station').
+function pageKind(html) {
+  if (typeof html !== 'string') return 'unknown';
+  if (AGGREGATE_RE.test(html)) return 'aggregate';
+  if (STATION_RE.test(html) && mapLinkCoords(html)) return 'station';
+  return 'unknown';
+}
+
+// Names of the networks a relayed station's data comes from ("AirGradient",
+// "OpenAQ"), or null when IQAir is publishing the contributor's own device.
+function dataSources(html) {
+  if (typeof html !== 'string' || !DATA_SOURCES_LABEL_RE.test(html)) return null;
+  const m = html.match(DATA_SOURCES_RE);
+  if (!m) return ['unnamed'];
+  const names = [...m[1].matchAll(/<a\b[^>]*>([^<]{1,80})<\/a>/g)]
+    .map(x => x[1].trim())
+    .filter(n => n && !/^\(?\s*(?:cc[- ]by|licen[sc]ed)/i.test(n));
+  return names.length ? names : ['unnamed'];
+}
+
+function contributorName(html) {
+  const m = typeof html === 'string' ? html.match(CONTRIBUTOR_RE) : null;
+  return m ? m[1].replace(/&amp;/g, '&').trim() || null : null;
+}
+
 // Fallback for pages IQAir has migrated OFF server-streamed data (no
 // `streamController.enqueue` chunks — the reading is only in the rendered DOM
 // that Firecrawl serialized). Parses the current PM2.5 / AQI / reading time
 // straight out of the HTML. Returns the same shape as extractStation, minus
-// coordinates (not in the DOM — preserved from the existing catalog row by the
-// ingest COALESCE) and history (migrated pages expose only current + forecast).
+// history (migrated pages expose only current + forecast). Coordinates come
+// from the station's own map link when the page proves it is a station page;
+// otherwise they stay null and the ingest COALESCE keeps the catalog's.
 const MONTHS = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
 function extractFromDom(html) {
   // Station-page guard: only trust a reading from a real station page. A deleted
@@ -222,6 +294,8 @@ function extractFromDom(html) {
   // station with an unrelated number. A genuine station page's <title> is
   // "<name> Air Quality Index (AQI)…"; a 404 page's is not. Require it.
   if (!/<title>[^<]*Air Quality/i.test(html)) return null;
+  // Never a town value, even if a city URL ends up in the list (§8.5).
+  if (pageKind(html) === 'aggregate') return { rejected: 'aggregate_page' };
 
   // Current PM2.5 tile: "Main pollutant:</p><p>PM2.5</p></div><p>7&nbsp;µg/m³</p>".
   // Anchor to the tile, NOT the first µg/m³ on the page: a WHO-comparison blurb
@@ -245,26 +319,52 @@ function extractFromDom(html) {
   // infer the year, rolling it back or forward if the date lands >2 days off
   // now — the forward case covers the New-Year window when UTC is still Dec but
   // WITA is already Jan (or vice-versa).
-  let ts = null;
-  const mt = html.match(/(\d{1,2}):(\d{2}),\s*([A-Za-z]{3})\s+(\d{1,2})\s+Local time/);
-  if (mt && MONTHS[mt[3]] != null) {
+  //
+  // Layouts tried in order; the first that yields a plausible time wins. Some
+  // IQAir pages dropped the "Local time" label by Oct 2026, which left this
+  // fallback writing no hourly point at all for them. Every hour is labelled by
+  // its START, as the stream labels it, so both paths land on the same row.
+  //   "• 21:00, Oct 10[ Local time]"  page header: the END of the hour whose
+  //                                   value the page shows, so minus 1 h.
+  //   "20:00–21:00 Oct 10"            the history chart's latest hour: its start.
+  // Measured 10 Oct 2026 on 7 live stations, two snapshots: header − 1 h was
+  // the stream's latest hour, with the same value, in 9 of 10 readings. The
+  // tenth (Plataran) had a stream already an hour ahead of its own page. The
+  // pre-Oct code took the "Local time" header without the hour shift.
+  const tsFrom = (hh, mi, mon, day, shiftH) => {
+    if (MONTHS[mon] == null) return null;
+    // The page prints no year. Take whichever of last/this/next year puts the
+    // reading closest to now (covers the New-Year window both ways), and refuse
+    // a time in the future. The old rule moved anything more than two days old
+    // into NEXT year, so a dead device's last reading came back dated a year
+    // ahead — fresh to every staleness check downstream.
     const now = Date.now();
     const year = new Date(now).getUTCFullYear();
-    const at = (y) => Date.UTC(y, MONTHS[mt[3]], +mt[4], +mt[1], +mt[2]) - 8 * 3600 * 1000;
-    let ms = at(year);
-    if (ms - now > 2 * 86400 * 1000) ms = at(year - 1);
-    else if (now - ms > 2 * 86400 * 1000) ms = at(year + 1);
-    ts = new Date(ms).toISOString();
+    const at = (y) => Date.UTC(y, MONTHS[mon], +day, +hh + shiftH, +mi) - 8 * 3600 * 1000;
+    const ms = [year - 1, year, year + 1].map(at)
+      .reduce((best, x) => Math.abs(x - now) < Math.abs(best - now) ? x : best);
+    return Number.isFinite(ms) && ms - now <= 2 * 3600 * 1000 ? new Date(ms).toISOString() : null;
+  };
+  const layouts = [
+    [/(?:•|&bull;|&#8226;)\s*(\d{1,2}):(\d{2}),\s*([A-Za-z]{3})\s+(\d{1,2})(?:\s+Local time)?\s*</, -1],
+    [/(\d{1,2}):(\d{2})\s*(?:–|-|&ndash;|&#8211;)\s*\d{1,2}:\d{2}(?:\s|&nbsp;|&#160;)+([A-Za-z]{3})(?:\s|&nbsp;|&#160;)+(\d{1,2})\b/, 0],
+    [/(\d{1,2}):(\d{2}),\s*([A-Za-z]{3})\s+(\d{1,2})\s+Local time/, -1],
+  ];
+  let ts = null;
+  for (const [re, shiftH] of layouts) {
+    const m = html.match(re);
+    if (m && (ts = tsFrom(m[1], m[2], m[3], m[4], shiftH))) break;
   }
   if (conc == null && aqi == null) return null;  // genuinely nothing on the page
   // Synthesize one hourly point so the reading accrues into history and carries
   // a timestamp; if the time didn't parse, leave history empty (liveness still
   // works — the scrape succeeds and last_scrape_ts advances).
   const hourly = (conc != null && ts) ? [{ ts, aqi, concentration: conc }] : [];
+  const pos = pageKind(html) === 'station' ? mapLinkCoords(html) : null;
   return {
-    name, lat: null, lon: null,
+    name, lat: pos ? pos.lat : null, lon: pos ? pos.lon : null,
     currentConcentration: conc, currentAqi: aqi,
-    mainPollutant: 'pm25', sourceType: null, sourceSubType: null, contributor: null,
+    mainPollutant: 'pm25', sourceType: null, sourceSubType: null, contributor: contributorName(html),
     hourly, daily: [], monthly: [],
     counts: { hourly: hourly.length, daily: 0, monthly: 0 },
     domFallback: true,
@@ -279,10 +379,18 @@ function extractStation(rawHtml) {
   // reading is only in the rendered DOM. (Staggered rollout: as of 2026-07,
   // lycee/villa-solaris/rock-n-love had flipped while others still streamed.)
   if (!arr.length) return extractFromDom(rawHtml);
+  if (pageKind(rawHtml) === 'aggregate') return { rejected: 'aggregate_page' };
   const res = makeResolver(arr, promiseMap);
   let root;
   try { root = res(0); } catch { root = null; }
   const details = root ? findDetails(root) : null;
+  // IQAir's own description of the page, when the stream carries it: a station
+  // page is type 'station' with one active station (verified on Seminyak Beach
+  // - Hotel Indigo). Anything else is an area value, whatever it is called.
+  if (details && ((typeof details.type === 'string' && details.type !== 'station') ||
+                  (typeof details.activeStationsCount === 'number' && details.activeStationsCount > 1))) {
+    return { rejected: 'aggregate_page' };
+  }
   const current = details ? details.current : null;
 
   // Identity fields live directly on details; current reading on details.current.
@@ -314,6 +422,11 @@ function extractStation(rawHtml) {
     const m = rawHtml.match(/"latitude",(-?\d+(?:\.\d+)?),"longitude",(-?\d+(?:\.\d+)?)/);
     if (m) { lat = parseFloat(m[1]); lon = parseFloat(m[2]); }
   }
+  if ((lat == null || lon == null) && pageKind(rawHtml) === 'station') {
+    const pos = mapLinkCoords(rawHtml);
+    if (pos) { lat = pos.lat; lon = pos.lon; }
+  }
+  if (!contributor) contributor = contributorName(rawHtml);
   if (!name) {
     const m = rawHtml.match(/<title>([^<|]+?)\s+Air Quality/i);
     if (m) name = m[1].trim();
@@ -340,6 +453,7 @@ function extractStation(rawHtml) {
   // DOM current value only when the stream gave us nothing.
   if (currentConc == null && !hourly.length) {
     const dom = extractFromDom(rawHtml);
+    if (dom && dom.rejected) return dom;
     if (dom) {
       dom.lat = lat != null ? lat : dom.lat;
       dom.lon = lon != null ? lon : dom.lon;
@@ -358,4 +472,5 @@ function extractStation(rawHtml) {
   };
 }
 
-export { extractStation, extractFromDom, buildArray, makeResolver, follow, findDetails };
+export { extractStation, extractFromDom, buildArray, makeResolver, follow, findDetails,
+         pageKind, mapLinkCoords, dataSources, contributorName };
