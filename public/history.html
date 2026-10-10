@@ -541,19 +541,48 @@ let relayDuplicateIds = new Set();  // oq-* ids standing behind an ag-* twin
 // is the behaviour this page had before — a duplicate row is a nuisance, a
 // missing station is a hole in the record.
 function buildRelayDuplicateIds(){
-  const ag = [], oq = [];
+  // One sidebar row per physical device. Three kinds of record can sit at one
+  // spot (within RELAY_TWIN_M):
+  //   ag-*   the device on AirGradient's public API (the direct feed);
+  //   agm-*  the same device read from AirGradient's MAP, used only while the
+  //          public API does not carry it (functions/api/live.js
+  //          fetchAirGradientMap);
+  //   oq-*   its OpenAQ relay.
+  // Records at one spot form a group, and exactly ONE is listed: the current
+  // one — the latest last date — and on a tie the direct feed, then the relay
+  // (it usually holds the longer record), then the map record. Everything else
+  // in the group is hidden here and stays reachable through /api/v1. One rule
+  // for every transition: a device that goes public lists its new ag-*; one that
+  // leaves the public API lists whichever of its map record or relay is current;
+  // an ordinary pair lists the ag-* exactly as before (both report today, tie,
+  // direct wins). A group needs an AirGradient record — two relays alone at a
+  // spot are left as they were.
+  const recs = [];
   for (const u of (universalCatalog || [])){
     if (!u || !u.station_id) continue;
+    if (u.source !== 'AirGradient' && u.source !== 'OpenAQ') continue;
     const c = _relayCoord(u);
     if (!c) continue;
-    if (u.source === 'AirGradient')  ag.push(c);
-    else if (u.source === 'OpenAQ')  oq.push({ id: u.station_id, ...c });
+    const id = String(u.station_id);
+    const kind = u.source === 'OpenAQ' ? 'oq' : (id.startsWith('agm-') ? 'agm' : 'ag');
+    recs.push({ id, kind, last: u.last_date ? String(u.last_date).slice(0, 10) : '', ...c });
   }
-  const dupes = new Set();
-  if (ag.length){
-    for (const s of oq){
-      if (ag.some(a => metresApart(s.lat, s.lon, a.lat, a.lon) <= RELAY_TWIN_M)) dupes.add(s.id);
+  const parent = recs.map((_, i) => i);
+  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  for (let i = 0; i < recs.length; i++){
+    for (let j = i + 1; j < recs.length; j++){
+      if (metresApart(recs[i].lat, recs[i].lon, recs[j].lat, recs[j].lon) <= RELAY_TWIN_M) parent[find(i)] = find(j);
     }
+  }
+  const groups = new Map();
+  recs.forEach((r, i) => { const g = find(i); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(r); });
+  const RANK = { ag: 3, oq: 2, agm: 1 };
+  const dupes = new Set();
+  for (const g of groups.values()){
+    if (g.length < 2 || !g.some(r => r.kind !== 'oq')) continue;
+    const keeper = g.reduce((best, r) =>
+      (r.last > best.last || (r.last === best.last && RANK[r.kind] > RANK[best.kind])) ? r : best);
+    for (const r of g) if (r !== keeper) dupes.add(r.id);
   }
   relayDuplicateIds = dupes;
 }
@@ -903,7 +932,10 @@ function buildStationList(){
   // been suppressed by a display fold — which is exactly what this group is
   // for. Widening the corroborating radius test cannot pull in a quiet sensor;
   // those fail on last_date and land in Silenced / Recently offline as before.
-  const _liveGeo = liveRows.filter(s => Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  // From the UNFILTERED live catalog: a pin on the map anchors its site even
+  // when this sidebar lists another record of the same device instead (e.g. a
+  // map-feed pin whose longer-running OpenAQ relay is the row listed here).
+  const _liveGeo = liveCatalog.filter(s => s && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
   const _witaDay = (back) => new Date(Date.now() + 8*3600*1000 - back*86400000).toISOString().slice(0, 10);
   const _fresh = new Set([_witaDay(0), _witaDay(1)]);
   // Smart Citizen kits archived but folded off the map because another kit of

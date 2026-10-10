@@ -43,7 +43,7 @@ Each network is polled independently. A network that fails or times out is simpl
 
 | Network | What it is | Instrument | Access | Catalogued stations |
 |---|---|---|---|---|
-| **AirGradient** | Open community network; the densest source in Bali | AirGradient O-1PST (Plantower PM module) | Public API, no key | 19 |
+| **AirGradient** | Open community network; the densest source in Bali | AirGradient O-1PST (Plantower PM module) | Public API, no key; AirGradient's own map backend for units shared only to the map (§6.5) | 19 |
 | **OpenAQ** | Aggregator. **In Bali, every OpenAQ station is an AirGradient unit relayed onward** — see §6; relays with no direct feed are published, corrected from OpenAQ's own humidity for the device (§5.7) | (relayed) | Public API, key | 22 |
 | **IQAir** | Commercial network; mixture of private hosts and contributors | Various | Public station pages, one device each — town-level values are not used (§8.5); stations IQAir adds are found automatically (§8.6) | 11 |
 | **PurpleAir** | Open community network | PurpleAir (Plantower PM module) | Public API, key | 2 |
@@ -157,7 +157,9 @@ Negative results are clamped to zero, per the same EPA guidance.
 
 ### 5.4 The correction is fully reversible
 
-Every corrected row stores the exact uncorrected figure in `pm25_raw`, alongside the humidity used. The invariant `epaCorrect(pm25_raw, humidity) = pm25` holds for every archived row, so the correction can be independently recomputed, audited, or removed entirely. **Nothing the sensor actually reported is discarded.**
+Every row we correct stores the exact uncorrected figure in `pm25_raw`, alongside the humidity used. The invariant `epaCorrect(pm25_raw, humidity) = pm25` holds for every such row, so the correction can be independently recomputed, audited, or removed entirely. **Nothing the sensor actually reported to us is discarded.**
+
+The one exception is AirGradient's map feed (§6.5). AirGradient publishes those readings already corrected, with this same formula, and without the raw figure. They carry no `pm25_raw` and are marked corrected by rule. The humidity reading is kept, so the formula can be inverted to estimate what the sensor reported (except where it clamps at zero), but there is no independent raw reading to check that against.
 
 ### 5.5 Measured magnitude
 
@@ -254,11 +256,28 @@ On the public map, a confirmed pair is collapsed to **one pin: the direct feed, 
 - There is **no numeric failover** to the relay. If the direct feed goes quiet, the pin is shown as stale and excluded from published figures — it does not silently switch to the higher uncorrected number. Swapping between the two made a single pin jump 20–45% for the same air.
 - Pairing is confirmed against our own archive, not a single poll, so a pair survives a temporarily missing reading. A twin that has produced no archived reading for **36 hours** is treated as departed and the relay stands alone again.
 - If the AirGradient unit leaves the network permanently, no pair forms and the OpenAQ record is published normally.
-- A relay that has **no** direct twin at all — AirGradient's public API does not list every unit its own map and OpenAQ carry (two Bali units, September 2026) — is published on its own, **corrected from OpenAQ's humidity for that device** (§5.7), and labelled raw only on readings where that humidity was missing.
+- A relay that has **no** direct twin at all is published on its own, **corrected from OpenAQ's humidity for that device** (§5.7), and labelled raw only on readings where that humidity was missing. AirGradient's public API does not list every unit its own map and OpenAQ carry; since October 2026 those units are read from AirGradient's map instead (§6.5), and that record is the direct twin.
 
 **Both series are archived in full and both remain published through the API, under their own station IDs.** The de-duplication above is a *display* decision on the public map only. No historical data is discarded, and a researcher can retrieve either or both.
 
 **One gap in the relay series, September – October 2026.** Until October 2026, OpenAQ locations were found with six 25 km radius searches capped at 20 results each. OpenAQ returns locations oldest first, so once Bali's count passed the cap the newest relays were cut without notice. On 10 October 2026 four reporting relays had never been archived: Yeh Gangga, Pejaten Bedha, Kulat Black Palms and Madas Uluwatu (first reading 8–22 September). Cemagi's relay reported from 9 September, but its archived series begins on 1 October. Every one of these devices has a direct AirGradient twin whose series is complete from its first day, so no map pin and no island-wide figure was affected. Discovery is now one query over the Bali bounding box, paged, and relay series for these devices begin when that change was deployed.
+
+### 6.5 AirGradient's map feed: units shared to the map only
+
+An AirGradient owner chooses separately whether a monitor appears on AirGradient's own map and whether it is in AirGradient's public API. Some share the map only. On 10 October 2026 AirGradient's map showed 41 units in Bali and the public API 38 of them. Kulat residencd and Cafe Laut were absent from this archive entirely; Community park reached it only as an OpenAQ relay.
+
+Since October 2026 those units are read from AirGradient's map backend. AirGradient publishes it openly and marks its own data there as open to API access; readings are licensed CC BY-SA 4.0, as on the public API.
+
+- **The public API always wins.** The two routes number units differently and nothing links the numbers, so a map unit is matched to the public API by position. The two records of one unit share their coordinates (all 38 units on both sat at 0 m) and, at the same timestamp, report the identical humidity and corrected PM2.5 (73 of 73 same-second readings checked on 10–11 October). A map unit within **100 m** of any unit on the public API is treated as that unit and is not read from the map, with no exception. The wide radius allows for the two routes updating a unit's position at different times; the nearest genuinely separate map-only unit is 162 m from a public one. The cost is that a genuinely separate unit within 100 m of a public one is not read either: a gap, never a duplicate.
+- **An accepted exposure.** Anyone can register a device on AirGradient's keyless public API at a map-only unit's published coordinates, and the map unit then stops being read. Nothing false is published, since the new device is shown as the public device it is, but the genuine unit's readings stop. An orphaned OpenAQ relay (§6) carries the same exposure. A defence based on comparing same-second readings was tried and dropped: devices report at a fixed second of the minute, so an impostor almost never shares a timestamp, and the defence could itself publish a duplicate if the two routes ever reported humidity differently.
+- **Units on the public API that are offline, or report no PM2.5, still count,** as do units the public API carried in the last 36 hours according to our own catalogue. A partial or failed public API response therefore cannot make a public unit look map-only.
+- **When an owner turns public sharing on,** the unit appears on the public API and its map record is dropped in the same update. The map-feed series ends and a public-API series begins under a new ID. The API's `same_device_as` links the two (using the same 100 m), and the History page lists only the current record of each device. A unit whose owner turns public sharing *off* returns through the map once its public record is 36 hours old: a gap, rather than a risk of two copies.
+- **Failing safe.** If neither the public API nor our catalogue can be read, or fewer than ten public units are known (Bali has about forty), no map unit is published that update. If more than twelve units appear to be map-only (there are three), only units this archive has already been recording are kept, so a burst of junk registrations cannot switch the genuine ones off; the rest are withheld. A missing pin for fifteen minutes is a gap; a duplicate pin is false data. One residual case is known: on a database with no catalogue yet (a fresh copy of the archive) a partial public API response could let a public unit through once; the production catalogue covers it.
+- **Values.** The map publishes AirGradient's own humidity-corrected PM2.5, equal to this archive's correction (§5) of the same reading on every unit tested. It is published as the corrected figure. The map does not publish the raw sensor value, and we do not reconstruct one: these rows carry no `pm25_raw`, and `pm25_corrected` is true by rule (§5.4). PM10, temperature and humidity matched the public API's values exactly. PM1 is not offered. A PM2.5 outside AirGradient's own 0–1000 µg/m³ scale, or a timestamp in the future, is not accepted.
+- **Identity.** Map-feed stations carry the `agm-` prefix, and every station in the API states its route in a `feed` field (§10.3). A station never changes route.
+- **Only AirGradient's own outdoor units are taken.** AirGradient's map also displays other networks, OpenAQ among them, which reach this archive by their own routes; indoor units sit on separate endpoints that are not read.
+
+Every other rule applies unchanged: the 300 m rule against other networks (§7), the relay fold above (Community park's OpenAQ relay now folds under its map-feed pin on the map; the History page lists the relay, which holds the longer record), and the six-hour staleness limit (§8.1).
 
 ---
 
@@ -267,6 +286,7 @@ On the public map, a confirmed pair is collapsed to **one pin: the direct feed, 
 | Rule | Radius | Behaviour |
 |---|---|---|
 | **AirGradient ↔ OpenAQ relay pairing** | 1 m | Exact-coordinate identity; direct feed always wins (§6) |
+| **AirGradient map feed vs. AirGradient public API** | 100 m | A unit's map record is used only while no public-API unit is within 100 m of it; the public API wins as soon as one is (§6.5) |
 | **AirGradient vs. other networks** | 300 m | An AirGradient pin is dropped if a *different* network already holds that location, so established station identities and their longer histories win. OpenAQ is exempt from this rule, for the reason in §6 |
 | **Airly vs. Nafas** | 300 m | Airly is dropped near a *live* Nafas station. If Nafas is not reporting, Airly is retained as failover |
 | **Smart Citizen vs. other networks** | 300 m | A Smart Citizen pin is dropped if a *different* network already holds that location, as for AirGradient |
@@ -396,7 +416,7 @@ The full archive is public, requires no account, and is available as JSON or CSV
 https://baliairdispatch.com/api/v1
 ```
 
-- `/api/v1/stations` — full catalogue with coordinates, network, coverage dates, correction date and quality flags
+- `/api/v1/stations` — full catalogue with coordinates, network, coverage dates, correction date and quality flags; `feed` names the route each station's readings arrive by (for AirGradient, its public API or its map, §6.5), and `same_device_as` lists other IDs in the catalogue for the same physical device
 - `/api/v1/latest` — most recent reading held for every station
 - `/api/v1/measurements` — the time series; raw, hourly or daily; paged by cursor
 

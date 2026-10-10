@@ -405,7 +405,10 @@ async function fastPathFromD1(db) {
       // most visitors hit, so without these any "corrected" marker in the UI
       // would flicker depending on which path served the request.
       pm25_raw: r.pm25_raw != null ? +(+r.pm25_raw).toFixed(1) : null,
-      pm25_corrected: r.pm25_raw != null,
+      // agm-* (AirGradient map feed) rows are corrected upstream by AirGradient
+      // with our exact formula and carry no raw value (fetchAirGradientMap).
+      pm25_corrected: r.pm25_raw != null || String(r.station_id).startsWith('agm-'),
+      feed: feedFor(r.station_id),
       // Derived from the id prefix rather than carried in the row, so the fast
       // path and contribFromD1() agree by construction. Without it a
       // contributed sensor would count toward the island median on the fast
@@ -1185,6 +1188,8 @@ function shapeAirGradient(d) {
     // which for a paired unit would suppress its OpenAQ twin indefinitely.
     const lastMs = d.timestamp ? Date.parse(d.timestamp) : NaN;
     if (!Number.isFinite(lastMs) || (Date.now() - lastMs) > 24 * 60 * 60 * 1000) return null;
+    // …nor one more than an hour ahead, which would never go stale.
+    if (lastMs - Date.now() > 60 * 60 * 1000) return null;
     const { cat, cls } = pm25Category(pm25);
     return ({
       id: `ag-${devId}`,
@@ -1231,10 +1236,23 @@ async function fetchAirGradient(env, errors) {
       const list = await r.json();
       if (Array.isArray(list)) {
         const out = [];
+        // Where EVERY Bali device on the public API sits — offline ones and
+        // ones with no PM reading included, which shapeAirGradient drops. The
+        // map feed (fetchAirGradientMap) must defer to all of them, not only to
+        // the ones that happen to publish a value this minute.
+        const positions = [];
         for (const d of list) {
           const shaped = shapeAirGradient(d);
           if (shaped) out.push(shaped);
+          const lat = d && d.latitude != null ? +d.latitude : NaN;
+          const lon = d && d.longitude != null ? +d.longitude : NaN;
+          if (Number.isFinite(lat) && Number.isFinite(lon) &&
+              lat >= AG_BALI.latMin && lat <= AG_BALI.latMax &&
+              lon >= AG_BALI.lonMin && lon <= AG_BALI.lonMax) {
+            positions.push({ id: `ag-${d.locationId}`, lat, lon });
+          }
         }
+        Object.defineProperty(out, 'positions', { value: positions });
         return out;
       }
       why = 'world feed returned a non-array body';
@@ -1290,6 +1308,280 @@ async function fetchAirGradientKnownDevices(env) {
   const out = [];
   for (const s of settled) if (s.status === 'fulfilled' && s.value) out.push(s.value);
   return out;
+}
+
+// ── AirGradient MAP feed — devices shared to AirGradient's map only ─────────
+// AirGradient owners choose separately whether a monitor appears on AG's own
+// map and whether it is in the public API above. Some share the map only, so
+// on 10 Oct 2026 AG's map showed 41 Bali devices and the public API 38 of them
+// — Kulat residencd, Cafe Laut and Community park (which reached us only as an
+// OpenAQ relay) were missing. AG's map backend is public and AirGradient marks
+// its own data `allowApiAccess: true` there (catalog/datasources); readings
+// are CC BY-SA 4.0 per location.
+//
+// THE DIRECT API ALWAYS WINS. The two routes number devices differently and
+// nothing links the numbers (Kuwum is map 79090296, public 195872), so the
+// link is position: all 38 devices on both feeds sat at exactly 0 m, and at
+// the same second they reported identical humidity and corrected PM2.5. A map
+// device within AG_MAP_NEAR_PUBLIC_M of ANY public device is taken to be that
+// device and is not read from the map. No exception: an earlier draft kept a
+// map device when a same-second reading showed a different humidity, as an
+// impostor defence, but devices post at a fixed second of the minute, so an
+// impostor almost never shares a timestamp (the defence protected ~1 in 60
+// cases) while that branch was the one path that could PUBLISH a duplicate if
+// the two routes ever reported humidity differently. The radius is wide on
+// purpose: the two feeds refresh locations on different schedules, so an
+// owner's edit can leave them apart for a while; the nearest genuinely separate
+// map-only unit is 162 m from a public one.
+//
+// ACCEPTED EXPOSURE, the same one an orphaned OpenAQ relay carries (see the
+// tiebreak notes at agIdNum): anyone can register a device on the keyless
+// public API at a map-only unit's published coordinates, and the map unit then
+// stops being read. Nothing false is published by it — the impostor's pin is a
+// public device like any other — but the genuine unit's readings stop.
+//
+// When an owner turns public sharing on, the device appears on the public API
+// and its map copy is dropped in the same update; the agm-* series ends, the
+// ag-* one begins, and /api/v1's same_device_as links them. The reverse —
+// public sharing turned OFF — brings the device back via the map only once its
+// public record is 36 h old (the catalog half of the roster below), a gap
+// rather than a risk of two copies.
+//
+// FAIL CLOSED. The public roster is the UNION of this update's world feed
+// (every Bali entry, offline and PM-less ones included) and the catalog of
+// ag-* devices seen in the last TWIN_CATALOG_MAX_AGE_MS: a partial or empty
+// feed cannot make a public device look map-only while the catalog remembers
+// it. No roster at all, a roster smaller than AG_MAP_MIN_PUBLIC (Bali has ~40),
+// or more map-only devices than AG_MAP_MAX_DEVICES (3 today) means something
+// upstream is wrong, and no map device is published that update. A missing pin
+// for a quarter hour is a gap; a second copy of a public device is false data.
+//
+// VALUES. The map publishes AirGradient's own humidity-corrected PM2.5,
+// exactly our epaCorrectPm25(pm02, rhum) on the devices on both feeds (above),
+// so it is published as the corrected value. The raw sensor value is NOT on
+// the map and is not reconstructed: pm25_raw stays null and pm25_corrected is
+// true by rule for agm-* (here, on the fast path and in /api/v1). PM10,
+// temperature and humidity matched the public feed's raw values exactly. No
+// PM1. Only dataSource "AirGradient" is taken (AG's map also displays other
+// networks, which reach us by their own routes), and only the outdoor layer
+// (indoor locations have their own endpoints, which are not read).
+const AG_MAP_BASE = 'https://map-data.airgradient.com/map/api/v1';
+const AG_MAP_NEAR_PUBLIC_M = 100;
+const AG_MAP_MIN_PUBLIC = 10;
+const AG_MAP_MAX_DEVICES = 12;
+
+// Is there a public device within the identity radius? Shared by the fetch-
+// time test and the visitor-path fold, so the two can never disagree.
+function nearPublicAg(lat, lon, publicList) {
+  return publicList.some(p => metresBetween(lat, lon, p.lat, p.lon) <= AG_MAP_NEAR_PUBLIC_M);
+}
+
+// ag-* positions from our own catalog (seen within TWIN_CATALOG_MAX_AGE_MS).
+// null = unknown (no binding, or the read failed).
+async function publicAgPositionsFromD1(env) {
+  if (!env || !env.ARCHIVE_DB) return null;
+  try {
+    const floorSec = Math.floor((Date.now() - TWIN_CATALOG_MAX_AGE_MS) / 1000);
+    const rows = await env.ARCHIVE_DB.prepare(
+      `SELECT station_id, lat, lon FROM stations WHERE station_id LIKE 'ag-%' AND last_seen >= ?1`
+    ).bind(floorSec).all();
+    const out = [];
+    for (const r of (rows.results || [])) {
+      if (!r || r.lat == null || r.lon == null) continue;
+      const lat = +r.lat, lon = +r.lon;
+      if (Number.isFinite(lat) && Number.isFinite(lon)) out.push({ id: String(r.station_id), lat, lon, reading: null });
+    }
+    return out;
+  } catch (_) {
+    return null;
+  }
+}
+
+// agm-* stations already in our catalog (seen within TWIN_CATALOG_MAX_AGE_MS).
+async function establishedMapUnitsFromD1(env) {
+  if (!env || !env.ARCHIVE_DB) return new Set();
+  try {
+    const floorSec = Math.floor((Date.now() - TWIN_CATALOG_MAX_AGE_MS) / 1000);
+    const rows = await env.ARCHIVE_DB.prepare(
+      `SELECT station_id FROM stations WHERE station_id LIKE 'agm-%' AND last_seen >= ?1`
+    ).bind(floorSec).all();
+    return new Set((rows.results || []).map(r => String(r.station_id)));
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function shapeAirGradientMap(entry, detail) {
+  const agNum = (v) => (v == null || v === '' || !Number.isFinite(+v)) ? null : +(+v).toFixed(1);
+  const id = Number.parseInt(entry.locationId, 10);
+  // One reading, never a mix of two: the detail read is used whole when it is
+  // the same reading or a newer one; otherwise the area entry alone, which
+  // carries PM2.5 and humidity but no PM10 or temperature.
+  const areaMs = Date.parse(entry.measuredAt);
+  const det = (detail && Number(detail.locationId) === id &&
+               Date.parse(detail.measuredAt) >= areaMs) ? detail : null;
+  const src = det || entry;
+  const pm25 = agNum(src.pm25);
+  // A real reading, on AirGradient's own scale (its catalog bounds PM2.5 0–1000).
+  if (pm25 == null || pm25 < 0 || pm25 > 1000) return null;
+  const lastMs = Date.parse(src.measuredAt);
+  // Same 24 h backstop as shapeAirGradient; a missing time fails it, and so
+  // does one more than an hour ahead — a future stamp would never go stale.
+  const age = Date.now() - lastMs;
+  if (!Number.isFinite(lastMs) || age > 24 * 60 * 60 * 1000 || age < -60 * 60 * 1000) return null;
+  const { cat, cls } = pm25Category(pm25);
+  return {
+    id: `agm-${id}`,
+    name: scClean(entry.locationName) || `AirGradient map #${id}`,
+    source: 'AirGradient',
+    // Free text, read by no logic; says on the map panel which route this is.
+    type: 'AirGradient monitor · map feed',
+    feed: 'airgradient_map',
+    lat: +entry.latitude, lon: +entry.longitude,
+    pm25,
+    pm25_raw: null,          // not published by the map; never reconstructed
+    pm25_corrected: true,    // AirGradient's correction, identical to ours (see above)
+    pm10: det ? agNum(det.pm10) : null,
+    pm1: null,
+    temperature: det ? agNum(det.atmp) : null,
+    humidity: agNum(src.rhum),
+    aqi: null,
+    category: cat,
+    cls,
+    lastSeen: new Date(lastMs).toISOString(),
+  };
+}
+
+// The map's Bali list, started early so it runs alongside the world feed.
+// Resolves to an array of raw entries, or null (and a note) on any failure.
+async function fetchAgMapArea(errors) {
+  const note = (msg) => { if (Array.isArray(errors)) errors.push({ source: 'AirGradient map', error: msg }); };
+  try {
+    const r = await fetch(
+      `${AG_MAP_BASE}/measurements/current/area?measure=pm25` +
+      `&xmin=${AG_BALI.lonMin}&ymin=${AG_BALI.latMin}&xmax=${AG_BALI.lonMax}&ymax=${AG_BALI.latMax}&zoom=16`,
+      { headers: { Accept: 'application/json' }, cf: { cacheTtl: 300, cacheEverything: true } }
+    );
+    if (!r.ok) { note(`map feed HTTP ${r.status}`); return null; }
+    // Paginated envelope per AG's spec: { data: [...], total, page, pagesize }.
+    // The area query is not paged (page null; 41 of 41 on 10 Oct 2026), but a
+    // short page would silently drop devices, so say so if it ever happens.
+    const body = await r.json();
+    const list = body && Array.isArray(body.data) ? body.data : null;
+    if (!list) { note('map feed returned no data array'); return null; }
+    if (Number.isFinite(+body.total) && +body.total > list.length) {
+      note(`map feed returned ${list.length} of ${+body.total} devices`);
+    }
+    return list;
+  } catch (e) {
+    note('map feed ' + ((e && e.name === 'TimeoutError')
+      ? `timed out after ${UPSTREAM_TIMEOUT_MS / 1000} s` : String((e && e.message) || e).slice(0, 80)));
+    return null;
+  }
+}
+
+// publicAg = this update's fetchAirGradient() result (shaped ag-* stations, with
+// .positions for every Bali entry when the world feed was read), or undefined.
+async function fetchAirGradientMap(env, errors, publicAg, areaPromise) {
+  const note = (msg) => { if (Array.isArray(errors)) errors.push({ source: 'AirGradient map', error: msg }); };
+  const list = await (areaPromise || fetchAgMapArea(errors));
+  if (!list) return [];
+
+  // The public roster: world feed (with readings where it has them) ∪ catalog.
+  const feedPositions = publicAg && Array.isArray(publicAg.positions) ? publicAg.positions : null;
+  const catalog = await publicAgPositionsFromD1(env);
+  if (!feedPositions && !catalog) {
+    note('public AirGradient roster unknown; map-only devices withheld this update');
+    return [];
+  }
+  // One entry per public device, keyed by id, so the size check below counts
+  // devices rather than copies.
+  const roster = new Map();
+  for (const s of (Array.isArray(publicAg) ? publicAg : [])) roster.set(s.id, { lat: s.lat, lon: s.lon });
+  for (const p of (feedPositions || [])) if (!roster.has(p.id)) roster.set(p.id, { lat: p.lat, lon: p.lon });
+  for (const p of (catalog || [])) if (!roster.has(p.id)) roster.set(p.id, { lat: p.lat, lon: p.lon });
+  if (feedPositions && catalog && feedPositions.length * 2 < catalog.length) {
+    note(`world feed listed ${feedPositions.length} Bali devices against ${catalog.length} in the catalog`);
+  }
+  if (roster.size < AG_MAP_MIN_PUBLIC) {
+    note(`only ${roster.size} public AirGradient devices known; map-only devices withheld this update`);
+    return [];
+  }
+  const rosterList = [...roster.values()];
+
+  // Shape first (validity, freshness, range), THEN decide, THEN bound — so junk
+  // entries never use up the bound and the bound is applied to real candidates.
+  const keep = [];
+  for (const d of list) {
+    if (!d || d.dataSource !== 'AirGradient') continue;
+    const id = Number.parseInt(d.locationId, 10);
+    if (!Number.isFinite(id) || String(id) !== String(d.locationId)) continue;
+    if (d.latitude == null || d.longitude == null) continue;
+    const lat = +d.latitude, lon = +d.longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (lat < AG_BALI.latMin || lat > AG_BALI.latMax || lon < AG_BALI.lonMin || lon > AG_BALI.lonMax) continue;
+    if (!shapeAirGradientMap(d, null)) continue;
+    if (nearPublicAg(lat, lon, rosterList)) continue;   // the public API carries it
+    keep.push(d);
+  }
+  if (keep.length > AG_MAP_MAX_DEVICES) {
+    // Too many to be real — but a flood of junk registrations must not switch
+    // off the genuine units we have been archiving, so those are kept (if they
+    // fit) and only devices new to the archive are withheld.
+    const established = await establishedMapUnitsFromD1(env);
+    const kept = keep.filter(d => established.has(`agm-${Number.parseInt(d.locationId, 10)}`));
+    note(`${keep.length} map-only devices against an expected handful; ` +
+         (kept.length && kept.length <= AG_MAP_MAX_DEVICES
+           ? `kept the ${kept.length} already archived, withheld the rest`
+           : 'none published this update'));
+    keep.length = 0;
+    if (kept.length <= AG_MAP_MAX_DEVICES) keep.push(...kept);
+  }
+  const details = await Promise.allSettled(keep.map(async (d) => {
+    const r = await fetch(`${AG_MAP_BASE}/locations/${Number.parseInt(d.locationId, 10)}/measures/current`,
+      { headers: { Accept: 'application/json' }, cf: { cacheTtl: 120, cacheEverything: true } });
+    return r.ok ? r.json() : null;
+  }));
+  const out = [];
+  keep.forEach((d, i) => {
+    const s = shapeAirGradientMap(d, details[i].status === 'fulfilled' ? details[i].value : null);
+    if (s) out.push(s);
+  });
+  return out;
+}
+
+// Visitor-path fold, both paths: one pin per device across a sharing switch.
+// The fast path rebuilds the map from the archive's last 30 minutes, which can
+// hold a device's last agm-* snapshot AND its first ag-* one; the slow path has
+// already applied this test at fetch time, so there it is a no-op. Same rule:
+// an agm-* within AG_MAP_NEAR_PUBLIC_M of a public ag-* is dropped.
+function dropMapCopiesOfPublicAirGradient(stations) {
+  const pub = stations.filter(s => s && !s.off && s.source === 'AirGradient' &&
+    String(s.id).startsWith('ag-') && Number.isFinite(s.lat) && Number.isFinite(s.lon));
+  if (!pub.length) return stations;
+  return stations.filter(s => {
+    if (!s || s.off || !String(s.id).startsWith('agm-')) return true;
+    if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return true;
+    return !nearPublicAg(s.lat, s.lon, pub);
+  });
+}
+
+// Which upstream route a station's readings arrive by, from its id prefix —
+// published as `feed` here, on the fast path and in /api/v1 so a reader can
+// tell a direct-API row from a map row (or a relay) without guessing. Ids
+// never change feed: a device that moves from the map to the public API gets a
+// new (ag-*) id. Kept in sync by hand with FEED_BY_PREFIX in /api/v1.
+const FEED_BY_PREFIX = [
+  ['agm-', 'airgradient_map'], ['ag-', 'airgradient_api'],
+  ['oq-', 'openaq_api'], ['oaq-', 'openaq_api'],
+  ['pa-', 'purpleair_api'], ['sc-', 'smartcitizen_api'], ['nafas-', 'nafas_feed'],
+  ['aq-', 'aqicn_api'], ['airly-', 'airly_api'], ['iqs-', 'iqair_station_page'],
+  ['cs-', 'contributed'],
+];
+function feedFor(id) {
+  const s = String(id == null ? '' : id);
+  for (const [p, f] of FEED_BY_PREFIX) if (s.startsWith(p)) return f;
+  return null;
 }
 
 // Drop AirGradient pins within 300 m of an already-present DIFFERENT-source
@@ -1595,9 +1887,19 @@ const TWIN_M = 1;
 // ids pass 1,000,000 every 'ag-10…' sorts below every existing 'ag-19…' as a
 // string, which would hand the tiebreak to exactly the newest units.
 function agIdNum(id) {
-  const n = Number.parseInt(String(id).slice(3), 10);
+  const s = String(id);
+  // agm-* (AirGradient MAP feed) ids are a different, much larger id space.
+  // Ranked after every ag-* id so the direct public API always wins a tie —
+  // and parsed past the 4-char prefix: slice(3) would read "agm-125796538"
+  // as -125796538, the LOWEST id there is, and hand it every tiebreak.
+  if (s.startsWith('agm-')) {
+    const m = Number.parseInt(s.slice(4), 10);
+    return Number.isFinite(m) ? AG_MAP_ID_RANK + m : Infinity;
+  }
+  const n = Number.parseInt(s.slice(3), 10);
   return Number.isFinite(n) ? n : Infinity;
 }
+const AG_MAP_ID_RANK = 1e15;
 // Closest ag-* within TWIN_M of `s`, tie-broken on the LOWEST NUMERIC id.
 // Shared by the in-payload pairing and the D1 catalog pairing below so the two
 // can never disagree about which twin a relay belongs to.
@@ -2254,6 +2556,8 @@ async function handleLive(context) {
             fast.sources = new Set(fast.stations.map(s => s.source)).size;
           }
         } catch (_) { /* scraped optional; serve base fast path */ }
+        // One pin per AirGradient device across a map→public sharing switch.
+        fast.stations = dropMapCopiesOfPublicAirGradient(fast.stations);
         // Collapse co-located Airly (Nafas-sponsored) onto its live Nafas twin.
         fast.stations = dropAirlyNearNafas(fast.stations);
         // One pin per Smart Citizen site. The archive holds every kit, so the
@@ -2290,6 +2594,9 @@ async function handleLive(context) {
         } catch (_) { /* tombstones optional */ }
         // Source count reflects LIVE feeds only — tombstones aren't a source.
         fast.sources = new Set(fast.stations.filter(s => !s.off).map(s => s.source)).size;
+        // Same response shape as the slow path: every station names its route,
+        // including folded-in iqs-*, placeholders and tombstones.
+        for (const s of fast.stations) if (s && s.feed === undefined) s.feed = feedFor(s.id);
         return jsonResponse(fast, fast.degraded
           // A degraded read must not be pinned for the full TTL, or recovery
           // stays invisible behind the cache for two minutes after the archive
@@ -2350,14 +2657,30 @@ async function handleLive(context) {
   // the universal pass, which also carries them into the D1 fast path. When
   // the world feed fails, fetchAirGradient falls back to per-device reads of
   // the catalog's known units and records the failure in results.errors.
+  // The map's Bali list is fetched alongside the world feed, not after it.
+  const agMapArea = fetchAgMapArea(results.errors);
+  let agPublic;   // this update's public-API result; undefined if it threw
   try {
     const ag = await fetchAirGradient(env, results.errors);
+    agPublic = ag;
     const agKept = dedupAirGradient(ag, results.stations);
     if (agKept.length) {
       results.sources++;
       results.stations.push(...agKept.map(st => flagStale(st)));
     }
   } catch (_) { /* AirGradient optional — never block the response */ }
+  // AirGradient devices shared to AG's map but not its public API (see
+  // fetchAirGradientMap). AFTER the direct feed, so it can defer to everything
+  // the direct feed carries; same 300 m rule against other networks, and the
+  // same relay fold below, as any AirGradient station. Its own try: a map
+  // failure must never touch the direct feed's pins.
+  try {
+    const agMap = await fetchAirGradientMap(env, results.errors, agPublic, agMapArea);
+    const mapKept = dedupAirGradient(agMap, results.stations);
+    if (mapKept.length) results.stations.push(...mapKept.map(st => flagStale(st)));
+  } catch (e) {
+    results.errors.push({ source: 'AirGradient map', error: String((e && e.message) || e).slice(0, 120) });
+  }
 
   // Fold in scraped IQAir stations (from D1; the upstream fetchers above do not
   // include them — the iqair-scrape worker is what populates iq_scrape_*).
@@ -2398,6 +2721,7 @@ async function handleLive(context) {
   // the relay pairing simply arrives as an empty map and the AirGradient fold
   // falls back to in-payload pairs, exactly as it behaved before.
   if (!noFast) {
+    results.stations = dropMapCopiesOfPublicAirGradient(results.stations);
     results.stations = dropAirlyNearNafas(results.stations);
     results.stations = foldSmartCitizenSites(results.stations);
     // results.errors is the fold's outage sink: a payload with zero ag-* while
@@ -2410,6 +2734,9 @@ async function handleLive(context) {
     results.errors.push({ source: 'relay-catalog',
       error: 'known-relay catalog read failed; relays whose twin is missing publish on their own' });
   }
+  // Every station says which route it came by (placeholders included — they
+  // are made in the fold above). The fast path derives the same from the id.
+  for (const s of results.stations) if (s && s.feed === undefined) s.feed = feedFor(s.id);
   if (results.errors.length === 0) delete results.errors;
   return jsonResponse(results);
 }
