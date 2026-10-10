@@ -258,6 +258,8 @@ On the public map, a confirmed pair is collapsed to **one pin: the direct feed, 
 
 **Both series are archived in full and both remain published through the API, under their own station IDs.** The de-duplication above is a *display* decision on the public map only. No historical data is discarded, and a researcher can retrieve either or both.
 
+**One gap in the relay series, September – October 2026.** Until October 2026, OpenAQ locations were found with six 25 km radius searches capped at 20 results each. OpenAQ returns locations oldest first, so once Bali's count passed the cap the newest relays were cut without notice. On 10 October 2026 four reporting relays had never been archived: Yeh Gangga, Pejaten Bedha, Kulat Black Palms and Madas Uluwatu (first reading 8–22 September). Cemagi's relay reported from 9 September, but its archived series begins on 1 October. Every one of these devices has a direct AirGradient twin whose series is complete from its first day, so no map pin and no island-wide figure was affected. Discovery is now one query over the Bali bounding box, paged, and relay series for these devices begin when that change was deployed.
+
 ---
 
 ## 7. Other de-duplication rules
