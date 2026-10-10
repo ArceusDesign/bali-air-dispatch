@@ -13,9 +13,14 @@
 //  • All PM2.5 values are µg/m³; timestamps are IQAir's ISO-8601 UTC strings.
 
 import { extractStation } from './extract.js';
+import {
+  parseCityLinks, parseStationLinks, parseStationCount, stationKey, stationUrl, cityUrl,
+  slugFor, classifyCandidate, RECHECKABLE,
+} from './discover.js';
 
 // slug → IQAir station URL. Coords/name/contributor are pulled from each page
-// at scrape time (no hardcoding), so this list is the only thing to maintain.
+// at scrape time (no hardcoding). This is the hand-kept seed list; stations
+// IQAir adds later are found by discovery (below) and scraped alongside these.
 const STATIONS = [
   ['lycee-francais-de-bali',     'https://www.iqair.com/ca/indonesia/bali/badung/lycee-francais-de-bali'],
   ['villa-solaris',              'https://www.iqair.com/ca/indonesia/bali/nusa-dua/villa-solaris'],
@@ -27,6 +32,12 @@ const STATIONS = [
   ['kabupaten-badung-sempidi',   'https://www.iqair.com/ca/indonesia/bali/badung/kabupaten-badung-sempidi'],
   ['gg-merdeka',                 'https://www.iqair.com/ca/indonesia/bali/sukasada/gg-merdeka'],
   ['plataran-menjangan',         'https://www.iqair.com/ca/indonesia/bali/buleleng/plataran-menjangan-resort-spa'],
+  // Added 2026-10-10. The hotel's own IQAir device: "Station from Seminyak
+  // Beach - Hotel Indigo" (contributor type Hospitality, 1 station), IQAir
+  // type 'station' with activeStationsCount 1, no relayed "Data sources", own
+  // map position -8.6948,115.1620. Nearest station we publish is 627 m away
+  // (Smart Citizen sc-19774), so it is its own pin.
+  ['seminyak-beach-hotel-indigo', 'https://www.iqair.com/ca/indonesia/bali/badung/seminyak-beach-hotel-indigo'],
 ];
 
 async function firecrawlScrape(url, key, timeoutMs = 40000) {
@@ -201,6 +212,9 @@ async function processStation(db, slug, url, key, nowSec) {
       return { slug, ok: false, http: status };
     }
     const ex = extractStation(html);
+    // A page that turned into an area value (e.g. a station URL redirected to
+    // its city) is not ingested — the station goes stale instead (§8.5).
+    if (ex && ex.rejected) return { slug, ok: false, reason: ex.rejected, http: status };
     if (!ex || (!ex.hourly.length && ex.currentConcentration == null)) {
       return { slug, ok: false, reason: 'no_data_parsed', http: status };
     }
@@ -232,23 +246,48 @@ async function runPool(items, worker, { concurrency, deadlineMs }) {
   return results;
 }
 
-// Rotation: the 10 stations are split into 4 groups, one scraped per 15-min cron
-// tick (:07/:22/:37/:52). Each station is still scraped once an hour, but each
-// invocation only does ≤3 stations (~50s) — comfortably under the Worker budget,
-// so a slow Firecrawl window can no longer push a run over its limit. A missed
-// station self-heals next cycle (UPSERT + the page's 48h hourly backstop).
-const STATION_GROUPS = [[0, 1, 2], [3, 4, 5], [6, 7], [8, 9]];
-function groupForScheduledTime(scheduledTime) {
+// The full scrape list: the seed STATIONS plus every station discovery has
+// admitted (iq_discovery.status = 'active'). Before schema-v12 is applied the
+// discovery table does not exist and this is simply STATIONS.
+async function loadTargets(db) {
+  const targets = STATIONS.map(([slug, url]) => [slug, url]);
+  try {
+    const rows = await db.prepare(
+      `SELECT slug, url FROM iq_discovery WHERE status = 'active' AND slug IS NOT NULL
+       ORDER BY first_seen, key`
+    ).all();
+    const have = new Set(targets.map(([s]) => s));
+    for (const r of (rows.results || [])) {
+      if (!have.has(r.slug)) { targets.push([r.slug, r.url]); have.add(r.slug); }
+    }
+  } catch (_) { /* no discovery table yet */ }
+  return targets;
+}
+
+// Rotation: the stations are dealt round-robin into 4 groups, one scraped per
+// 15-min cron tick (:07/:22/:37/:52). Each station is still scraped once an
+// hour, but each invocation only does a quarter of them (≤3 today, ~50s) —
+// comfortably under the Worker budget, so a slow Firecrawl window can no longer
+// push a run over its limit. A missed station self-heals next cycle (UPSERT +
+// the page's 48h hourly backstop). Computed, not hardcoded, so a discovered
+// station joins a group without anyone editing an index list.
+const GROUP_COUNT = 4;
+function groupsFor(n) {
+  const groups = Array.from({ length: GROUP_COUNT }, () => []);
+  for (let i = 0; i < n; i++) groups[i % GROUP_COUNT].push(i);
+  return groups;
+}
+function groupIndexForScheduledTime(scheduledTime) {
   const min = scheduledTime ? new Date(scheduledTime).getUTCMinutes() : 0;
-  return STATION_GROUPS[Math.floor(min / 15) % STATION_GROUPS.length];
+  return Math.floor(min / 15) % GROUP_COUNT;
 }
 
 // Run the scrape.
 //   opts.onlySlug  → single station (fast manual verification)
-//   opts.group     → array of STATION indices (rotation subset for a cron tick)
-//   neither        → all 10 (manual full run / backfill)
+//   opts.groupIdx  → one rotation group (a cron tick / the watchdog)
+//   neither        → every station (manual full run / backfill)
 async function runAll(env, opts = {}) {
-  const { onlySlug = null, group = null } = opts;
+  const { onlySlug = null, groupIdx = null } = opts;
   const key = env.FIRECRAWL_KEY;
   const db = env.ARCHIVE_DB;
   const t0 = Date.now();
@@ -256,10 +295,11 @@ async function runAll(env, opts = {}) {
   if (!key) return { error: 'no_firecrawl_key' };
   if (!db) return { error: 'no_d1_binding' };
 
+  const all = await loadTargets(db);
   let targets;
-  if (onlySlug) targets = STATIONS.filter(([s]) => s === onlySlug);
-  else if (group) targets = group.map((i) => STATIONS[i]).filter(Boolean);
-  else targets = STATIONS;
+  if (onlySlug) targets = all.filter(([s]) => s === onlySlug);
+  else if (groupIdx != null) targets = (groupsFor(all.length)[groupIdx] || []).map((i) => all[i]);
+  else targets = all;
   if (!targets.length) return { error: 'unknown_slug', slug: onlySlug };
 
   // Firecrawl allows only 2 concurrent scrapes (account maxConcurrency=2). Match
@@ -333,11 +373,230 @@ async function reviveArchiveIfStale(env) {
   }
 }
 
+// ── Discovery ─────────────────────────────────────────────────────────────
+// Finds IQAir stations in Bali that are not on the scrape list and admits the
+// ones that prove, on their own page, that they are one native IQAir device
+// (rules and reasons in discover.js). Runs on the :52 tick only and only AFTER
+// that tick's scrape, so it never competes for Firecrawl's two concurrent
+// slots, and it stops starting requests past its own deadline.
+//
+// Cost in steady state: the Bali page once a day, each of IQAir's ~40 Bali
+// area pages once a week, and one page per new candidate — roughly 7 Firecrawl
+// requests a day against ~260 for scraping. When the island's station count
+// RISES (the cheap signal that something was added) every area page is queued
+// at once and swept four per hourly tick, so a new station is normally admitted
+// within about ten hours. That costs ~40 extra requests, at most once a day.
+//
+// Mode, env IQAIR_DISCOVERY: unset or 'auto' admits and starts scraping;
+// 'review' records admissible stations as status 'review' for a person to
+// promote to 'active'. ANY other value switches discovery off — a typo must
+// never publish third-party devices.
+//
+// Operator overrides live in D1 (schema-v12): set iq_discovery.status to
+// 'blocked' to keep a station out for good (and iq_scrape_stations.active = 0
+// to take an admitted one off the map), or to 'active' to admit one by hand.
+const DISCOVERY = {
+  stateUrl: 'https://www.iqair.com/ca/indonesia/bali',
+  stateEveryS: 23 * 3600,   // ~daily; the slack lets it land on whichever :52 tick comes first
+  cityRescanS: 7 * 86400,
+  cityRetryS: 86400,        // an area page that failed is tried again a day later, not next tick
+  recheckS: 7 * 86400,      // how soon a recheckable rejection is looked at again
+  citiesPerTick: 4,
+  candidatesPerTick: 2,
+  maxAttempts: 3,
+  knownWindowS: 30 * 86400, // a station that reported within this window counts as present
+  deadlineMs: 150000,
+};
+const DISCOVERY_GROUP = 3;  // the :52 tick
+
+function discoveryMode(env) {
+  const raw = env.IQAIR_DISCOVERY == null ? '' : String(env.IQAIR_DISCOVERY).trim().toLowerCase();
+  if (raw === '' || raw === 'auto') return 'auto';
+  if (raw === 'review') return 'review';
+  return 'off';
+}
+
+// A Firecrawl request that never throws: its own 40 s abort becomes an
+// ordinary failure, so one hung page costs one attempt instead of ending the
+// pass (and, being first in line again next tick, every pass after it).
+async function scrapeQuietly(url, key) {
+  try { return await firecrawlScrape(url, key); }
+  catch (e) { return { status: 'error ' + String(e && e.name || e).slice(0, 40), html: '', ok: false }; }
+}
+
+// Every position we publish that is still REPORTING (any network), for the
+// co-location test. A dead station — an IQAir page that now 404s, a device that
+// went quiet months ago — does not hold its spot against a new device there.
+async function loadKnownPositions(db, nowSec) {
+  const since = nowSec - DISCOVERY.knownWindowS;
+  const a = await db.prepare(
+    `SELECT station_id AS id, lat, lon FROM stations WHERE last_seen >= ?1`
+  ).bind(since).all();
+  const b = await db.prepare(
+    `SELECT 'iqs-' || slug AS id, lat, lon FROM iq_scrape_stations
+     WHERE active = 1 AND lat IS NOT NULL
+       AND (latest_ts >= ?1 OR (latest_ts IS NULL AND last_scrape_ok = 1 AND last_scrape_ts >= ?2))`
+  ).bind(new Date(since * 1000).toISOString(), since).all();
+  return [...(a.results || []), ...(b.results || [])]
+    .map(r => ({ id: r.id, lat: +r.lat, lon: +r.lon }));
+}
+
+async function discoveryTick(env, opts = {}) {
+  const mode = discoveryMode(env);
+  if (mode === 'off') return { discovery: 'off' };
+  const db = env.ARCHIVE_DB, key = env.FIRECRAWL_KEY;
+  if (!db || !key) return { error: 'not_configured' };
+  const t0 = Date.now(), nowSec = Math.floor(t0 / 1000);
+  const maxCities = opts.maxCities ?? DISCOVERY.citiesPerTick;
+  const maxCandidates = opts.maxCandidates ?? DISCOVERY.candidatesPerTick;
+  const late = () => Date.now() - t0 > DISCOVERY.deadlineMs;
+  const log = [];
+  let stateCount = null, citiesScanned = 0, checked = 0, added = 0;
+  const seedKeys = new Set(STATIONS.map(([, url]) => stationKey(url)).filter(Boolean));
+
+  try {
+    // 1. The Bali page: the list of areas, and the island's station count.
+    const last = await db.prepare(
+      `SELECT ts, state_count FROM iq_discovery_runs WHERE state_count IS NOT NULL ORDER BY ts DESC LIMIT 1`
+    ).first();
+    const cityRow = await db.prepare(`SELECT COUNT(*) AS n FROM iq_discovery_cities`).first();
+    const stateDue = opts.forceState || !cityRow || !cityRow.n || !last ||
+                     nowSec - last.ts >= DISCOVERY.stateEveryS;
+    if (stateDue) {
+      const page = await scrapeQuietly(DISCOVERY.stateUrl, key);
+      if (page.ok && page.html) {
+        const cities = parseCityLinks(page.html);
+        stateCount = parseStationCount(page.html);
+        if (cities.size) {
+          await db.batch([...cities].map(c => db.prepare(
+            `INSERT OR IGNORE INTO iq_discovery_cities (city, last_scanned) VALUES (?1, 0)`
+          ).bind(c)));
+        }
+        // Only a RISE means something was added; a fall is a station going
+        // quiet, which the weekly sweep covers. One sweep per day at most.
+        if (stateCount != null && last && stateCount > last.state_count) {
+          await db.prepare(`UPDATE iq_discovery_cities SET last_scanned = 0`).run();
+          log.push(`count ${last.state_count}->${stateCount}: sweeping every area page`);
+        }
+        log.push(`state: ${cities.size} areas, ${stateCount == null ? '?' : stateCount} stations`);
+      } else {
+        log.push(`state: ${page.status}`);
+      }
+    }
+
+    // 2. Due area pages (never scanned, queued by a count rise, or a week old).
+    const due = await db.prepare(
+      `SELECT city FROM iq_discovery_cities WHERE last_scanned < ?1
+       ORDER BY last_scanned ASC, city LIMIT ?2`
+    ).bind(nowSec - DISCOVERY.cityRescanS, maxCities).all();
+    for (const { city } of (due.results || [])) {
+      if (late()) { log.push('deadline'); break; }
+      const page = await scrapeQuietly(cityUrl(city), key);
+      if (!page.ok || !page.html) {
+        // Back off a day, so a page that keeps failing cannot hold a slot every tick.
+        await db.prepare(`UPDATE iq_discovery_cities SET last_scanned = ?2 WHERE city = ?1`)
+          .bind(city, nowSec - DISCOVERY.cityRescanS + DISCOVERY.cityRetryS).run();
+        log.push(`${city}: ${page.status}`);
+        continue;
+      }
+      const keys = [...parseStationLinks(page.html)];
+      const fresh = keys.filter(k => !seedKeys.has(k));
+      const stmts = fresh.map(k => db.prepare(
+        `INSERT OR IGNORE INTO iq_discovery (key, url, status, first_seen) VALUES (?1, ?2, 'candidate', ?3)`
+      ).bind(k, stationUrl(k), nowSec));
+      stmts.push(db.prepare(
+        `UPDATE iq_discovery_cities SET last_scanned = ?2, stations_seen = ?3 WHERE city = ?1`
+      ).bind(city, nowSec, keys.length));
+      await db.batch(stmts);
+      citiesScanned++;
+    }
+
+    // 3. Candidates: new ones first, then rejections whose reason can change.
+    const recheckable = [...RECHECKABLE].map(r => `'${r}'`).join(',');
+    const cands = await db.prepare(
+      `SELECT key, url, attempts FROM iq_discovery
+       WHERE status = 'candidate'
+          OR (status = 'rejected' AND reason IN (${recheckable}) AND checked_at < ?1)
+       ORDER BY (status = 'candidate') DESC, first_seen, key LIMIT ?2`
+    ).bind(nowSec - DISCOVERY.recheckS, maxCandidates).all();
+    let known = null;
+    for (const c of (cands.results || [])) {
+      if (late()) { log.push('deadline'); break; }
+      checked++;
+      const page = await scrapeQuietly(c.url, key);
+      if (!page.ok || !page.html) {
+        const attempts = (c.attempts || 0) + 1;
+        const giveUp = attempts >= DISCOVERY.maxAttempts;
+        await db.prepare(
+          `UPDATE iq_discovery SET attempts = ?2, checked_at = ?3,
+             status = CASE WHEN ?4 THEN 'rejected' ELSE status END,
+             reason = CASE WHEN ?4 THEN 'fetch_failed' ELSE reason END
+           WHERE key = ?1`
+        ).bind(c.key, attempts, nowSec, giveUp ? 1 : 0).run();
+        log.push(`${c.key}: fetch_failed (${page.status})`);
+        continue;
+      }
+      if (!known) known = await loadKnownPositions(db, nowSec);
+      const v = classifyCandidate(page.html, known, Date.now());
+      if (v.verdict !== 'admit') {
+        await db.prepare(
+          `UPDATE iq_discovery SET status = 'rejected', reason = ?2, detail = ?3, checked_at = ?4,
+             attempts = attempts + 1 WHERE key = ?1`
+        ).bind(c.key, v.reason, v.detail || null, nowSec).run();
+        log.push(`${c.key}: ${v.reason}${v.detail ? ' (' + v.detail + ')' : ''}`);
+        continue;
+      }
+      // Admit. Never reuse a slug any station has ever had, or one already
+      // assigned to any discovery row (review/blocked included): history is
+      // keyed on it, and iq_discovery.slug is UNIQUE.
+      const taken = new Set((await loadTargets(db)).map(([s]) => s));
+      const prior = await db.prepare(
+        `SELECT slug FROM iq_scrape_stations UNION SELECT slug FROM iq_discovery WHERE slug IS NOT NULL`
+      ).all();
+      for (const r of (prior.results || [])) taken.add(r.slug);
+      const slug = slugFor(c.key, taken);
+      const status = mode === 'review' ? 'review' : 'active';
+      await db.prepare(
+        `UPDATE iq_discovery SET status = ?2, slug = ?3, name = ?4, lat = ?5, lon = ?6, contributor = ?7,
+           reason = NULL, detail = ?8, checked_at = ?9, decided_at = ?9 WHERE key = ?1`
+      ).bind(c.key, status, slug, v.ex.name || null, v.ex.lat, v.ex.lon, v.contributor || null,
+             v.nearest ? `nearest ${v.nearest}` : null, nowSec).run();
+      // Ingest the page we already hold, so the station is live straight away.
+      if (status === 'active') await ingestStation(db, slug, c.url, v.ex, nowSec);
+      // It now holds its spot for the rest of this pass too: a second device
+      // 40 m away, evaluated next, must be refused exactly as it would be on a
+      // later tick.
+      known.push({ id: 'iqs-' + slug, lat: v.ex.lat, lon: v.ex.lon });
+      added++;
+      log.push(`${c.key}: ${status} as iqs-${slug}`);
+    }
+  } catch (e) {
+    log.push('error: ' + String(e && e.message || e).slice(0, 200));
+  }
+
+  const durationMs = Date.now() - t0;
+  try {
+    await db.prepare(
+      `INSERT INTO iq_discovery_runs (ts, duration_ms, state_count, cities_scanned, candidates_checked, added, detail)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+    ).bind(nowSec, durationMs, stateCount, citiesScanned, checked, added, JSON.stringify(log).slice(0, 1800)).run();
+  } catch (_) { /* table missing until schema-v12 is applied */ }
+  const line = 'iqair discovery: ' + log.join(' | ');
+  if (log.some(l => l.startsWith('error') || l === 'deadline' || / (?:error|http\d|fetch_failed)/.test(l))) console.warn(line);
+  else if (added) console.log(line);
+  return { ran: nowSec, durationMs, mode, stateCount, citiesScanned, candidatesChecked: checked, added, log };
+}
+
 export default {
   async scheduled(event, env, ctx) {
-    // Each 15-min tick scrapes one rotating group (≤3 stations), so a single
-    // invocation stays small and can't be killed mid-batch by a slow window.
-    ctx.waitUntil(runAll(env, { group: groupForScheduledTime(event && event.scheduledTime) }));
+    // Each 15-min tick scrapes one rotating group (a quarter of the stations),
+    // so a single invocation stays small and can't be killed mid-batch by a
+    // slow window. Discovery follows the :52 tick's scrape, never overlaps it.
+    const groupIdx = groupIndexForScheduledTime(event && event.scheduledTime);
+    ctx.waitUntil((async () => {
+      await runAll(env, { groupIdx });
+      if (groupIdx === DISCOVERY_GROUP) await discoveryTick(env);
+    })());
     // Runs alongside, not inside, the scrape: a hung or CPU-killed scrape must
     // not also disable the archive's only automatic recovery path.
     ctx.waitUntil(reviveArchiveIfStale(env));
@@ -360,17 +619,19 @@ export default {
       const db = env.ARCHIVE_DB;
       let groupIdx = 0;
       try {
+        const all = await loadTargets(db);
         const rows = await db.prepare(
           `SELECT slug, last_scrape_ts FROM iq_scrape_stations WHERE active = 1`
         ).all();
         const bySlug = new Map((rows.results || []).map(r => [r.slug, r.last_scrape_ts || 0]));
         let oldest = Infinity;
-        STATION_GROUPS.forEach((idxs, gi) => {
-          const newest = Math.max(...idxs.map(i => bySlug.get(STATIONS[i] && STATIONS[i][0]) || 0));
+        groupsFor(all.length).forEach((idxs, gi) => {
+          if (!idxs.length) return;
+          const newest = Math.max(...idxs.map(i => bySlug.get(all[i][0]) || 0));
           if (newest < oldest) { oldest = newest; groupIdx = gi; }
         });
       } catch (_) { /* default group 0 */ }
-      const out = await runAll(env, { group: STATION_GROUPS[groupIdx] });
+      const out = await runAll(env, { groupIdx });
       return new Response(JSON.stringify({ via: 'watchdog', group: groupIdx, ...out }),
         { headers: { 'Content-Type': 'application/json' } });
     }
@@ -380,10 +641,25 @@ export default {
       if (!want || url.searchParams.get('key') !== want) {
         return new Response('forbidden', { status: 403 });
       }
-      // ?slug=<one> verifies a single station fast; otherwise a full 10-station
-      // run (manual backfill / post-deploy sanity check).
+      // ?slug=<one> verifies a single station fast; otherwise every station
+      // (manual backfill / post-deploy sanity check).
       const onlySlug = url.searchParams.get('slug') || null;
       const out = await runAll(env, { onlySlug });
+      return new Response(JSON.stringify(out, null, 2), { headers: { 'Content-Type': 'application/json' } });
+    }
+    if (url.pathname === '/discover') {
+      // Gated manual discovery pass (same gate as /run). ?state=1 re-reads the
+      // Bali page now; ?cities=N / ?candidates=N widen this one pass (capped).
+      const want = (env.FIRECRAWL_KEY || '').slice(0, 8);
+      if (!want || url.searchParams.get('key') !== want) {
+        return new Response('forbidden', { status: 403 });
+      }
+      const n = (p, d, max) => Math.min(Math.max(parseInt(url.searchParams.get(p) || '', 10) || d, 0), max);
+      const out = await discoveryTick(env, {
+        forceState: url.searchParams.get('state') === '1',
+        maxCities: n('cities', DISCOVERY.citiesPerTick, 12),
+        maxCandidates: n('candidates', DISCOVERY.candidatesPerTick, 6),
+      });
       return new Response(JSON.stringify(out, null, 2), { headers: { 'Content-Type': 'application/json' } });
     }
     return new Response('iqair-scrape worker', { status: 200 });

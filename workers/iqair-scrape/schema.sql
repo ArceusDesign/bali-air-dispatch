@@ -83,3 +83,6 @@ CREATE TABLE IF NOT EXISTS iq_scrape_runs (
 
 CREATE INDEX IF NOT EXISTS idx_iq_hourly_slug_ts  ON iq_scrape_hourly  (slug, ts);
 CREATE INDEX IF NOT EXISTS idx_iq_daily_slug_date ON iq_scrape_daily   (slug, date);
+
+-- Discovery of stations not on the seed list (iq_discovery, iq_discovery_cities,
+-- iq_discovery_runs) is defined in ../../schema-v12-iqair-discovery.sql.
