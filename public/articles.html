@@ -180,7 +180,9 @@ body::before{
 
 .index-row .roman{
   font-family:"Fraunces",serif;font-weight:900;font-variation-settings:"opsz" 144,"SOFT" 0;
-  font-size:clamp(78px,9.5vw,128px);line-height:.85;letter-spacing:-.04em;color:var(--crimson);
+  /* Sized so the widest numeral, VIII (~1.66em), fits its column: 88px max in the
+     148px column, and 6vw keeps it inside the 120px column below 980px. */
+  font-size:clamp(60px,6vw,88px);line-height:.85;letter-spacing:-.04em;color:var(--crimson);
   text-align:left;
 }
 .index-row .roman small{
