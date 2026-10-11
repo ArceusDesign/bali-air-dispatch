@@ -1,9 +1,27 @@
+// Builds the unbranded Word edition of the methodology reference.
+//
+//   NODE_PATH=$(npm root -g) node scripts/build-methodology-docx.js [out.docx]
+//
+// The text comes from DATA-METHODOLOGY.md, parsed at build time. This script
+// used to carry its own hand-copied version of the text, which fell weeks
+// behind the markdown (stale station counts, missing sections), so the
+// markdown is now the only copy and this file decides presentation alone.
+// The parser covers exactly the markdown that file uses — headings, paragraphs,
+// tables, bullet and numbered lists, fenced code, one-line blockquotes, rules,
+// **bold**, *italic* and `code` — and stops with an error on anything it
+// would otherwise drop or mis-render, rather than produce a quietly wrong
+// document. The output is a working document: .docx is gitignored and must
+// never be committed (see .gitignore).
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   Table, TableRow, TableCell, WidthType, ShadingType, BorderStyle,
-  TableOfContents, PageBreak, LevelFormat, convertInchesToTwip
+  TableOfContents, PageBreak, LevelFormat,
 } = require('docx');
 const fs = require('fs');
+const path = require('path');
+
+const SOURCE = path.join(__dirname, '..', 'DATA-METHODOLOGY.md');
+const OUT = process.argv[2] || path.join(__dirname, '..', 'Bali-Air-Dispatch-Data-Methodology.docx');
 
 // ── page geometry (A4, 2cm margins) ───────────────────────────────────
 const PAGE_W = 11906, PAGE_H = 16838, MARGIN = 1134;
@@ -22,64 +40,43 @@ const CALLBG = 'F4F4F4';
 const ACCENT = '7A1F1F';
 
 // ── helpers ───────────────────────────────────────────────────────────
-const P = (text, opts = {}) => new Paragraph({
-  spacing: { before: opts.before ?? 0, after: opts.after ?? 120, line: opts.line ?? 276 },
-  alignment: opts.align,
-  indent: opts.indent,
-  border: opts.border,
-  children: [new TextRun({
-    text, font: opts.font || SANS, size: opts.size || 20,
-    color: opts.color || INK, bold: opts.bold, italics: opts.italics,
-  })],
+// A run is a [text, {bold, italics, code}] pair, as produced by inline().
+const textRun = (r, base) => new TextRun({
+  text: r[0],
+  font: r[1].code ? MONO : (base.font || SANS),
+  size: r[1].code ? Math.max(base.size - 2, 16) : base.size,
+  color: base.color,
+  bold: Boolean(base.bold || r[1].bold),
+  italics: Boolean(base.italics || r[1].italics),
 });
 
-// rich paragraph from [text, {bold|italics|...}] pairs
-const RP = (runs, opts = {}) => new Paragraph({
-  spacing: { before: opts.before ?? 0, after: opts.after ?? 120, line: opts.line ?? 276 },
-  alignment: opts.align,
-  indent: opts.indent,
-  shading: opts.shading,
-  border: opts.border,
-  children: runs.map(r => new TextRun({
-    text: r[0],
-    font: (r[1] && r[1].font) || opts.font || SANS,
-    size: (r[1] && r[1].size) || opts.size || 20,
-    color: (r[1] && r[1].color) || opts.color || INK,
-    bold: Boolean(r[1] && r[1].bold), italics: Boolean(r[1] && r[1].italics),
-  })),
-});
+// rich paragraph
+const RP = (runs, opts = {}) => {
+  const base = { size: opts.size || 20, color: opts.color || INK, italics: opts.italics };
+  return new Paragraph({
+    spacing: { before: opts.before ?? 0, after: opts.after ?? 120, line: opts.line ?? 276 },
+    children: runs.map(r => textRun(r, base)),
+  });
+};
 
-const H1 = (t) => new Paragraph({
-  heading: HeadingLevel.HEADING_1,
-  spacing: { before: 380, after: 160 },
-  children: [new TextRun({ text: t, font: SERIF, size: 30, bold: true, color: INK })],
+const heading = (level, size, color, before, after) => (t) => new Paragraph({
+  heading: level,
+  spacing: { before, after },
+  children: [new TextRun({ text: t, font: SERIF, size, bold: true, color })],
 });
-const H2 = (t) => new Paragraph({
-  heading: HeadingLevel.HEADING_2,
-  spacing: { before: 280, after: 120 },
-  children: [new TextRun({ text: t, font: SERIF, size: 24, bold: true, color: INK })],
-});
-const H3 = (t) => new Paragraph({
-  heading: HeadingLevel.HEADING_3,
-  spacing: { before: 220, after: 100 },
-  children: [new TextRun({ text: t, font: SERIF, size: 21, bold: true, color: SOFT })],
-});
+const H1 = heading(HeadingLevel.HEADING_1, 30, INK, 380, 160);
+const H2 = heading(HeadingLevel.HEADING_2, 24, INK, 280, 120);
 
 const BULLET = (runs) => new Paragraph({
   numbering: { reference: 'bullets', level: 0 },
   spacing: { after: 90, line: 276 },
-  children: runs.map(r => new TextRun({
-    text: r[0], font: SANS, size: 20, color: INK,
-    bold: Boolean(r[1] && r[1].bold), italics: Boolean(r[1] && r[1].italics),
-  })),
+  children: runs.map(r => textRun(r, { size: 20, color: INK })),
 });
-const NUM = (runs) => new Paragraph({
-  numbering: { reference: 'numbers', level: 0 },
+// `instance` restarts the count, so each numbered list in the source starts at 1.
+const NUM = (runs, instance) => new Paragraph({
+  numbering: { reference: 'numbers', level: 0, instance },
   spacing: { after: 110, line: 276 },
-  children: runs.map(r => new TextRun({
-    text: r[0], font: SANS, size: 20, color: INK,
-    bold: Boolean(r[1] && r[1].bold), italics: Boolean(r[1] && r[1].italics),
-  })),
+  children: runs.map(r => textRun(r, { size: 20, color: INK })),
 });
 
 // callout: shaded block with a left accent border
@@ -88,45 +85,31 @@ const CALLOUT = (runs) => new Paragraph({
   indent: { left: 220, right: 220 },
   shading: { type: ShadingType.CLEAR, fill: CALLBG, color: 'auto' },
   border: { left: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 10 } },
-  children: runs.map(r => new TextRun({
-    text: r[0], font: SANS, size: 20, color: SOFT,
-    bold: Boolean(r[1] && r[1].bold), italics: Boolean(r[1] && r[1].italics),
-  })),
+  children: runs.map(r => textRun(r, { size: 20, color: SOFT })),
 });
 
 const CODE = (line) => new Paragraph({
   spacing: { after: 20, line: 240 },
   indent: { left: 260 },
-  children: [new TextRun({ text: line, font: MONO, size: 17, color: SOFT })],
+  // A blank code line still needs a run, or Word collapses it.
+  children: [new TextRun({ text: line || ' ', font: MONO, size: 17, color: SOFT })],
 });
 
-// Cell content is either a plain string (one run) or an array of [text, opts]
-// run-pairs (one paragraph, several runs). Nothing here needs multi-paragraph
-// cells. Detecting the two cases explicitly matters: an array of run-pairs used
-// to be walked as though it were a list of paragraphs, so a PAIR was treated as
-// a list of runs and `x[1].bold` landed on the STRING — resolving to
-// String.prototype.bold, a function, which Word rejects as a b/@val attribute.
-const cell = (content, w, o = {}) => {
-  const runs = typeof content === 'string' ? [[content, {}]] : content;
-  return new TableCell({
-    width: { size: w, type: WidthType.DXA },
-    shading: o.head ? { type: ShadingType.CLEAR, fill: HEADBG, color: 'auto' } : undefined,
-    margins: { top: 70, bottom: 70, left: 110, right: 110 },
-    children: [new Paragraph({
-      spacing: { after: 0, line: 252 },
-      alignment: o.align,
-      children: runs.map(x => new TextRun({
-        text: String(x[0]),
-        font: (x[1] && x[1].font) || SANS,
-        size: o.head ? 17 : 18,
-        bold: o.head ? true : Boolean(x[1] && x[1].bold),
-        italics: Boolean(x[1] && x[1].italics),
-        color: o.head ? INK : ((x[1] && x[1].color) || SOFT),
-      })),
-    })],
-  });
-};
+const cell = (runs, w, o = {}) => new TableCell({
+  width: { size: w, type: WidthType.DXA },
+  shading: o.head ? { type: ShadingType.CLEAR, fill: HEADBG, color: 'auto' } : undefined,
+  margins: { top: 70, bottom: 70, left: 110, right: 110 },
+  children: [new Paragraph({
+    spacing: { after: 0, line: 252 },
+    children: runs.map(r => textRun(r, {
+      size: o.head ? 17 : 18,
+      bold: o.head,
+      color: o.head ? INK : SOFT,
+    })),
+  })],
+});
 
+// header is null for the markdown key/value tables, whose header row is empty.
 const TABLE = (widths, header, rows) => new Table({
   columnWidths: widths,
   width: { size: widths.reduce((a, b) => a + b, 0), type: WidthType.DXA },
@@ -139,10 +122,10 @@ const TABLE = (widths, header, rows) => new Table({
     insideVertical:   { style: BorderStyle.SINGLE, size: 2, color: RULE },
   },
   rows: [
-    new TableRow({
+    ...(header ? [new TableRow({
       tableHeader: true,
       children: header.map((h, i) => cell(h, widths[i], { head: true })),
-    }),
+    })] : []),
     ...rows.map(r => new TableRow({
       children: r.map((c, i) => cell(c, widths[i], {})),
     })),
@@ -156,39 +139,118 @@ const HR = () => new Paragraph({
   children: [],
 });
 
-// ── document body ─────────────────────────────────────────────────────
-const body = [];
+// ── inline markdown ───────────────────────────────────────────────────
+// Straight quotes become typographic ones outside code: an opening quote
+// follows a space, an opening bracket or a dash, or starts the text.
+const curly = (s, prev) => s.replace(/['"]/g, (q, i) => {
+  const before = i > 0 ? s[i - 1] : prev;
+  const opens = !before || /[\s(\[—–-]/.test(before);
+  if (q === "'") return opens ? '‘' : '’';
+  return opens ? '“' : '”';
+});
 
-// Title block
+// Splits a line into runs on **bold**, *italic* and `code`. Markers toggle,
+// so bold and italic nest either way round. An unclosed marker is a typo in
+// the source that would otherwise run to the end of the paragraph, so it
+// stops the build instead.
+function inline(text, where) {
+  const runs = [];
+  let bold = false, italics = false, buf = '', last = '';
+  const flush = (code = false) => {
+    if (!buf) return;
+    const t = code ? buf : curly(buf, last);
+    runs.push([t, { bold, italics, code }]);
+    last = t[t.length - 1];
+    buf = '';
+  };
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '`') {
+      const close = text.indexOf('`', i + 1);
+      if (close < 0) throw new Error(`unclosed \` in ${where}: ${text}`);
+      flush();
+      buf = text.slice(i + 1, close);
+      flush(true);
+      i = close;
+    } else if (c === '*' && text[i + 1] === '*') {
+      flush(); bold = !bold; i++;
+    } else if (c === '*') {
+      flush(); italics = !italics;
+    } else {
+      buf += c;
+    }
+  }
+  flush();
+  if (bold || italics) throw new Error(`unclosed ${bold ? '**' : '*'} in ${where}: ${text}`);
+  return runs;
+}
+
+const plain = (runs) => runs.map(r => r[0]).join('');
+
+// ── tables ────────────────────────────────────────────────────────────
+const splitRow = (line) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(s => s.trim());
+
+// Column widths follow the text each column holds: a blend of its longest and
+// its average cell, clamped so a short label column stays readable and a long
+// prose column cannot squeeze the others to nothing.
+function columnWidths(rows) {
+  const n = rows[0].length;
+  const weight = [];
+  for (let c = 0; c < n; c++) {
+    const lens = rows.map(r => (r[c] || '').length);
+    const avg = lens.reduce((a, b) => a + b, 0) / lens.length;
+    weight.push(Math.min(Math.max(0.5 * avg + 0.5 * Math.max(...lens), 10), 120));
+  }
+  // Every column gets a floor; the rest of the width is shared by weight.
+  const FLOOR = 1100;
+  const sum = weight.reduce((a, b) => a + b, 0);
+  const spare = TW - FLOOR * n;
+  const widths = weight.map(w => FLOOR + Math.floor(spare * w / sum));
+  widths[n - 1] += TW - widths.reduce((a, b) => a + b, 0);
+  return widths;
+}
+
+// ── document body ─────────────────────────────────────────────────────
+const lines = fs.readFileSync(SOURCE, 'utf8').replace(/\r\n/g, '\n').split('\n');
+const body = [];
+let i = 0;
+const at = () => `${path.basename(SOURCE)}:${i + 1}`;
+const skipBlank = () => { while (i < lines.length && !lines[i].trim()) i++; };
+
+// Title block: "# Kicker — Title", the "###" subtitle under it, and the
+// italic note before the first rule.
+skipBlank();
+const titleMatch = /^# (.+)$/.exec(lines[i]);
+if (!titleMatch) throw new Error(`${at()}: expected the "# " title`);
+const [kicker, title] = titleMatch[1].includes(' — ') ? titleMatch[1].split(' — ') : ['', titleMatch[1]];
+i++; skipBlank();
+let subtitle = '';
+if (/^### /.test(lines[i])) { subtitle = lines[i].slice(4).trim(); i++; skipBlank(); }
+const note = [];
+while (i < lines.length && lines[i].trim() !== '---') { if (lines[i].trim()) note.push(lines[i].trim()); i++; }
+i++;
+
 body.push(new Paragraph({ spacing: { before: 1900, after: 0 }, children: [] }));
-body.push(new Paragraph({
+if (kicker) body.push(new Paragraph({
   spacing: { after: 60 },
-  children: [new TextRun({ text: 'BALI AIR DISPATCH', font: SANS, size: 20, bold: true, color: FAINT, characterSpacing: 60 })],
+  children: [new TextRun({ text: kicker.toUpperCase(), font: SANS, size: 20, bold: true, color: FAINT, characterSpacing: 60 })],
 }));
 body.push(new Paragraph({
   spacing: { after: 140 },
-  children: [new TextRun({ text: 'Data Sources and Methodology', font: SERIF, size: 52, bold: true, color: INK })],
+  children: [new TextRun({ text: title, font: SERIF, size: 52, bold: true, color: INK })],
 }));
-body.push(new Paragraph({
+if (subtitle) body.push(new Paragraph({
   spacing: { after: 260 },
-  children: [new TextRun({
-    text: 'A technical reference: what we collect, how often, what we correct, and what we do not claim',
-    font: SERIF, size: 24, italics: true, color: SOFT,
-  })],
+  children: [new TextRun({ text: curly(subtitle), font: SERIF, size: 24, italics: true, color: SOFT })],
 }));
 body.push(new Paragraph({
   spacing: { after: 0 },
   border: { top: { style: BorderStyle.SINGLE, size: 6, color: RULE, space: 10 } },
   children: [],
 }));
-body.push(RP([
-  ['Prepared 3 September 2026. Describes the system as deployed on that date. ', { italics: true }],
-  ['Every figure in this document is reproducible from the public API described in §10.', { italics: true }],
-], { before: 140, color: FAINT, size: 19 }));
-
+if (note.length) body.push(RP(inline(note.join(' '), 'title note'), { before: 140, color: FAINT, size: 19 }));
 body.push(new Paragraph({ children: [new PageBreak()] }));
 
-// TOC
 body.push(new Paragraph({
   spacing: { after: 200 },
   children: [new TextRun({ text: 'Contents', font: SERIF, size: 28, bold: true, color: INK })],
@@ -196,267 +258,103 @@ body.push(new Paragraph({
 body.push(new TableOfContents('Contents', { hyperlink: true, headingStyleRange: '1-2' }));
 body.push(new Paragraph({ children: [new PageBreak()] }));
 
-// 1
-body.push(H1('1.  Purpose of this document'));
-body.push(P('Bali Air Dispatch is a non-commercial public-interest archive of particulate-matter readings across Bali. It operates no sensors of its own. It aggregates eight independent monitoring networks into a single continuously-archived record, applies one published correction, and publishes the result openly.'));
-body.push(P('This document is the technical reference for that process. It is written to be checked rather than trusted: every rule below is stated precisely enough to be independently verified against the open API, and the sections on limitations (§9) are as detailed as the sections on method.'));
-body.push(P('Three things are worth stating at the outset, because they shape everything that follows:'));
-body.push(BULLET([['We do not own any measurement in this archive. ', { bold: true }], ['Every reading originates from a third-party network and remains subject to that network’s own terms.']]));
-body.push(BULLET([['Low-cost sensors are not reference-grade instruments. ', { bold: true }], ['Nothing here is offered as a substitute for a calibrated reference monitor.']]));
-body.push(BULLET([['One methodological choice — humidity correction — changes the headline compliance figure by roughly 29 percentage points. ', { bold: true }], ['That finding is set out in full in §6, because any discussion of what the data shows has to begin with it.']]));
+// "## 3. Title" → "3.  Title", the two-space gap the earlier edition used;
+// "### 3.1 Title" → "3.1  Title".
+const sectionTitle = (t) => curly(t.replace(/^(\d+(?:\.\d+)*\.?)\s+/, '$1  '));
 
-// 2
-body.push(H1('2.  Summary'));
-body.push(TABLE([3400, 6200], ['Item', 'Value'], [
-  ['Networks ingested', '8 (AirGradient, IQAir, PurpleAir, AQICN/WAQI, Nafas, Smart Citizen, OpenAQ, Airly)'],
-  ['Stations in catalogue', '78'],
-  ['Stations reporting live', '39 (at time of writing)'],
-  ['Government reference stations available', '1 — Denpasar Lumintang (KLHK), via AQICN'],
-  ['Archive depth', 'Earliest record 27 September 2023; 4,197 station-days total; longest single station 572 days'],
-  ['Collection interval', '15 minutes, continuous'],
-  ['Correction applied', 'US-EPA 2021 humidity correction: AirGradient and PurpleAir since 21 July 2026; OpenAQ relays of AirGradient units, from the humidity OpenAQ carries for the device, since 16 September 2026'],
-  ['Directly-contributed (pushed) stations', '1 — Amed, East Bali; published raw, uncorrected — see §5.6'],
-  ['Published intervals', 'Raw (15-minute), hourly, daily'],
-  ['Licence', 'Open, attribution requested; full archive downloadable as JSON or CSV'],
-]));
+// Everything after the last rule (the closing colophon) is set small and faint.
+const lastRule = lines.map(l => l.trim()).lastIndexOf('---');
+let numberedLists = 0;
 
-// 3
-body.push(H1('3.  The networks we ingest'));
-body.push(P('Each network is polled independently. A network that fails or times out is simply absent from that cycle; it never blocks or degrades the others. The upstream timeout is 8 seconds per request.'));
-body.push(TABLE([1450, 2750, 1750, 1650, 2000],
-  ['Network', 'What it is', 'Instrument', 'Access', 'Catalogued stations'], [
-  ['AirGradient', 'Open community network; the densest source in Bali', 'AirGradient O-1PST (Plantower PM module)', 'Public API, no key', '19'],
-  ['OpenAQ', [[ 'Aggregator. ' ], ['In Bali, every OpenAQ station is an AirGradient unit relayed onward', { bold: true }], [' — see §6']], '(relayed)', 'Public API, key', '22'],
-  ['IQAir', 'Commercial network; mixture of private hosts and contributors', 'Various', 'Public station pages', '12'],
-  ['PurpleAir', 'Open community network', 'PurpleAir (Plantower PM module)', 'Public API, key', '2'],
-  ['Smart Citizen', 'Open citizen-science platform (Fab Lab Barcelona)', 'SmartCitizen Kit 2.3', 'Public API', '11'],
-  ['Nafas', 'Indonesian commercial network', 'Nafas Foundation sensor', 'Public JSON feed', '7'],
-  ['AQICN / WAQI', [['Aggregator; carries the '], ['KLHK government reference station', { bold: true }]], 'Reference-grade (government); GAIA (community)', 'Public API, token', '2'],
-  ['Airly', 'Commercial network', 'Airly sensor', 'Public API, key', '2'],
-]));
-body.push(SPACER(160));
-body.push(RP([['Geographic filter. ', { bold: true }], ['All networks are filtered to the same Bali bounding box: latitude −9.2 to −8.0, longitude 114.4 to 115.8. The filter is applied identically in the live aggregator and the archive worker.']], { before: 120 }));
-body.push(RP([['On the single government station. ', { bold: true }], ['Of 78 catalogued stations, exactly one is a government reference instrument: Denpasar Lumintang (KLHK), reached through AQICN. It is not enumerated by AQICN’s map endpoint and has to be probed directly by station ID. This is the principal monitoring gap in the record and is the main reason the archive exists in its present form.']]));
+const isBlockStart = (l) => /^(#{1,6} |[-*] |\d+\. |\||```|> )/.test(l) || l.trim() === '---';
 
-body.push(H2('3.1  A ninth, categorically different source: direct contribution'));
-body.push(RP([['The eight networks above are all '], ['polled', { bold: true }], [' — we call a public API on our own schedule. One station reaches us the opposite way: a resident-operated sensor '], ['pushes', { bold: true }], [' its own readings directly to this project’s ingest endpoint. It is not a third-party network we ingest from, which is why it is not counted among the eight above; it is a second point of entry into the same archive, one this project itself operates.']]));
-body.push(RP([['As of this writing there is one such station: '], ['cs-amed-01', { font: MONO }], [' (“Amed (north)”), a Winsen ZH03B unit on Bali’s remote east coast, reporting since 27 August 2026. It fills a real gap — the nearest other monitor of any kind, a PurpleAir unit, is '], ['33.8 km', { bold: true }], [' away, and no multi-year record exists anywhere in East Bali. Its readings are published '], ['raw, not humidity-corrected', { bold: true }], [', for a specific and important reason set out in full in §5.6, which any use of this station’s figures should be read alongside.']]));
-body.push(P('For privacy, the contributor is not named in this document; the project’s practice throughout is that operators and contributors are not identified.'));
+while (i < lines.length) {
+  const line = lines[i];
+  const t = line.trim();
+  if (!t) { i++; continue; }
 
-// 4
-body.push(H1('4.  Collection schedule'));
-body.push(P('Three scheduled processes run continuously on Cloudflare’s edge network.'));
-body.push(TABLE([2000, 2600, 5000], ['Process', 'Schedule', 'Function'], [
-  ['Universal archive', [['*/15 * * * *', { font: MONO }], [' — every 15 minutes, on the hour and at :15, :30, :45']], 'Polls all live networks, writes one snapshot row per reporting station, upserts the station catalogue, rolls up hourly and daily aggregates'],
-  ['IQAir capture', [['7,22,37,52 * * * *', { font: MONO }], [' — every 15 minutes, offset by 7 minutes']], 'IQAir publishes only via station pages, so these are captured separately. One rotating group of ≤3 stations per tick (4 groups, full cycle each hour) to stay inside execution limits'],
-  ['Archive watchdog', 'Runs within the IQAir tick', 'If the universal archive has not written for 90 minutes, the watchdog triggers a recovery run. Added after a CPU-limit failure caused a 60-minute hole in the record'],
-]));
-body.push(SPACER(160));
-body.push(RP([['Deliberate offset. ', { bold: true }], ['The IQAir schedule is offset from the universal archive so the two never contend for the same execution window.']], { before: 120 }));
-body.push(RP([['Retry behaviour. ', { bold: true }], ['The archive’s fetch of the live aggregate retries three times with linear back-off. A single transient failure previously dropped an entire 15-minute tick with nothing to notice it.']]));
-body.push(RP([['Idempotency. ', { bold: true }], ['Every write is keyed. Re-running any tick is a no-op — reruns cannot double-count or corrupt the record.']]));
+  if (t === '---') {
+    if (i === lastRule) body.push(HR());
+    i++; continue;
+  }
 
-// 5
-body.push(H1('5.  Data corrections'));
-body.push(H2('5.1  What is corrected, and what is not'));
-body.push(RP([['We apply exactly one correction: the '], ['US-EPA 2021 humidity correction for Plantower-based optical sensors', { bold: true }], ['. It is applied to '], ['two networks only', { bold: true }], [' — AirGradient and PurpleAir — because those are the two whose public feeds carry an uncorrected Plantower reading.']]));
-body.push(RP([['All six other networks are published exactly as supplied.', { bold: true }], [' We do not adjust, scale, calibrate or reconcile them.']]));
-body.push(RP([['One extension, since 16 September 2026: ', { bold: true }], ['an AirGradient unit that reaches us only as an OpenAQ relay is corrected the same way, using the humidity OpenAQ carries for that same device (§5.7). It is the same instrument and the same formula; only the route differs.']]));
-body.push(RP([['Correction has been applied since '], ['21 July 2026', { bold: true }], ['. Rows archived before that date are uncorrected, and the API reports this per station in the field '], ['pm25_correction_applied_since', { font: MONO }], ['.']]));
+  let m;
+  if ((m = /^## (.+)$/.exec(line))) { body.push(H1(sectionTitle(m[1]))); i++; continue; }
+  if ((m = /^### (.+)$/.exec(line))) { body.push(H2(sectionTitle(m[1]))); i++; continue; }
+  if (/^#/.test(line)) throw new Error(`${at()}: unsupported heading level: ${line}`);
 
-body.push(H2('5.2  Why the correction is necessary'));
-body.push(P('A Plantower module sizes particles optically. In humid air, water-swollen particles scatter light as though they carried more mass than they do, so the sensor over-reads. Bali’s 55–70% relative humidity inflates uncorrected readings substantially.'));
-body.push(P('AirGradient applies this same formula to produce the corrected value shown on its own dashboard, but that field is exposed only on the device’s local API and its token-gated cloud API — never on the anonymous public feed we read. The algorithm is published and we already ingest both required inputs, so we compute it ourselves rather than publish values we know run high.'));
+  if (t.startsWith('```')) {
+    i++;
+    while (i < lines.length && !lines[i].trim().startsWith('```')) body.push(CODE(lines[i++].replace(/\s+$/, '')));
+    if (i >= lines.length) throw new Error('unclosed ``` code block');
+    i++;
+    body.push(SPACER(140));
+    continue;
+  }
 
-body.push(H2('5.3  The formula'));
-body.push(RP([['Let '], ['a', { font: MONO, bold: true }], [' = raw PM2.5 (µg/m³) and '], ['h', { font: MONO, bold: true }], [' = relative humidity (%):']]));
-[
-  'a < 30            →   0.524·a − 0.0862·h + 5.75',
-  '',
-  '30 ≤ a < 50       →   f = a/20 − 1.5',
-  '                      (0.786·f + 0.524·(1−f))·a − 0.0862·h + 5.75',
-  '',
-  '50 ≤ a < 210      →   0.786·a − 0.0862·h + 5.75',
-  '',
-  '210 ≤ a < 260     →   f = a/50 − 4.2',
-  '                      (0.69·f + 0.786·(1−f))·a − 0.0862·h·(1−f)',
-  '                      + 2.966·f + 5.75·(1−f) + 0.000884·a²·f',
-  '',
-  'a ≥ 260           →   2.966 + 0.69·a + 0.000884·a²',
-].forEach(l => body.push(CODE(l)));
-body.push(SPACER(140));
-body.push(P('Negative results are clamped to zero, per the same EPA guidance.', { before: 100 }));
-body.push(RP([['Both inputs are mandatory.', { bold: true }], [' If either the raw reading or the humidity reading is missing, no correction is applied and the raw value is published unchanged, flagged as uncorrected. This is enforced by explicit type checking: a sensor with a failed humidity channel must not be silently corrected as though humidity were 0%, which is the maximum-inflation case.']]));
-body.push(RP([['PurpleAir input selection.', { bold: true }], [' The correction is fed PurpleAir’s '], ['cf_1', { font: MONO }], [' field, not '], ['atm', { font: MONO }], ['. The EPA regression was fitted on CF=1 data; the ATM field applies its own high-range scaling, and feeding it under-corrects above roughly 25 µg/m³ — precisely the burn events this archive exists to document.']]));
+  if (t.startsWith('|')) {
+    const rows = [];
+    while (i < lines.length && lines[i].trim().startsWith('|')) rows.push(splitRow(lines[i++]));
+    const [head, sep, ...data] = rows;
+    if (!sep || !sep.every(s => /^:?-+:?$/.test(s))) throw new Error(`${at()}: table without a --- separator row`);
+    if (data.some(r => r.length !== head.length)) throw new Error(`${at()}: table row with the wrong number of cells`);
+    const where = `table above ${at()}`;
+    const widths = columnWidths(head.every(h => !h) ? data : [head, ...data]);
+    body.push(TABLE(
+      widths,
+      head.every(h => !h) ? null : head.map(h => inline(h, where)),
+      data.map(r => r.map(c => inline(c, where))),
+    ));
+    body.push(SPACER(160));
+    continue;
+  }
 
-body.push(H2('5.4  The correction is fully reversible'));
-body.push(RP([['Every corrected row stores the exact uncorrected figure in '], ['pm25_raw', { font: MONO }], [', alongside the humidity used. The invariant '], ['epaCorrect(pm25_raw, humidity) = pm25', { font: MONO }], [' holds for every archived row, so the correction can be independently recomputed, audited, or removed entirely. '], ['Nothing the sensor actually reported is discarded.', { bold: true }]]));
+  if (/^[-*] /.test(t)) {
+    while (i < lines.length && /^[-*] /.test(lines[i].trim())) {
+      body.push(BULLET(inline(lines[i].trim().slice(2), at())));
+      i++;
+    }
+    continue;
+  }
 
-body.push(H2('5.5  Measured magnitude'));
-body.push(RP([['Across 800 consecutive readings from one AirGradient station ('], ['ag-195872', { font: MONO }], ['):']]));
-body.push(TABLE([3200, 3200, 3200], ['Statistic', 'Raw', 'Corrected'], [
-  ['Mean', '15.6 µg/m³', '9.9 µg/m³'],
-  ['Median', '11.6 µg/m³', '7.0 µg/m³'],
-  ['Maximum', '75.5 µg/m³', '60.4 µg/m³'],
-]));
-body.push(SPACER(160));
-body.push(RP([['The raw figure runs higher by a '], ['mean of 5.8 µg/m³', { bold: true }], [', a '], ['median ratio of 1.63×', { bold: true }], ['. In 5.1% of readings — low concentrations in dry conditions — the correction '], ['raises', { italics: true }], [' the value rather than lowering it, which is the expected behaviour of the EPA regression and not an error.']], { before: 120 }));
+  if (/^\d+\. /.test(t)) {
+    // A numbered list runs on across blank lines between its items (§9 spaces them).
+    const instance = ++numberedLists;
+    for (;;) {
+      body.push(NUM(inline(lines[i].trim().replace(/^\d+\. /, ''), at()), instance));
+      i++;
+      let j = i;
+      while (j < lines.length && !lines[j].trim()) j++;
+      if (j < lines.length && /^\d+\. /.test(lines[j].trim())) i = j; else break;
+    }
+    continue;
+  }
 
-body.push(H2('5.6  The one exception: the Amed contributed station'));
-body.push(RP([['Every correction rule above governs sources we '], ['poll', { bold: true }], [' on a fixed schedule. One station reaches us differently — see §3.1 — and its correction status needs to be stated on its own.']]));
-body.push(RP([['What is published. ', { bold: true }], ['cs-amed-01', { font: MONO }], [' (“Amed (north)”) reports its PM2.5 reading exactly as the device measures it, with no adjustment. Verified against 500 consecutive archived readings: '], ['every single one', { bold: true }], [' carries '], ['pm25_raw = null', { font: MONO }], [' and '], ['pm25_corrected = false', { font: MONO }], ['. This is not a default that happens to apply — it is enforced explicitly by the ingest endpoint at the point of storage.']]));
-body.push(RP([['Why raw, not corrected — precisely. ', { bold: true }], ['The station’s controller does report a humidity reading; every one of the 500 sampled rows carries one. So the missing ingredient is not a humidity '], ['channel', { italics: true }], [', and it is not that the correction formula in §5.3 is unsuited to this hardware — it is the same EPA formula applied to AirGradient and PurpleAir. What is missing is '], ['confirmation that the humidity sensor is measuring the same air as the particulate sensor', { bold: true }], [' — genuinely co-located, not a reading borrowed from elsewhere on the property or from a different device. Applying the formula without that confirmation would not fail loudly; it would silently produce a plausible-looking but potentially wrong number, which this project judges worse than an honest, clearly-labelled raw one. The ingest system encodes this as an explicit per-station flag, defaulted to '], ['off', { italics: true }], [', that only this project can set once co-location with this specific contributor is confirmed — not an assumption baked into the correction logic itself.']]));
-body.push(RP([['What the raw values look like. ', { bold: true }], ['Over its first 500 readings (27 August – 3 September 2026):']]));
-body.push(TABLE([4800, 4800], ['Statistic', 'Value (raw, uncorrected)'], [
-  ['Mean', '15.1 µg/m³'],
-  ['Median', '13.5 µg/m³'],
-  ['Maximum', '32.0 µg/m³'],
-]));
-body.push(SPACER(160));
-body.push(P('These figures should be read against the Raw column in §5.5, not the Corrected one — they are not directly comparable to a corrected reading from any other station on this network without first accounting for the same humidity over-read described in §5.2.', { before: 120 }));
-body.push(RP([['Statistical treatment. ', { bold: true }], ['A contributed reading is unverified by construction: this project did not site the device and cannot inspect it. Consistent with every other unverified or non-ambient reading on this network (§8.3), '], ['cs-amed-01', { font: MONO }], [' is shown on the public map and published through the API from its first reading onward, but it is '], ['excluded from every island-wide statistic', { bold: true }], [' — median, worst-current-reading, WHO exceedance share — until co-location is confirmed. This is the same treatment given to stations flagged '], ['suspected_indoor', { font: MONO }], [': published in full, held out of ambient claims.']]));
+  if (t.startsWith('> ')) {
+    const quote = [];
+    while (i < lines.length && lines[i].trim().startsWith('>')) quote.push(lines[i++].trim().replace(/^>\s?/, ''));
+    body.push(CALLOUT(inline(quote.join(' '), at())));
+    continue;
+  }
 
-// 6
-body.push(H2('5.7  The relay route: OpenAQ carries the device’s own humidity'));
-body.push(RP([['AirGradient relays its units to OpenAQ with more than PM2.5: each relayed location carries the device’s '], ['relative humidity', { bold: true }], [' and temperature as separate sensors, hourly. That humidity comes from the same unit, in the same air, as the particulate reading — the co-location the correction requires (§5.6) — so from '], ['16 September 2026', { bold: true }], [' an AirGradient relay is corrected with the identical formula (§5.3) from OpenAQ’s own humidity, and '], ['pm25_raw', { font: MONO }], [' retains the as-supplied figure exactly as for a direct reading.']]));
-body.push(P('Three conditions gate it, and each falls back to publishing the as-supplied figure, flagged uncorrected:'));
-body.push(BULLET([['the OpenAQ provider must be AirGradient — the formula is for Plantower modules, and the provider field is the only instrument evidence a relay carries;']]));
-body.push(BULLET([['the humidity reading must fall within ', {}], ['90 minutes', { bold: true }], [' of the PM2.5 reading, so a dead humidity channel’s last value is never applied to live particulate data;']]));
-body.push(BULLET([['both inputs must be present and finite.']]));
-body.push(RP([['Why it was not done earlier. ', { bold: true }], ['Until September 2026 the pipeline read only the PM2.5 sensor from OpenAQ, so no humidity was available to correct with, and “OpenAQ rows are as supplied” described what was fetched rather than what OpenAQ offers. The change matters most for the units that have no direct feed (§6.4): for them the relay is the only published figure, and uncorrected it runs about 1.6× high in Bali’s humidity (§5.5). Relay readings archived before 16 September 2026 are being corrected retrospectively from OpenAQ’s hourly humidity for the same hours, with the change recorded in '], ['archive_corrections', { font: MONO }], ['; rows for which no matching humidity hour exists stay as supplied.']]));
-body.push(P('The relay remains the coarser record: hourly, and republished with a lag (§6.3). Where a direct feed exists it still wins outright (§6.4).'));
-
-body.push(H1('6.  The AirGradient / OpenAQ duplication, and why it matters'));
-body.push(P('This section is the most consequential in the document, because it determines what number a given station appears to report.'));
-body.push(H2('6.1  The situation'));
-body.push(RP([['Every OpenAQ station in Bali is an AirGradient unit relayed through OpenAQ.', { bold: true }], [' The same physical device therefore reaches us twice: once directly from AirGradient, once as an OpenAQ record. The relay reports the device’s coordinates unchanged — all identified pairs match at exactly 0.000000 m separation, not merely “nearby.”']]));
-body.push(P('The two copies are not equivalent:'));
-body.push(BULLET([['The ', {}], ['direct', { bold: true }], [' feed is timestamped to the minute and carries the humidity inputs, so ', {}], ['we correct it', { bold: true }], ['.']]));
-body.push(BULLET([['The ', {}], ['relayed', { bold: true }], [' copy is an hourly re-publication. Until 16 September 2026 it was published ', {}], ['exactly as OpenAQ supplies it — uncorrected', { bold: true }], ['; since then it is corrected from the hourly humidity OpenAQ carries for the same device (§5.7), and published raw only where that humidity is absent. The comparison in §6.2 was measured before that change and is unaffected: the as-supplied figure is retained in pm25_raw on every corrected row.']]));
-
-body.push(H2('6.2  Measured difference, same physical device'));
-body.push(RP([['Station '], ['ag-195872', { font: MONO }], [' and its relay '], ['oq-6403967', { font: MONO }], [' are one device. Over '], ['295 matched hours (20 August – 2 September 2026)', { bold: true }], [':']]));
-body.push(TABLE([3400, 3100, 3100],
-  ['Measure', 'AirGradient (direct, corrected)', 'OpenAQ (relay, uncorrected)'], [
-  ['Mean PM2.5', '18.7 µg/m³', '27.4 µg/m³'],
-  ['Median PM2.5', '13.9 µg/m³', '23.9 µg/m³'],
-  ['Maximum', '96.7 µg/m³', '127.8 µg/m³'],
-  [[['Hours above WHO 24-hour guideline (15 µg/m³)', { bold: true }]], [['125  (42%)', { bold: true }]], [['209  (71%)', { bold: true }]]],
-]));
-body.push(SPACER(160));
-body.push(RP([['The relay reads higher by a '], ['mean of 8.7 µg/m³', { bold: true }], [', a '], ['median ratio of 1.62×', { bold: true }], [', and reads higher in '], ['82% of matched hours', { bold: true }], ['.']], { before: 120 }));
-body.push(CALLOUT([
-  ['The policy-relevant point. ', { bold: true }],
-  ['These two columns describe the same air, measured by the same instrument, at the same moments. The exceedance rate differs by 29 percentage points depending solely on which copy is read and whether the humidity correction is applied. Any comparison between datasets — ours, a ministry dataset, or a third party’s — must first establish which of these two conventions is in use. Otherwise the comparison measures methodology, not air.'],
-]));
-
-body.push(H2('6.3  Temporal resolution also differs'));
-body.push(P('Both copies are polled every 15 minutes. They do not carry the same amount of information:'));
-body.push(TABLE([3400, 3100, 3100],
-  ['Copy', 'Distinct values in 800 polls', 'Median interval between value changes'], [
-  ['AirGradient direct', '785', '15 minutes'],
-  ['OpenAQ relay', '186', '45 minutes'],
-]));
-body.push(SPACER(160));
-body.push(P('The direct feed genuinely updates each poll. The relay republishes roughly every 45 minutes, so three consecutive polls typically repeat one value. For episodic pollution — which is what open burning produces — the relay materially understates short peaks.', { before: 120 }));
-
-body.push(H2('6.4  How we resolve it'));
-body.push(RP([['On the public map, a confirmed pair is collapsed to '], ['one pin: the direct feed, always.', { bold: true }]]));
-body.push(BULLET([['Suppression is ', {}], ['unconditional', { bold: true }], [' once a pair is established.']]));
-body.push(BULLET([['There is ', {}], ['no numeric failover', { bold: true }], [' to the relay. If the direct feed goes quiet, the pin is shown as stale and excluded from published figures — it does not silently switch to the higher uncorrected number. Swapping between the two made a single pin jump 20–45% for the same air.']]));
-body.push(BULLET([['Pairing is confirmed against our own archive, not a single poll, so a pair survives a temporarily missing reading. A twin that has produced no archived reading for ', {}], ['36 hours', { bold: true }], [' is treated as departed and the relay stands alone again.']]));
-body.push(BULLET([['If the AirGradient unit leaves the network permanently, no pair forms and the OpenAQ record is published normally.']]));
-body.push(BULLET([['A relay that has ', {}], ['no', { bold: true }], [' direct twin at all — AirGradient’s public API does not list every unit its own map and OpenAQ carry (two Bali units, September 2026) — is published on its own, ', {}], ['corrected from OpenAQ’s humidity for that device', { bold: true }], [' (§5.7), and labelled raw only on readings where that humidity was missing.']]));
-body.push(RP([['Both series are archived in full and both remain published through the API, under their own station IDs.', { bold: true }], [' The de-duplication above is a '], ['display', { italics: true }], [' decision on the public map only. No historical data is discarded, and a researcher can retrieve either or both.']], { before: 120 }));
-
-// 7
-body.push(H1('7.  Other de-duplication rules'));
-body.push(TABLE([2600, 1400, 5600], ['Rule', 'Radius', 'Behaviour'], [
-  ['AirGradient ↔ OpenAQ relay pairing', '1 m', 'Exact-coordinate identity; direct feed always wins (§6)'],
-  ['AirGradient vs. other networks', '300 m', 'An AirGradient pin is dropped if a different network already holds that location, so established station identities and their longer histories win. OpenAQ is exempt, for the reason in §6'],
-  ['Airly vs. Nafas', '300 m', 'Airly is dropped near a live Nafas station. If Nafas is not reporting, Airly is retained as failover'],
-  ['Smart Citizen', '—', 'De-duplicated against existing stations on the same basis'],
-  ['IQAir mirrors', '—', 'Where IQAir republishes a sensor already ingested directly (e.g. a PurpleAir unit), both copies are flagged together so a filtered analysis cannot lose one and keep the other'],
-]));
-body.push(SPACER(160));
-body.push(P('The tightest rule is deliberately the 1 m relay rule. A wider radius is unsafe for identity matching: anyone can register a device on a public network and enter arbitrary coordinates, and a 300 m rule could allow an unrelated registration to suppress a genuine station. At 1 m, with the relay reporting the device’s own coordinates unchanged, nothing unrelated can qualify.', { before: 120 }));
-
-// 8
-body.push(H1('8.  What we exclude, and when'));
-body.push(H2('8.1  Staleness'));
-body.push(RP([['A reading older than its network’s threshold is marked stale, rendered muted on the map, and '], ['excluded from all island-wide statistics', { bold: true }], ['. It is never deleted.']]));
-body.push(TABLE([2200, 1800, 5600], ['Network', 'Threshold', 'Reason'], [
-  ['AirGradient', '6 hours', 'Normally reports every few minutes; a 6-hour gap is a dead sensor, not a slow one'],
-  ['OpenAQ', '6 hours', 'Republishes hourly and its timestamps are honest, so an old timestamp means genuinely old data'],
-  ['All others', '24 hours', 'Hourly and daily-aggregate networks can legitimately lag'],
-]));
-body.push(SPACER(160));
-body.push(RP([['Staleness is computed as the '], ['greater', { bold: true }], [' of two ages: the upstream timestamp, and the moment we recorded the reading. Where the two disagree, the older is believed.']], { before: 120 }));
-
-body.push(H2('8.2  Readings never archived'));
-body.push(BULLET([['Frozen sensors. ', { bold: true }], ['If a device’s own reported reading time is more than 48 hours behind the present, the catalogue entry is updated but no snapshot is written. This prevents a stuck sensor from filling the archive with a repeated stale value stamped as though fresh.']]));
-body.push(BULLET([['Null readings coerced to zero. ', { bold: true }], ['A device whose PM module has failed while its network connection persists reports a null value. These are rejected explicitly. Numeric coercion would turn null into a finite 0.0 and archive a false “clean air” record — the most damaging possible failure direction.']]));
-body.push(BULLET([['Missing or unparseable timestamps. ', { bold: true }], ['A reading that cannot demonstrate its own freshness is rejected rather than treated as current.']]));
-
-body.push(H2('8.3  Quality flags'));
-body.push(RP([['Two flags mark stations whose readings are real but should not enter ambient statistics. '], ['Flagged stations are published in full — every reading is served exactly as recorded — and excluded from every island-wide figure on the site.', { bold: true }]]));
-body.push(BULLET([['suspected_indoor', { bold: true, }], [' (3 stations): measuring a room, not ambient air.']]));
-body.push(BULLET([['suspected_malfunctioning', { bold: true }], [' (1 station): reporting values that cannot be reconciled with any neighbouring sensor. Currently one IQAir station reading 70–215 µg/m³ while all nine stations within 15 km read 10–35.']]));
-body.push(P('The flag is a judgement about the device, never a modification of its data.'));
-
-body.push(H2('8.4  Offline retention'));
-body.push(P('When a station stops reporting permanently, its pin remains as a grey marker carrying its last archived date. Months of history never silently vanish because a device died. These carry no current reading and are excluded from all live statistics.'));
-
-// 9
-body.push(H1('9.  Limitations — what this archive cannot tell you'));
-body.push(P('Stated plainly, because a reference document that omits them is not usable for policy.'));
-body.push(NUM([['We cannot measure dioxins or furans. ', { bold: true }], ['PM2.5 and VOC sensors do not speciate. Where burning plastic is the concern, dioxins are among the most serious hazards, and every network in this document — including ours — measures a proxy, not the most toxic component of the smoke. Proper dioxin measurement requires laboratory sampling.']]));
-body.push(NUM([['We cannot attribute a reading to a source. ', { bold: true }], ['A PM2.5 sensor weighs smoke; it cannot chemically distinguish burning plastic from burning agricultural residue from vehicle exhaust. Consistent daily timing patterns across many stations are suggestive of a shared cause; they are not proof of one. Any confident claim about a specific facility — in either direction — is unproven by this data.']]));
-body.push(NUM([['There is no calibration reference available in Bali. ', { bold: true }], ['We know of no facility where a citizen-operated monitor can be checked against a reference-grade instrument at both high and low concentrations. Until one exists, every low-cost sensor’s error — including whether it is a constant offset or a scaling factor — is an estimate. This is the single highest-leverage gap in the record, and it needs an institution with a reference instrument to close it.']]));
-body.push(NUM([['Low-cost sensors drift in tropical humidity. ', { bold: true }], ['The correction in §5 addresses the dominant known bias. It does not address per-device manufacturing variation, which AirGradient handles with an unpublished batch-level factor we cannot reproduce.']]));
-body.push(NUM([['Coverage is uneven and volunteer-determined. ', { bold: true }], ['Sensors exist where residents installed them, which is not where pollution is worst. Sanur, Ubud and Gianyar are materially under-covered. Absence of data is not evidence of clean air.']]));
-body.push(NUM([['The network is not under our control. ', { bold: true }], ['Commercial networks have withdrawn from Bali mid-season before, taking their live feeds with them. Everything they published while present remains in this archive.']]));
-
-// 10
-body.push(H1('10.  Aggregation, intervals, and access'));
-body.push(H2('10.1  Intervals'));
-body.push(TABLE([2000, 7600], ['Interval', 'Definition'], [
-  ['Raw', '15-minute snapshots exactly as fetched. Not available for IQAir stations, which publish hourly'],
-  ['Hourly', 'Hourly means. Native for Nafas and IQAir; bucketed from raw snapshots for all other networks'],
-  ['Daily', 'Daily means, with minimum, maximum and sample count'],
-]));
-body.push(SPACER(160));
-body.push(RP([['Time basis. ', { bold: true }], ['All instants are UTC, ISO-8601. '], ['Daily aggregates are WITA (UTC+8) calendar days', { bold: true }], [', not UTC days — the local day is the meaningful unit for a Bali reader, and each response states which basis applies.']], { before: 120 }));
-body.push(RP([['Sample counts. ', { bold: true }], ['Every aggregate row carries a sample count. Some older daily rows carry a count of 1 — a single backfilled observation, with minimum = maximum = mean. A low sample count should be treated as a weak average.']]));
-
-body.push(H2('10.2  AQI conversion'));
-body.push(P('Where a network publishes only an AQI value, PM2.5 is derived using the standard US-EPA breakpoint table. Values obtained this way are marked as such.'));
-
-body.push(H2('10.3  Open access'));
-body.push(P('The full archive is public, requires no account, and is available as JSON or CSV:'));
-body.push(CODE('https://baliairdispatch.com/api/v1'));
-body.push(SPACER(140));
-body.push(BULLET([['/api/v1/stations', { bold: true }], [' — full catalogue with coordinates, network, coverage dates, correction date and quality flags']]));
-body.push(BULLET([['/api/v1/latest', { bold: true }], [' — most recent reading held for every station']]));
-body.push(BULLET([['/api/v1/measurements', { bold: true }], [' — the time series; raw, hourly or daily; paged by cursor']]));
-body.push(RP([['Every response carries the licence terms and the semantic notes summarised in this document. '], ['We would welcome the Ministry’s technical staff testing any figure in this document directly against that endpoint.', { bold: true }]], { before: 120 }));
-
-// 11
-body.push(H1('11.  Standing offers'));
-body.push(P('Three things this project can do that may be useful, offered without condition:'));
-body.push(NUM([['Provide the complete archive ', { bold: true }], ['in any format required, including the uncorrected series, for independent analysis.']]));
-body.push(NUM([['Host a reference co-location. ', { bold: true }], ['If the Ministry can make a reference-grade instrument available even briefly, co-locating it with community sensors would establish the error characteristics of every low-cost device on this island. That result would be published openly and would benefit any party using low-cost sensor data in Indonesia, not only this project.']]));
-body.push(NUM([['Add monitoring where the Ministry considers it useful. ', { bold: true }], ['Coverage decisions are currently made by whoever volunteers to host a sensor. Direction toward locations of policy interest — waste-processing facilities, schools, under-covered regencies — would improve the record for everyone.']]));
-
-body.push(HR());
-body.push(RP([['Bali Air Dispatch is an independent, non-commercial, public-interest air-quality archive. It is not affiliated with any government body or commercial monitoring network. It sells nothing and carries no advertising. Readings originate from the independent networks named in §3 and remain subject to their own terms; this project aggregates and preserves them.']], { italics: true, color: FAINT, size: 18, after: 120 }));
-body.push(RP([['Contact:  baliair@protonmail.com']], { color: FAINT, size: 18 }));
+  // Paragraph: consecutive lines up to a blank line or the start of another block.
+  const para = [];
+  const start = at();
+  while (i < lines.length && lines[i].trim() && !(para.length && isBlockStart(lines[i]))) para.push(lines[i++].trim());
+  const runs = inline(para.join(' '), start);
+  body.push(i > lastRule
+    ? RP(runs, { color: FAINT, size: 18, after: 120 })
+    : RP(runs));
+}
 
 // ── assemble ──────────────────────────────────────────────────────────
 const doc = new Document({
-  creator: 'Bali Air Dispatch',
-  title: 'Bali Air Dispatch — Data Sources and Methodology',
-  description: 'Technical reference: sensor networks, collection schedule, corrections and limitations.',
+  creator: kicker || title,
+  title: titleMatch[1],
+  description: plain(inline(subtitle || title, 'subtitle')),
+  // Asks Word to fill in the table of contents on opening; without it the
+  // contents page stays empty until the reader updates the field by hand.
+  features: { updateFields: true },
   styles: {
     default: {
       document: { run: { font: SANS, size: 20, color: INK } },
@@ -492,6 +390,6 @@ const doc = new Document({
 });
 
 Packer.toBuffer(doc).then(b => {
-  fs.writeFileSync(process.argv[2], b);
-  console.log('written:', process.argv[2], b.length, 'bytes');
+  fs.writeFileSync(OUT, b);
+  console.log('written:', OUT, b.length, 'bytes');
 });
