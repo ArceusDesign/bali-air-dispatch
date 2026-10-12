@@ -728,7 +728,7 @@ table.roll .badge{display:inline-block;font-family:"IBM Plex Mono",monospace;fon
         </div>
         <div class="legend-marks">
           <div class="legend-row" data-i18n-html="home.x.legDashed"><span class="dash"></span>Dashed ring = offline sensor</div>
-          <div class="legend-row" data-i18n-html="home.x.legReports"><span class="sw" style="background:var(--crimson);border-radius:50%;border-style:dashed;opacity:.55"></span>Dashed circle = area with community burning reports, sized by count, fading over 30 days</div>
+          <div class="legend-row" data-i18n-html="home.x.legReports"><span class="sw" style="background:var(--crimson);border-radius:50%;border-style:dashed;opacity:.55"></span>Dashed circle = area with community burning reports, sized by count, fading over 90 days</div>
         </div>
       </div>
     </div>
@@ -1442,6 +1442,7 @@ async function loadReports(){
     const r = await fetch(API_BASE + '/api/reports', {cache:'no-cache'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
+    if (Number.isFinite(+d.max_age_days) && +d.max_age_days > 0) reportMaxAgeDays = +d.max_age_days;
     reportStations = (d.reports||[]).filter(x=>x && x.lat!=null && x.lon!=null);
     renderReports();
   }catch(e){
@@ -1554,10 +1555,13 @@ function renderHotspotNote(){
     : n + ' detection' + (n===1?'':'s') + ' in ' + d + 'd · large fires only';
 }
 
+let reportMaxAgeDays = 90;   // overwritten from /api/reports max_age_days
 function reportColor(ageHours){
-  // Dark crimson (fresh) fading to the page's own paper colour at 30 days —
-  // old reports look like they're fading into the page, not just "lighter red".
-  const frac = Math.min(1, Math.max(0, ageHours / (30*24)));
+  // Dark crimson (fresh) fading to the page's own paper colour at the edge of
+  // the window — old reports look like they're fading into the page, not just
+  // "lighter red". The window comes from /api/reports (max_age_days) rather than
+  // being hard-coded here too, so the fade and the cutoff can't disagree.
+  const frac = Math.min(1, Math.max(0, ageHours / (reportMaxAgeDays*24)));
   const c0=[139,26,26], c1=[243,236,224];
   const rgb = c0.map((v,i)=>Math.round(v+(c1[i]-v)*frac));
   return `rgb(${rgb.join(',')})`;

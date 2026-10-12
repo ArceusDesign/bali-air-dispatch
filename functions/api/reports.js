@@ -32,7 +32,14 @@
 //     ("smoke rising from a pile of trash") and carries no addresses or names.
 //     If upstream ever scrubs descriptions properly this can be revisited.
 const MSB_BASE = 'https://makingsense.fablabbali.com/data/';
-const REPORT_MAX_AGE_DAYS = 30;
+// 90 days, widened from 30 on 2026-10-12. Upstream report volume is bursty:
+// Making Sense Bali published 129 reports across Aug–Sep, then nothing after
+// 10 Sep, and a 30-day window emptied the layer completely once that last
+// report aged out — the map then said "no burning reported" about an island
+// whose most recent month of reports was simply a few days too old. 90 days
+// spans a quiet spell without hiding the pattern. The frontend fade reads this
+// value from the response (max_age_days), so it is set in exactly one place.
+const REPORT_MAX_AGE_DAYS = 90;
 const GRID_DEG = 0.0025; // ~275 m at Bali's latitude — collapses exact points
                          // to a neighbourhood cell, and usefully re-clusters
                          // repeat reports of the same site into one dot.
