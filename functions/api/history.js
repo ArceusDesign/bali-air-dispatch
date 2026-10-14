@@ -44,6 +44,16 @@ function isStationId(s) {
   // (.bind(id)), never string-interpolated into SQL.
   return typeof s === 'string' && /^[a-zA-Z0-9._ -]{2,80}$/.test(s);
 }
+// Every range value the handler distinguishes. Anything else is treated as the
+// default (daily / all), so it is mapped to '' before use — in the handler AND
+// in the cache key. Free text in the key let `range=<anything>` miss the cache
+// every time and re-run the per-station queries (a full snapshot scan for a
+// Nafas id), and the handler echoed the text back in its JSON.
+const KNOWN_RANGES = new Set(['24h', '7d', '30d', '90d', '1y', '365d', 'monthly', 'hourly', 'daily', 'all']);
+function normRange(raw) {
+  const r = String(raw || '').trim().toLowerCase();
+  return KNOWN_RANGES.has(r) ? r : '';
+}
 function rangeToCutoffSec(range) {
   const now = Math.floor(Date.now() / 1000);
   switch (range) {
@@ -70,7 +80,7 @@ async function handleHistory(context) {
   const uuid  = (url.searchParams.get('uuid') || '').trim();
   const id    = (url.searchParams.get('id')   || '').trim();
   const ids   = (url.searchParams.get('ids')  || '').trim();
-  const range = (url.searchParams.get('range') || '').trim().toLowerCase();
+  const range = normRange(url.searchParams.get('range'));
 
   // Retired town-level aggregates (the iq- namespace: IQAir nearest_city
   // values, never physical devices) are refused outright, not merely unlisted.
@@ -242,7 +252,11 @@ async function handleHistory(context) {
       //       the spike layer, but only as far back as we have snapshots (~37d);
       //   (b) Nafas's own nafas_daily for the deeper tail before that (mean only).
       // Merge: snapshot-derived days win; older nafas_daily days are prepended.
-      if (points.length < 5 && id.startsWith('nafas-')) {
+      // Run for every Nafas id and keep whichever series is longer. It used to
+      // run only when station_daily held fewer than 5 rows, and Tonja holds
+      // exactly 5, so its 90d chart was two points in August and its All chart
+      // five, against 184 days in nafas_daily.
+      if (id.startsWith('nafas-')) {
         const u = id.slice(6);
         if (isUuid(u)) {
           // (a) daily mean+max from raw snapshots, WITA day boundaries.
@@ -254,9 +268,13 @@ async function handleHistory(context) {
                    COUNT(*) AS sample_n
             FROM station_snapshots
             WHERE station_id = ?1 AND pm25 IS NOT NULL
+              -- 90d reads 90 days, not the whole series. COALESCE rather than
+              -- "?2 IS NULL OR ts >= ?2": the OR form stops SQLite using the
+              -- (station_id, ts) index for the range, so it scanned everything.
+              AND ts >= COALESCE(?2, 0)
               AND (station_till IS NULL OR (ts - unixepoch(station_till)) BETWEEN -32400 AND 172800)
             GROUP BY 1 ORDER BY 1 ASC
-          `).bind(id).all();
+          `).bind(id, cutoff90).all();
           const snapRows = snapDaily.results || [];
           const snapDates = new Set(snapRows.map(r => r.date));
           // (b) nafas_daily for the deeper tail (only days we lack snapshots for).
@@ -266,7 +284,8 @@ async function handleHistory(context) {
           const older = (nd.results || [])
             .filter(p => !snapDates.has(p.date))
             .map(p => ({ date: p.date, pm25: p.pm25, pm25_min: p.pm25, pm25_max: p.pm25, sample_n: 1 }));
-          points = [...older, ...snapRows].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+          const merged = [...older, ...snapRows].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+          if (merged.length > points.length) points = merged;
         }
       }
       if (cutoff90 != null) {
@@ -349,7 +368,17 @@ async function handleHistory(context) {
         -- snapshot is deliberately skipped. So last_seen says "still listed",
         -- last_date says "still measuring", and only the latter can tell a
         -- live-but-hidden station from one whose readings have stopped.
-        (SELECT MAX(date) FROM station_daily WHERE station_id = s.station_id) AS last_date
+        (SELECT MAX(date) FROM station_daily WHERE station_id = s.station_id) AS last_date,
+        -- When the newest reading actually STORED was taken (unix seconds; the
+        -- network's reading time where earlier than our fetch, as /api/v1's
+        -- last_seen). The archive worker skips a snapshot whose upstream
+        -- reading is over 48 h old, so this stops advancing when a sensor
+        -- freezes, like last_date, but it is current to the tick where
+        -- station_daily is not: Nafas daily rows are sparse (see the Nafas
+        -- branch above), so Tonja's last_date sat in August while it reported
+        -- every 15 minutes. One primary-key seek per station.
+        (SELECT MIN(x.ts, COALESCE(unixepoch(x.station_till), x.ts)) FROM station_snapshots x
+          WHERE x.station_id = s.station_id ORDER BY x.ts DESC LIMIT 1) AS last_reading_ts
       FROM stations s
       WHERE s.station_id NOT IN (${hidePlaceholders})
       -- Scraped IQAir stations (iqs-*) are listed from iq_scrape_* via
@@ -415,7 +444,7 @@ export async function onRequest(context) {
   try {
     const url = new URL(request.url);
     const q = HISTORY_KEY_PARAMS
-      .map(k => [k, (url.searchParams.get(k) || '').trim()])
+      .map(k => [k, k === 'range' ? normRange(url.searchParams.get(k)) : (url.searchParams.get(k) || '').trim()])
       .filter(([, v]) => v)
       .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
       .join('&');
