@@ -113,6 +113,8 @@
   "ticker.at": "at",
   "ticker.aboveWhoMid": "of",
   "ticker.aboveWhoTail": "stations above WHO 24h (15 µg/m³)",
+  "ticker.aboveWhoExcl": ", excluding {n} flagged sensors",
+  "ticker.aboveWhoExclOne": ", excluding 1 flagged sensor",
   "roll.offline": "Offline",
   "roll.daysShort": "d",
   "roll.hoursShort": "h",

@@ -212,6 +212,11 @@ const SOURCE_STALE_MS = Object.assign(Object.create(null), {
   // Smart Citizen kits report about once a minute when alive, like AirGradient.
   // Six hours silent is a sensor with a problem, and should look like one.
   'Smart Citizen': 6 * 60 * 60 * 1000,
+  // Community-contributed (cs-*) sensors push about once a minute. An hour
+  // without a push is an outage. Kept here, not in contribFromD1 alone, so the
+  // fast path's own rows for a cs sensor (served up to 12 h old when degraded)
+  // are judged by the same limit, and every stale cs pin carries its real age.
+  Community: 60 * 60 * 1000,
 });
 // observedAtMs (optional) — when WE recorded this reading. A reading cannot be
 // fresher than the moment we observed it, so this acts as a floor on the age.
@@ -1687,28 +1692,44 @@ async function scOfflineFromD1(db, baseStations) {
 }
 
 // Community-contributed sensors (cs-*) — residents running their own hardware
-// who POST to /api/ingest. Their readings already live in the universal
-// stations/station_snapshots tables, so the D1 FAST path picks them up with no
-// special handling. This function exists for the SLOW path only: that path
+// who POST to /api/ingest. Their readings live in the universal
+// stations/station_snapshots tables. The SLOW path needs this because it
 // rebuilds the station list from upstream APIs, and a pushed sensor has no
 // upstream to poll, so without this it would vanish whenever the fast path
-// wasn't used (including for the archive worker, which reads ?fresh=1).
+// wasn't used (including for the archive worker, which reads ?fresh=1). The
+// FAST path needs it too, for a sensor that has paused for longer than its
+// 30-minute window: it adds only ids not already present.
 //
 // `contributed: true` is what the frontend keys off to keep these out of the
 // island-wide statistics — unverified siting must not move a published health
 // figure. Never blocking: any failure returns [] and live air is served
 // unchanged.
+// Only sensors still registered as active, and only while their last push is
+// under 90 days old — the same retention scOfflineFromD1 gives a dead Smart
+// Citizen kit. Without either test a revoked or abandoned sensor kept a stale
+// pin on the map, and a point in every page's "N offline", for good; its
+// archived record stays on the History page and in /api/v1 either way.
+//
+// Driven from contrib_sensors, with CROSS JOIN fixing the join order: SQLite
+// treats CROSS JOIN as "do not reorder". Measured on production: 8 rows read.
+// The previous `stations ... LIKE 'cs-%'` form read the whole catalog (145),
+// and a plain JOIN from contrib_sensors let the planner start from
+// station_snapshots and read 651,467.
+const CONTRIB_RETAIN_SEC = 90 * 24 * 60 * 60;
 async function contribFromD1(db, existing = []) {
-  const FRESH_MS = 60 * 60 * 1000;   // pushed sensors report far more often
   try {
     const rows = await db.prepare(`
       SELECT s.station_id, s.name, s.lat, s.lon, s.type,
              sn.pm25, sn.pm10, sn.pm1, sn.temperature, sn.humidity, sn.ts
-      FROM stations s
-      JOIN station_snapshots sn ON sn.station_id = s.station_id
-      WHERE s.station_id LIKE 'cs-%'
-        AND sn.ts = (SELECT MAX(ts) FROM station_snapshots WHERE station_id = s.station_id)
-    `).all();
+      FROM contrib_sensors c
+      CROSS JOIN stations s
+      CROSS JOIN station_snapshots sn
+      WHERE c.active = 1
+        AND s.station_id = c.station_id
+        AND sn.station_id = c.station_id
+        AND sn.ts = (SELECT MAX(ts) FROM station_snapshots x WHERE x.station_id = c.station_id)
+        AND sn.ts >= ?1
+    `).bind(Math.floor(Date.now() / 1000) - CONTRIB_RETAIN_SEC).all();
     const present = new Set((existing || []).map(s => s && s.id).filter(Boolean));
     const out = [];
     for (const r of (rows.results || [])) {
@@ -1717,7 +1738,7 @@ async function contribFromD1(db, existing = []) {
       const pm25 = r.pm25 != null ? +(+r.pm25).toFixed(1) : null;
       const { cat, cls } = pm25Category(pm25);
       const lastMs = (+r.ts) * 1000;
-      out.push({
+      out.push(flagStale({
         id: r.station_id,
         name: r.name || r.station_id,
         source: 'Community',
@@ -1734,8 +1755,10 @@ async function contribFromD1(db, existing = []) {
         category: cat, cls,
         contributed: true,
         lastSeen: new Date(lastMs).toISOString(),
-        stale: (Date.now() - lastMs) > FRESH_MS,
-      });
+        // stale + staleAgeHours from flagStale (SOURCE_STALE_MS.Community).
+        // Setting stale here without the age made every paused sensor read
+        // "Stale · 1h" on the homepage, after 18 hours or 200 days alike.
+      }));
     }
     return out;
   } catch (_) {
@@ -2556,6 +2579,20 @@ async function handleLive(context) {
             fast.sources = new Set(fast.stations.map(s => s.source)).size;
           }
         } catch (_) { /* scraped optional; serve base fast path */ }
+        // Community-contributed sensors (cs-*) whose newest push is older than
+        // this path's 30-minute window. Polled stations stay in that window
+        // while they are quiet, because the archive worker re-snapshots them
+        // every tick; a pushed sensor has rows only when it pushes, so the
+        // moment it paused for half an hour it vanished from the map — Amed
+        // (south) was absent for most of a 17.8 h outage on 13–14 Oct 2026 —
+        // while the slow path showed it as stale. contribFromD1 is the slow
+        // path's own fold: it adds only ids not already present, with the
+        // stale flag set from the age of the last push. Measured at 8 rows
+        // read.
+        try {
+          const contrib = await contribFromD1(env.ARCHIVE_DB, fast.stations);
+          if (contrib.length) fast.stations.push(...contrib);
+        } catch (_) { /* contributed optional */ }
         // One pin per AirGradient device across a map→public sharing switch.
         fast.stations = dropMapCopiesOfPublicAirGradient(fast.stations);
         // Collapse co-located Airly (Nafas-sponsored) onto its live Nafas twin.
