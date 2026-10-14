@@ -422,9 +422,22 @@ async function routeStations(db, url) {
   const hidden = HIDDEN_STATION_IDS;
   const holes = hidden.map((_, i) => '?' + (i + 1)).join(',');
 
+  // last_seen is WHEN the newest reading this archive stored was taken — the
+  // network's own reading time where it gives one and it is earlier than our
+  // fetch, otherwise the fetch. Not stations.last_seen: that column is the
+  // archive worker's "listed by /api/live" watermark, and it advances for a
+  // frozen sensor whose snapshot the worker skips: Denpasar Lumintang, silent
+  // since 9 Aug 2025, read as last seen 9 Aug 2026, and frozen Nafas units as
+  // seen today. Taking the reading time rather than the fetch time also covers
+  // rows stored before the worker began skipping frozen echoes (June 2026):
+  // Dauh Puri Kauh's newest row was fetched 3 June but taken 10 February. A
+  // station whose record is backfilled only (no snapshot stored) is null. One
+  // primary-key seek per station (273 rows read for the catalog, measured).
   const universal = await db.prepare(`
     SELECT s.station_id, s.source, s.name, s.lat, s.lon, s.type,
-           s.first_seen, s.last_seen,
+           s.first_seen,
+           (SELECT MIN(x.ts, COALESCE(unixepoch(x.station_till), x.ts)) FROM station_snapshots x
+            WHERE x.station_id = s.station_id ORDER BY x.ts DESC LIMIT 1) AS last_seen,
            (SELECT COUNT(*) FROM station_daily WHERE station_id = s.station_id) AS daily_n,
            (SELECT MIN(date) FROM station_daily WHERE station_id = s.station_id) AS first_date,
            (SELECT MAX(date) FROM station_daily WHERE station_id = s.station_id) AS last_date
@@ -438,7 +451,9 @@ async function routeStations(db, url) {
   const scraped = await db.prepare(`
     SELECT 'iqs-' || slug AS station_id, 'IQAir' AS source, name, lat, lon,
            COALESCE(source_type, 'Scraped station') AS type,
-           first_seen, last_scrape_ts AS last_seen,
+           -- the hour of IQAir's newest reading, not the time of our last
+           -- scrape, which advances while IQAir echoes an old reading
+           first_seen, unixepoch(latest_ts) AS last_seen,
            (SELECT COUNT(*) FROM iq_scrape_daily WHERE slug = s.slug) AS daily_n,
            (SELECT MIN(date) FROM iq_scrape_daily WHERE slug = s.slug) AS first_date,
            (SELECT MAX(date) FROM iq_scrape_daily WHERE slug = s.slug) AS last_date

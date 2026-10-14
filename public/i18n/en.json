@@ -736,7 +736,7 @@
   "api.x.fFeed": "The route this station's readings arrive by: <code class=\"k\">airgradient_api</code>, <code class=\"k\">airgradient_map</code>, <code class=\"k\">openaq_api</code>, <code class=\"k\">purpleair_api</code>, <code class=\"k\">smartcitizen_api</code>, <code class=\"k\">nafas_feed</code>, <code class=\"k\">aqicn_api</code>, <code class=\"k\">airly_api</code>, <code class=\"k\">iqair_station_page</code> or <code class=\"k\">contributed</code>. Never changes for a station. Also on <code class=\"k\">/latest</code>.",
   "api.x.fSameDevice": "Other <code class=\"k\">station_id</code>s within 1 m of this one (100 m between an AirGradient device's <code class=\"k\">agm-</code> and <code class=\"k\">ag-</code> records): in practice the same physical device — a relay, a republication, or an AirGradient device's map and public-API records. Positional, not a guarantee. JSON array; <code class=\"k\">;</code>-separated in CSV.",
   "api.x.fLastDate": "Most recent day in the station's daily series.",
-  "api.x.fLastSeen": "When this archive last collected from the station. JSON only.",
+  "api.x.fLastSeen": "When the newest reading this archive holds from the station was taken: the network's own reading time where it gives one, otherwise when we collected it. It stops at a sensor's last real reading even while its network keeps listing the station; null where the station's record was backfilled and no reading was ever collected live. JSON only.",
   "api.x.fLat": "Decimal degrees, WGS 84. Negative in Bali.",
   "api.x.fLicence": "The four licence statements, repeated on every response so a saved file always carries its own terms.",
   "api.x.fLon": "Decimal degrees, WGS 84.",
