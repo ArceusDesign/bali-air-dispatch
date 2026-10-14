@@ -113,6 +113,8 @@
   "ticker.at": "di",
   "ticker.aboveWhoMid": "dari",
   "ticker.aboveWhoTail": "stasiun di atas pedoman 24-jam WHO (15 µg/m³)",
+  "ticker.aboveWhoExcl": ", tidak termasuk {n} sensor bertanda",
+  "ticker.aboveWhoExclOne": ", tidak termasuk 1 sensor bertanda",
   "roll.offline": "Mati",
   "roll.daysShort": "h",
   "roll.hoursShort": "j",
