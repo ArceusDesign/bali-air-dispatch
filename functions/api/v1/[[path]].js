@@ -46,6 +46,15 @@ const INDOOR_IDS = new Set([
   // coordinates to 6dp. Flagging only one copy lets an indoor series back into
   // an ambient analysis through the other.
   'iqs-jimbaran-s',                               // Jimbaran (IQAir mirror of pa-36601)
+  // Cafe Laut (AirGradient map feed) — flagged 2026-10-18. It tracked its
+  // neighbours on 12-13 Oct (about 35 µg/m³ beside 37-40 at the AirGradient
+  // units 0.8-1.1 km away); from 16 Oct it has read 1-3 µg/m³ a day, with many
+  // hours of 0, while they read 13-27; on 15 Oct it spiked to 431. A room, not
+  // the street.
+  // Its OpenAQ relay is the same device, flagged too so the indoor series
+  // cannot re-enter ambient figures through the other copy.
+  'agm-131168305',                                // Cafe Laut (AirGradient map feed)
+  'oq-6551464',                                   // Cafe Laut (OpenAQ relay of the same unit)
 ]);
 
 // Suspected-MALFUNCTIONING monitors: reporting values that cannot be reconciled
