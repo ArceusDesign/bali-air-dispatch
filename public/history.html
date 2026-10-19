@@ -518,6 +518,12 @@ const MALFUNCTION_IDS = new Set([
   // WITA on 25 September and has read 1.0-2.0 since, against 26-40 at stations
   // 3-7 km away. Readings before that stand. Also read a flat 0.0 27 Jul-2 Aug.
   'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',
+  // Pejeng Kangin (AirGradient) — flagged 2026-10-19: every PM channel dropped
+  // from about 20 to exactly 0 at 03:30 WITA on 18 October and has stayed there,
+  // while neighbours 5-6 km away read 10-55. Dead PM module. Readings before that
+  // stand. Its OpenAQ relay (same device) is flagged too. Mirrors index.html + v1.
+  'ag-195778',
+  'oq-6404859',
 ]);
 const isMalfunctionId = (id) => MALFUNCTION_IDS.has(id);
 // Community-contributed sensors (cs-*): residents running their own hardware,

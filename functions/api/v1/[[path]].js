@@ -77,6 +77,15 @@ const MALFUNCTION_IDS = new Set([
   // on 2026-09-25 are sound; later rows are far too low. Same unit read a flat
   // 0.0 from 27 Jul to 2 Aug 2026 (see INDOOR_IDS above).
   'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',
+  // Pejeng Kangin (AirGradient). Flagged 2026-10-19: at 19:30 UTC on 17 October
+  // its raw PM2.5, PM10 and PM1 all fell from about 20 to exactly 0 in one
+  // quarter hour and have stayed at 0 since, while AirGradient units 5-6 km away
+  // read 10-55 µg/m³ (it had run at 0.7-1.1 of them). A dead PM module; the
+  // 0.4-2.3 in pm25 is the humidity correction applied to a raw 0. Rows up to
+  // 19:15 UTC on 2026-10-17 are sound. oq-6404859 is its OpenAQ relay, the same
+  // device, flagged too so the series cannot re-enter through the other copy.
+  'ag-195778',
+  'oq-6404859',
 ]);
 
 // Networks whose PM2.5 we humidity-correct before publishing (US-EPA 2021).

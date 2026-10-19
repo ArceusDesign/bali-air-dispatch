@@ -1296,6 +1296,16 @@ const MALFUNCTION_IDS = new Set([
   // September stand. This unit's second fault of the kind: from 27 July to
   // 2 August 2026 it read a flat 0.0 (tagged indoor at the time, see INDOOR_IDS).
   'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',
+  // Pejeng Kangin (AirGradient) — flagged 2026-10-19. At 03:30 WITA on 18 Oct
+  // its PM2.5, PM10 and PM1 all dropped from about 20 to exactly 0 between one
+  // quarter hour and the next, and have stayed at 0 since (one 5.3 blip), while
+  // AirGradient units 5-6 km away read 10-55. A dead PM module, not clean air:
+  // the 0.4-2.3 we display is the humidity correction applied to a raw 0. It had
+  // run at 0.7-1.1 of those neighbours before. Readings up to 03:15 WITA on 18 Oct
+  // are sound. Its OpenAQ relay is the same device, flagged too so the bad series
+  // cannot re-enter island figures through the other copy. Matches functions/api/v1.
+  'ag-195778',
+  'oq-6404859',
 ]);
 const isMalfunctioning = (s) => MALFUNCTION_IDS.has(typeof s === 'string' ? s : (s && s.id));
 // THE ONE TEST for "this device is not reporting trustworthy ambient air".
