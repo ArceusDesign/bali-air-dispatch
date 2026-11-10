@@ -526,6 +526,11 @@ const MALFUNCTION_IDS = new Set([
   // stand. Its OpenAQ relay (same device) is flagged too. Mirrors index.html + v1.
   'ag-195778',
   'oq-6404859',
+  // Bali Umalas (Villa Fusion), IQAir — flagged 2026-11-10: since October a
+  // fixed 14-18 µg/m³ above every AirGradient unit around it, never below 11
+  // while they read under 5, and growing. Readings before 1 October stand.
+  // Mirrors index.html + v1.
+  'iqs-bali-umalas-villa-fusion',
 ]);
 const isMalfunctionId = (id) => MALFUNCTION_IDS.has(id);
 // Community-contributed sensors (cs-*): residents running their own hardware,
