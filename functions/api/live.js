@@ -340,6 +340,49 @@ function jsonResponse(body, extraHeaders = {}) {
 //
 // Single query, widest window — the subquery pins one row per station, so a
 // wider window admits more STATIONS, not more rows per station (~65 max).
+// One archived snapshot row (catalogue joined to station_snapshots) as a map
+// station. Shared by the fast path and scPausedFromD1 so a kit looks the same
+// whichever of the two found it.
+function stationFromSnapshotRow(r) {
+  const pm25 = r.pm25 != null ? +(+r.pm25).toFixed(1) : null;
+  const { cat, cls } = pm25Category(pm25);
+  return flagStale({
+    id: r.station_id,
+    name: r.name,
+    source: r.source,
+    type: r.type || null,
+    lat: r.lat,
+    lon: r.lon,
+    pm25,
+    // Carry the correction audit fields on the FAST path too — it's the path
+    // most visitors hit, so without these any "corrected" marker in the UI
+    // would flicker depending on which path served the request.
+    pm25_raw: r.pm25_raw != null ? +(+r.pm25_raw).toFixed(1) : null,
+    // agm-* (AirGradient map feed) rows are corrected upstream by AirGradient
+    // with our exact formula and carry no raw value (fetchAirGradientMap).
+    pm25_corrected: r.pm25_raw != null || String(r.station_id).startsWith('agm-'),
+    feed: feedFor(r.station_id),
+    // Derived from the id prefix rather than carried in the row, so the fast
+    // path and contribFromD1() agree by construction. Without it a
+    // contributed sensor would count toward the island median on the fast
+    // path and not on the slow one — the published figure would depend on
+    // which path happened to serve the request.
+    contributed: String(r.station_id).startsWith('cs-'),
+    // Same reasoning: aq-* (AQICN / WAQI) PM2.5 is converted from the
+    // network's AQI sub-index, never measured in µg/m³ (pm25FromAqicnIndex),
+    // and the UI marks it "est." whichever path served the request.
+    pm25_estimated: String(r.station_id).startsWith('aq-'),
+    pm10: r.pm10 != null ? +(+r.pm10).toFixed(1) : null,
+    pm1:  r.pm1  != null ? +(+r.pm1).toFixed(1)  : null,
+    aqi: r.aqi != null ? +r.aqi : null,
+    temperature: r.temperature != null ? +(+r.temperature).toFixed(1) : null,
+    humidity:    r.humidity    != null ? +(+r.humidity).toFixed(1)    : null,
+    category: cat,
+    cls,
+    lastSeen: r.station_till || null,
+  }, r.ts != null ? r.ts * 1000 : null);
+}
+
 const FAST_PATH_FRESH_SEC = 30 * 60;
 const FAST_PATH_WIDEST_SEC = 12 * 60 * 60;
 async function fastPathFromD1(db) {
@@ -395,45 +438,7 @@ async function fastPathFromD1(db) {
                  `station(s), oldest ${oldestMin}min old. Archive worker likely stalled.`);
   }
 
-  const stations = results.map(r => {
-    const pm25 = r.pm25 != null ? +(+r.pm25).toFixed(1) : null;
-    const { cat, cls } = pm25Category(pm25);
-    return flagStale({
-      id: r.station_id,
-      name: r.name,
-      source: r.source,
-      type: r.type || null,
-      lat: r.lat,
-      lon: r.lon,
-      pm25,
-      // Carry the correction audit fields on the FAST path too — it's the path
-      // most visitors hit, so without these any "corrected" marker in the UI
-      // would flicker depending on which path served the request.
-      pm25_raw: r.pm25_raw != null ? +(+r.pm25_raw).toFixed(1) : null,
-      // agm-* (AirGradient map feed) rows are corrected upstream by AirGradient
-      // with our exact formula and carry no raw value (fetchAirGradientMap).
-      pm25_corrected: r.pm25_raw != null || String(r.station_id).startsWith('agm-'),
-      feed: feedFor(r.station_id),
-      // Derived from the id prefix rather than carried in the row, so the fast
-      // path and contribFromD1() agree by construction. Without it a
-      // contributed sensor would count toward the island median on the fast
-      // path and not on the slow one — the published figure would depend on
-      // which path happened to serve the request.
-      contributed: String(r.station_id).startsWith('cs-'),
-      // Same reasoning: aq-* (AQICN / WAQI) PM2.5 is converted from the
-      // network's AQI sub-index, never measured in µg/m³ (pm25FromAqicnIndex),
-      // and the UI marks it "est." whichever path served the request.
-      pm25_estimated: String(r.station_id).startsWith('aq-'),
-      pm10: r.pm10 != null ? +(+r.pm10).toFixed(1) : null,
-      pm1:  r.pm1  != null ? +(+r.pm1).toFixed(1)  : null,
-      aqi: r.aqi != null ? +r.aqi : null,
-      temperature: r.temperature != null ? +(+r.temperature).toFixed(1) : null,
-      humidity:    r.humidity    != null ? +(+r.humidity).toFixed(1)    : null,
-      category: cat,
-      cls,
-      lastSeen: r.station_till || null,
-    }, r.ts != null ? r.ts * 1000 : null);
-  });
+  const stations = results.map(r => stationFromSnapshotRow(r));
 
   const sources = new Set(stations.map(s => s.source)).size;
   return {
@@ -1116,6 +1121,46 @@ function dropHiddenSmartCitizen(stations) {
     Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
   const hidden = new Set(markHiddenSmartCitizen(sc, stations).filter(s => s.scHidden).map(s => s.id));
   return hidden.size ? stations.filter(s => !(s && hidden.has(s.id))) : stations;
+}
+
+// Smart Citizen kits that have paused, for the fast path. Since 2026-11-10 the
+// archive worker stores a kit's reading once, not again on every tick while
+// the kit is quiet (snapshotUniversal, workers/nafas-archive), so a kit that
+// stops posting no longer has a row inside the fast path's 30-minute window.
+// The upstream path keeps listing it for 24 h after its last reading
+// (fetchSmartCitizen), live and then, after 6 h, stale; without this the fast
+// path would drop it 30 minutes in, and the map would depend on which path
+// served the request. Adds only kits not already present, judged by the age of
+// the reading itself (station_till), with the same 24 h limit. A kit past that
+// is scOfflineFromD1's to show as a tombstone.
+//
+// Range on the catalogue's primary key, not LIKE 'sc-%', so the planner can use
+// it; CROSS JOIN keeps the catalogue as the outer loop (see contribFromD1).
+// Measured on production: 60 rows read.
+const SC_LIVE_MAX_SEC = 24 * 60 * 60;   // fetchSmartCitizen's liveness gate
+async function scPausedFromD1(db, existing = []) {
+  try {
+    const nowMs = Date.now();
+    const rows = await db.prepare(`
+      SELECT s.station_id, s.source, s.name, s.lat, s.lon, s.type,
+             sn.pm25, sn.pm10, sn.pm1, sn.aqi, sn.temperature, sn.humidity,
+             sn.station_till, sn.ts, sn.pm25_raw
+      FROM stations s
+      CROSS JOIN station_snapshots sn
+      WHERE s.station_id >= 'sc-' AND s.station_id < 'sc.'
+        AND sn.station_id = s.station_id
+        AND sn.ts = (SELECT MAX(ts) FROM station_snapshots x WHERE x.station_id = s.station_id)
+        AND sn.ts >= ?1
+    `).bind(Math.floor(nowMs / 1000) - SC_LIVE_MAX_SEC).all();
+    const present = new Set((existing || []).map(s => s && s.id).filter(Boolean));
+    return (rows.results || [])
+      .filter(r => r && !present.has(r.station_id) && r.source === 'Smart Citizen' &&
+        r.lat != null && r.lon != null &&
+        nowMs - Date.parse(r.station_till) <= SC_LIVE_MAX_SEC * 1000)
+      .map(r => stationFromSnapshotRow(r));
+  } catch (_) {
+    return [];   // additive — never break live air
+  }
 }
 
 // One pin per Smart Citizen SITE on the map, but every kit in the archive.
@@ -2623,6 +2668,13 @@ async function handleLive(context) {
     try {
       const fast = await fastPathFromD1(env.ARCHIVE_DB);
       if (fast) {
+        // Smart Citizen kits that have paused: their last reading is older than
+        // the 30-minute window but under 24 h (scPausedFromD1). Before every
+        // fold below, so each treats them exactly as the upstream path does.
+        try {
+          const paused = await scPausedFromD1(env.ARCHIVE_DB, fast.stations);
+          if (paused.length) fast.stations.push(...paused);
+        } catch (_) { /* paused kits optional */ }
         // Smart Citizen kits within CROSS_NETWORK_M of another network's live
         // station are archived but not shown (markHiddenSmartCitizen). First,
         // so no fold below treats a hidden kit as holding its spot.

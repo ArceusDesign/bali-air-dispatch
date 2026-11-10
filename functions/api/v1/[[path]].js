@@ -75,7 +75,11 @@ const MALFUNCTION_IDS = new Set([
   // reading stepped from 12.1 to 1.5 µg/m³ and has stayed at 1.0-2.0 since,
   // about 0.05 of stations 3-7 km away (0.7-1.1 before). Rows up to 05:15 UTC
   // on 2026-09-25 are sound; later rows are far too low. Same unit read a flat
-  // 0.0 from 27 Jul to 2 Aug 2026 (see INDOOR_IDS above).
+  // 0.0 from 27 Jul to 2 Aug 2026 (see INDOOR_IDS above). Rechecked 2026-11-10:
+  // NOT recovered, the fault reversed. At 02:30 UTC on 20 October it stepped
+  // from 1.1 to 61 µg/m³ in one quarter hour and has read 2-3x the same
+  // neighbours since (1.6-3.3x by day, 6x on 4 Nov), and its feed froze twice
+  // for two days (35.5 from 2 to 4 Nov, 23.7 from 5 to 7 Nov). Still flagged.
   'nafas-2ab21828-94bf-4ee5-8377-1a0a2215c855',
   // Pejeng Kangin (AirGradient). Flagged 2026-10-19: at 19:30 UTC on 17 October
   // its raw PM2.5, PM10 and PM1 all fell from about 20 to exactly 0 in one

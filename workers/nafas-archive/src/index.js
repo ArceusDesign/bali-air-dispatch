@@ -259,6 +259,30 @@ async function snapshotUniversal(db, live, nowSec) {
       (station_id, ts, pm25, pm10, pm1, aqi, temperature, humidity, station_till, pm25_raw)
     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
   `);
+  // Smart Citizen: one reading, one row. /api/live keeps listing a kit for 24 h
+  // after its last reading (so the map can show it as paused, then stale), and
+  // every tick used to archive that same reading again. Measured on 2026-11-10:
+  // 2,959 of 70,128 Smart Citizen rows were repeats. "bali climate" (sc-20075)
+  // holds 2 readings stored 96 times, the Bayu demo at Banjar Dukuh (sc-19995)
+  // 39 readings in 472 rows, and Kul Kul Farm (sc-20167) one four-minute setup
+  // reading, re-stored every 15 min as if it were current air. A repeat weighs
+  // in every daily mean and draws a flat line that looks like data. So a kit's
+  // row is written only when its reading time (station_till, Smart Citizen's
+  // last_reading_at) differs from the one on its newest archived row. Kits post
+  // about once a minute, so an unchanged time means no new reading. 2 rows read
+  // per kit (MAX(ts) on idx_ssnap_id_ts, then the PK). Other networks keep the
+  // plain insert: several publish hourly and are snapshotted every 15 min by
+  // design (see detectStaleLoop).
+  const stmtSnapNewReading = db.prepare(`
+    INSERT OR IGNORE INTO station_snapshots
+      (station_id, ts, pm25, pm10, pm1, aqi, temperature, humidity, station_till, pm25_raw)
+    SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10
+    WHERE NOT EXISTS (
+      SELECT 1 FROM station_snapshots
+      WHERE station_id = ?1 AND station_till = ?9
+        AND ts = (SELECT MAX(ts) FROM station_snapshots WHERE station_id = ?1)
+    )
+  `);
 
   const stationBatch = [];
   const snapBatch = [];
@@ -292,7 +316,8 @@ async function snapshotUniversal(db, live, nowSec) {
     // the catalog row but NOT a snapshot, so we don't archive the frozen echo.
     const tillMs = parseTillMs(s.lastSeen);
     if (tillMs != null && (nowSec * 1000 - tillMs) > STALE_RECORD_MS) continue;
-    snapBatch.push(stmtSnap.bind(
+    const oneReadingOneRow = String(s.id).startsWith('sc-') && s.lastSeen;
+    snapBatch.push((oneReadingOneRow ? stmtSnapNewReading : stmtSnap).bind(
       s.id, nowSec,
       toNumberOrNull(s.pm25), toNumberOrNull(s.pm10), toNumberOrNull(s.pm1),
       toIntOrNull(s.aqi),
@@ -302,10 +327,14 @@ async function snapshotUniversal(db, live, nowSec) {
     ));
   }
   if (stationBatch.length) await db.batch(stationBatch);
-  if (snapBatch.length)    await db.batch(snapBatch);
+  // Rows actually written, not attempted: a Smart Citizen repeat is skipped by
+  // the statement itself, and archive_runs.snapshots_written should say so.
+  const written = snapBatch.length
+    ? (await db.batch(snapBatch)).reduce((n, r) => n + ((r && r.meta && r.meta.changes) || 0), 0)
+    : 0;
   // stationsSeen excludes off:true tombstones — they're skipped above and
   // would otherwise drift the archive_runs stations_seen ops metric.
-  return { stationsSeen: live.stations.filter(s => !(s && s.off)).length, snapshots: snapBatch.length };
+  return { stationsSeen: live.stations.filter(s => !(s && s.off)).length, snapshots: written };
 }
 
 // Roll up the last 3 days of station_snapshots into station_daily.
