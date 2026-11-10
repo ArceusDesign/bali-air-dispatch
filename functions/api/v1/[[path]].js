@@ -86,6 +86,16 @@ const MALFUNCTION_IDS = new Set([
   // device, flagged too so the series cannot re-enter through the other copy.
   'ag-195778',
   'oq-6404859',
+  // Bali Umalas (Villa Fusion), IQAir, contributed by Intalenta.id. Flagged
+  // 2026-11-10. Through September it read like any uncorrected optical sensor:
+  // 0.85-1.27x the raw PM2.5 of Kuwum's AirGradient unit 1.2 km away. From
+  // October it reads a fixed 14-18 µg/m³ above the corrected AirGradient units
+  // around it (fit: Umalas = 14-18 + 0.7-1.0x their median), never below 11
+  // while they read under 5, and the gap is growing: +5 µg/m³ over Kuwum's RAW
+  // reading in October, +9 in November. Lycée Français (IQAir, 1.2 km) does not
+  // do this. IQAir's own page shows the same values, so it is the device, not
+  // the scrape. Readings before 2026-10-01 stand, as uncorrected-sensor values.
+  'iqs-bali-umalas-villa-fusion',
 ]);
 
 // Networks whose PM2.5 we humidity-correct before publishing (US-EPA 2021).

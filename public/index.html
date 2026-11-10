@@ -1306,6 +1306,13 @@ const MALFUNCTION_IDS = new Set([
   // cannot re-enter island figures through the other copy. Matches functions/api/v1.
   'ag-195778',
   'oq-6404859',
+  // Bali Umalas (Villa Fusion), IQAir — flagged 2026-11-10. Until October it
+  // read like an uncorrected sensor; since then it sits a fixed 14-18 µg/m³
+  // above every AirGradient unit around it, and never drops below 11 while they
+  // read under 5, so on clean days it alone reads over the WHO daily limit. The
+  // gap is growing. IQAir's own page shows the same figures: the device, not
+  // our scrape. Readings before 1 October stand. Matches functions/api/v1.
+  'iqs-bali-umalas-villa-fusion',
 ]);
 const isMalfunctioning = (s) => MALFUNCTION_IDS.has(typeof s === 'string' ? s : (s && s.id));
 // THE ONE TEST for "this device is not reporting trustworthy ambient air".
