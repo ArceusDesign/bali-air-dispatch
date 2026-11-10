@@ -555,7 +555,8 @@ async function discoveryTick(env, opts = {}) {
       ).all();
       for (const r of (prior.results || [])) taken.add(r.slug);
       const slug = slugFor(c.key, taken);
-      const status = mode === 'review' ? 'review' : 'active';
+      // A device 50–300 m from one we publish waits for a person (NEAR_REVIEW_M).
+      const status = mode === 'review' || v.review ? 'review' : 'active';
       await db.prepare(
         `UPDATE iq_discovery SET status = ?2, slug = ?3, name = ?4, lat = ?5, lon = ?6, contributor = ?7,
            reason = NULL, detail = ?8, checked_at = ?9, decided_at = ?9 WHERE key = ?1`

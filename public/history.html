@@ -467,12 +467,14 @@ let relayedSources = new Map(); // station_id → source, for stations still bei
                                 // displayed instead. Populated by buildStationList();
                                 // read by nameFor() to tag them "(VIA <SOURCE>)",
                                 // since a relay usually carries the identical name.
-let colocatedSites = new Map(); // station_id → name of the Smart Citizen pin
-                                // shown on the map for its site. Kits within
-                                // 120 m of each other are one site there (see
-                                // foldSmartCitizenSites in functions/api/live.js);
-                                // every kit is archived, and the folded ones are
-                                // listed under "Co-located · not on map".
+let colocatedSites = new Map(); // station_id → name of the pin shown on the
+                                // map for its site. Kits within 120 m of each
+                                // other are one site there (see
+                                // foldSmartCitizenSites in functions/api/live.js),
+                                // and a kit within 50 m of another network's live
+                                // station gives way to it (markHiddenSmartCitizen);
+                                // every kit is archived, and the ones not shown
+                                // are listed under "Co-located · not on map".
 let currentRange = '30d';
 let chartInstance = null;
 // Suspected-indoor monitors (consistently far below nearby outdoor sensors):
@@ -481,7 +483,7 @@ const INDOOR_IDS = new Set([
   'nafas-ba19b143-3580-4a60-a3ce-135a5e5936dd',  // Pemogan
   'pa-36601',                                     // Jimbaran by Lumi Clinic
   // IQAir republishes the same physical Jimbaran unit as pa-36601 (identical
-  // coordinates to 6dp). Today it is hidden anyway by the 300 m cross-source
+  // coordinates to 6dp). Today it is hidden anyway by the 50 m cross-network
   // de-dup, but that only holds while the PurpleAir side keeps reporting —
   // tagging it too means an indoor series cannot re-enter ambient figures
   // through the other copy if PurpleAir goes quiet. Matches the same list in
@@ -1015,9 +1017,12 @@ function buildStationList(){
   // the same site is shown there (foldSmartCitizenSites, live.js). Same three
   // tests as the relayed group below — archived, still producing data, absent
   // from /api/live — plus the site test itself: within SC_SITE_M of a Smart
-  // Citizen pin that IS on the map. Built first so the relayed group, whose
-  // 300 m test would also match them, can exclude them.
-  const SC_SITE_M = 120;
+  // Citizen pin that IS on the map, or within CROSS_NETWORK_M of another
+  // network's pin that is (markHiddenSmartCitizen, live.js: a separate device,
+  // not a relay, so it belongs here and not under "Relayed duplicate"). Built
+  // first so the relayed group, whose 300 m test would also match them, can
+  // exclude them.
+  const SC_SITE_M = 120, CROSS_NETWORK_M = 50;
   colocatedSites = new Map();
   const _liveSc = liveRows.filter(s => s && s.source === 'Smart Citizen' && !s.off &&
     Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
@@ -1031,6 +1036,13 @@ function buildStationList(){
     for (const s of _liveSc) {
       const d = metresApart(+u.lat, +u.lon, +s.lat, +s.lon);
       if (d < SC_SITE_M && d < best) { best = d; site = s; }
+    }
+    if (!site) {
+      for (const s of _liveGeo) {
+        if (s.source === 'Smart Citizen' || s.off) continue;
+        const d = metresApart(+u.lat, +u.lon, +s.lat, +s.lon);
+        if (d < CROSS_NETWORK_M && d < best) { best = d; site = s; }
+      }
     }
     if (!site) return false;
     colocatedSites.set(u.station_id, (site.name || site.id).split(' (')[0]);

@@ -459,6 +459,27 @@ function metresBetween(aLat, aLon, bLat, bLon) {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
+// One radius for every "a different network already holds this spot" rule:
+// IQAir, Smart Citizen and AirGradient against other networks, and Airly
+// against Nafas. It was 300 m until 2026-11-10 and is 50 m now, because at 300
+// it was hiding real, separate sensors. Measured on 10 Nov 2026, every
+// station those rules held off the map:
+//   same device, another route     Tonja Nafas ↔ ag-77247 0 m; IQAir Jimbaran ↔
+//                                  PurpleAir 0 m; IQAir Sempidi ↔ AQICN 0 m;
+//                                  Airly ↔ Nafas (Ubud 12 m, Sanur 18 m)
+//   different device, same area    Smart Citizen Langudu 100 m from AirGradient
+//                                  Cafe Laut (suspected indoor); Smart Citizen
+//                                  Kul Kul Farm 184 m from Sogil Brew; IQAir
+//                                  Umalas 145 m from AirGradient Bumbak Dauh,
+//                                  reading 17 µg/m³ beside its 4 — off the map
+//                                  from 27 Oct to 10 Nov 2026
+// Every copy of one device sat within 18 m; nothing between 50 and 300 m was a
+// copy. The gap, not the round number, is what 50 m rests on: a pairing found
+// later between 50 and 300 m is a reason to look again, not to widen this.
+// The 1 m relay rule (TWIN_M) and AirGradient's 100 m map-vs-public rule are
+// identity tests for one network's own records, and do not use this.
+const CROSS_NETWORK_M = 50;
+
 // Scraped IQAir stations (written by the iqair-scrape worker into
 // iq_scrape_stations — see workers/iqair-scrape). These are REAL hourly PM2.5
 // readings decoded from each IQAir station page, NOT the AQI→PM2.5 estimate the
@@ -466,16 +487,18 @@ function metresBetween(aLat, aLon, bLat, bLon) {
 // They are the only IQAir data on the map, under the 'IQAir' source.
 //
 // De-dup: several IQAir devices ALSO publish to an open network we already read
-// (e.g. "Jimbaran" is PurpleAir's "Jimbaran by Lumi Clinic" ~12 m away). Any
-// scraped station within DEDUP_M of an already-present DIFFERENT-source station
-// is dropped so the native feed wins and there's no double dot. This only ever
-// removes scraped IQAir dots — it can never drop an existing one. Stations
-// unique to IQAir (the majority) are kept.
+// (e.g. "Jimbaran" is PurpleAir's "Jimbaran by Lumi Clinic" at the same
+// coordinates). Any scraped station within CROSS_NETWORK_M of an
+// already-present DIFFERENT-source station is dropped so the native feed wins
+// and there's no double dot. This only ever removes scraped IQAir dots — it
+// can never drop an existing one. Stations unique to IQAir (the majority) are
+// kept. A Smart Citizen kit hidden by its own rule (scHidden) is not on the
+// map, so it holds no spot here.
 //
 // Staleness: based on last_scrape_ts (when the worker fetched), not latest_ts
 // (IQAir's hourly series lags hours behind its live tile). See FRESH_MS below.
 async function scrapedIQAirFromD1(db, existing = []) {
-  const DEDUP_M = 300;
+  const DEDUP_M = CROSS_NETWORK_M;
   const rows = await db.prepare(`
     SELECT slug, name, lat, lon, latest_pm25, latest_aqi, latest_ts, last_scrape_ts
     FROM iq_scrape_stations
@@ -514,7 +537,7 @@ async function scrapedIQAirFromD1(db, existing = []) {
   for (const r of (rows.results || [])) {
     if (r.lat == null || r.lon == null) continue;
     const dup = existing.some(o =>
-      o && o.source !== 'IQAir' &&
+      o && o.source !== 'IQAir' && !o.scHidden &&
       Number.isFinite(o.lat) && Number.isFinite(o.lon) &&
       metresBetween(r.lat, r.lon, o.lat, o.lon) < DEDUP_M
     );
@@ -914,12 +937,12 @@ async function fetchNafas() {
 // device that comes online in Bali appears automatically; there is no hardcoded
 // device list to maintain. Indoor devices can never slip in.
 //
-// De-dup happens later, in two places. Cross-source (drop an SC pin sitting on
-// an existing PurpleAir/Nafas/etc. sensor) is applied by the caller via
-// dedupSmartCitizen(), mirroring scrapedIQAirFromD1. Kits within SC_SITE_M of
+// De-dup happens later, in two places, both on visitor-served paths only, so
+// the archive worker still receives, and archives, every kit. Cross-source
+// (hide an SC pin sitting on a live PurpleAir/Nafas/etc. sensor) is
+// markHiddenSmartCitizen(), applied by the caller. Kits within SC_SITE_M of
 // each other (Fab Lab's test benches) are folded to one pin per site by
-// foldSmartCitizenSites() — on visitor-served paths only, so the archive worker
-// still receives, and archives, every kit.
+// foldSmartCitizenSites().
 const SC_BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
 function scPickSensor(sensors, re) {
   if (!Array.isArray(sensors)) return null;
@@ -1051,19 +1074,48 @@ async function fetchSmartCitizen() {
   return out;
 }
 
-// Drop Smart Citizen pins within 300 m of an already-present DIFFERENT-source
-// station (mirrors scrapedIQAirFromD1's de-dup). Only ever removes SC pins —
-// never an existing one. Future-proofs against an SC unit placed beside a
-// PurpleAir/Nafas/etc. device so the native feed wins and there's no double dot.
-function dedupSmartCitizen(scStations, existing) {
-  const DEDUP_M = 300;
-  return scStations.filter(s =>
-    !existing.some(o =>
-      o && o.source !== 'Smart Citizen' &&
-      Number.isFinite(o.lat) && Number.isFinite(o.lon) &&
-      metresBetween(s.lat, s.lon, o.lat, o.lon) < DEDUP_M
-    )
-  );
+// The networks a Smart Citizen pin gives way to: the ones the upstream path
+// assembles before it. AirGradient and IQAir are added after it and give way
+// to it instead.
+const SC_DEFERS_TO = new Set(['PurpleAir', 'AQICN', 'Airly', 'Nafas', 'OpenAQ']);
+
+// Mark Smart Citizen kits within CROSS_NETWORK_M of a station on one of those
+// networks `scHidden`, so the other network's pin wins and there's no double
+// dot. Returns the same kits, the hidden ones as copies carrying the flag.
+//
+// MARKED, NOT DROPPED. Until 2026-11-10 this removed the kit before the archive
+// worker saw it, so a hidden kit was never archived at all: Langudu (sc-20087)
+// lost everything from 19 Oct, and Kopernik (sc-20073) everything from 20 Oct,
+// when its owner moved it beside Nafas Ubud.
+// The worker's ?fresh=1 read now receives hidden kits and archives them like
+// any other; every visitor-served path drops them (here on the upstream path,
+// dropHiddenSmartCitizen on the fast path), exactly as foldSmartCitizenSites
+// treats co-located kits.
+//
+// Only a LIVE station holds the spot: not stale, not a tombstone, and carrying
+// a reading. Nafas still lists its Ubud station, silent since 8 Oct 2026, as a
+// stale pin, and that silent pin was hiding the live Kopernik kit 21 m away.
+// No Smart Citizen kit is another network's device under a different name
+// (unlike an IQAir page or an Airly unit), so letting a live kit show beside a
+// silent station never shows one device twice.
+function markHiddenSmartCitizen(scStations, existing) {
+  const anchors = (existing || []).filter(o =>
+    o && SC_DEFERS_TO.has(o.source) && !o.stale && !o.off && Number.isFinite(o.pm25) &&
+    Number.isFinite(o.lat) && Number.isFinite(o.lon));
+  return scStations.map(s =>
+    anchors.some(o => metresBetween(+s.lat, +s.lon, o.lat, o.lon) < CROSS_NETWORK_M)
+      ? { ...s, scHidden: true } : s);
+}
+
+// The fast path's half of markHiddenSmartCitizen. Kits it hides are in the
+// archive now, so the fast path, which is built from the archive, must hide
+// them the same way. Runs before every fold that uses Smart Citizen pins as
+// anchors (scraped IQAir, tombstones), as on the upstream path.
+function dropHiddenSmartCitizen(stations) {
+  const sc = stations.filter(s => s && s.source === 'Smart Citizen' && !s.off &&
+    Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  const hidden = new Set(markHiddenSmartCitizen(sc, stations).filter(s => s.scHidden).map(s => s.id));
+  return hidden.size ? stations.filter(s => !(s && hidden.has(s.id))) : stations;
 }
 
 // One pin per Smart Citizen SITE on the map, but every kit in the archive.
@@ -1112,7 +1164,7 @@ function foldSmartCitizenSites(stations) {
 // directly removes that delay: any new Bali AirGradient unit appears as soon
 // as it publishes. No key, one request, world feed filtered to the Bali bbox.
 //
-// De-dup DEFERS to every existing source (300 m): Kuwum + Tabanan keep their
+// De-dup DEFERS to every existing source (CROSS_NETWORK_M): Kuwum + Tabanan keep their
 // established OpenAQ identity (oq-*) so their D1 history stays continuous;
 // only genuinely new units (Padang2) surface with an ag-* id. Names and model
 // strings are attacker-controllable (anyone can name an AirGradient location
@@ -1589,9 +1641,10 @@ function feedFor(id) {
   return null;
 }
 
-// Drop AirGradient pins within 300 m of an already-present DIFFERENT-source
-// station, so established identities and their archived history win — EXCEPT
-// against OpenAQ, which is exempt.
+// Drop AirGradient pins within CROSS_NETWORK_M of an already-present
+// DIFFERENT-source station, so established identities and their archived
+// history win — EXCEPT against OpenAQ, which is exempt, and a Smart Citizen
+// kit hidden by its own rule (scHidden), which is not on the map.
 //
 // Why OpenAQ is exempt: an OpenAQ neighbour is usually not a different sensor
 // at all, it IS this AirGradient unit relayed through OpenAQ (verified 0 m for
@@ -1602,10 +1655,10 @@ function feedFor(id) {
 // own id; ag-* builds a clean raw 15-min record), and the DISPLAY choice is
 // made later, on every visitor-served path, by dropOpenAQNearAirGradient().
 function dedupAirGradient(agStations, existing) {
-  const DEDUP_M = 300;
+  const DEDUP_M = CROSS_NETWORK_M;
   return agStations.filter(a =>
     !existing.some(o =>
-      o && o.source !== 'AirGradient' && o.source !== 'OpenAQ' &&
+      o && o.source !== 'AirGradient' && o.source !== 'OpenAQ' && !o.scHidden &&
       Number.isFinite(o.lat) && Number.isFinite(o.lon) &&
       metresBetween(a.lat, a.lon, o.lat, o.lon) < DEDUP_M
     )
@@ -1767,16 +1820,16 @@ async function contribFromD1(db, existing = []) {
 }
 
 // Airly de-dup (display only). Both Bali Airly installations are Nafas-SPONSORED
-// hardware co-located (~12 m) with a Nafas station, publishing the same readings
-// (daily-mean r≈0.97, mean |Δ|<1 µg/m³). Show one pin: drop any Airly station
-// within 300 m of a FRESH (non-stale) Nafas station. If Nafas isn't reporting
+// hardware co-located (12 m and 18 m) with a Nafas station, publishing the same
+// readings (daily-mean r≈0.97, mean |Δ|<1 µg/m³). Show one pin: drop any Airly
+// station within CROSS_NETWORK_M of a FRESH (non-stale) Nafas station. If Nafas isn't reporting
 // that spot, the Airly is kept → automatic failover to the redundant feed.
 // Applied ONLY to what a VISITOR is served, on either path. The archive worker
 // is the sole caller passing ?fresh=1, which skips these folds, so it keeps
 // snapshotting BOTH into D1 — the failover history is preserved and the Airly
 // reappears the moment Nafas goes quiet.
 function dropAirlyNearNafas(stations) {
-  const DEDUP_M = 300;
+  const DEDUP_M = CROSS_NETWORK_M;
   const freshNafas = stations.filter(s =>
     s && s.source === 'Nafas' && !s.stale &&
     Number.isFinite(s.pm25) &&   // a blank Nafas pin must not hide a live Airly reading
@@ -2570,6 +2623,10 @@ async function handleLive(context) {
     try {
       const fast = await fastPathFromD1(env.ARCHIVE_DB);
       if (fast) {
+        // Smart Citizen kits within CROSS_NETWORK_M of another network's live
+        // station are archived but not shown (markHiddenSmartCitizen). First,
+        // so no fold below treats a hidden kit as holding its spot.
+        fast.stations = dropHiddenSmartCitizen(fast.stations);
         // Fold in scraped IQAir stations (their own D1 tables, hourly cadence).
         // Pass the base list so co-located duplicates are dropped.
         try {
@@ -2674,21 +2731,23 @@ async function handleLive(context) {
     }
   });
   // Fold in Smart Citizen (smartcitizen.me public API — OUTDOOR only). Done
-  // here, not via sourceFetchers, so the 300 m cross-source de-dup runs against
-  // the already-assembled base list. The 15-min worker calls /api/live?fresh=1,
-  // sees this de-duped result, and archives SC into the universal tables — so
-  // history charts work automatically with no extra worker or table changes.
+  // here, not via sourceFetchers, so the cross-network rule runs against the
+  // already-assembled base list. The 15-min worker calls /api/live?fresh=1 and
+  // archives SC into the universal tables — so history charts work
+  // automatically with no extra worker or table changes. The worker receives
+  // the kits that rule hides too (scHidden), so they are archived; a visitor
+  // never does.
   try {
-    const sc = await fetchSmartCitizen();
-    const scKept = dedupSmartCitizen(sc, results.stations);
-    if (scKept.length) {
+    const sc = markHiddenSmartCitizen((await fetchSmartCitizen()).map(st => flagStale(st)), results.stations);
+    const scOut = noFast ? sc : sc.filter(s => !s.scHidden);
+    if (scOut.length) {
       results.sources++;
-      results.stations.push(...scKept.map(st => flagStale(st)));
+      results.stations.push(...scOut);
     }
   } catch (_) { /* Smart Citizen optional — never block the response */ }
 
   // Fold in AirGradient (direct public feed — see fetchAirGradient). After the
-  // base sources + SC so the 300 m de-dup defers to every established pin;
+  // base sources + SC so the cross-network rule defers to every established pin;
   // before the scraped-IQAir fold and tombstones, which both de-dup against
   // the full list including AG. The 15-min worker archives AG stations via
   // the universal pass, which also carries them into the D1 fast path. When
@@ -2708,7 +2767,7 @@ async function handleLive(context) {
   } catch (_) { /* AirGradient optional — never block the response */ }
   // AirGradient devices shared to AG's map but not its public API (see
   // fetchAirGradientMap). AFTER the direct feed, so it can defer to everything
-  // the direct feed carries; same 300 m rule against other networks, and the
+  // the direct feed carries; same cross-network rule as the direct feed, and the
   // same relay fold below, as any AirGradient station. Its own try: a map
   // failure must never touch the direct feed's pins.
   try {

@@ -277,7 +277,7 @@ Since October 2026 those units are read from AirGradient's map backend. AirGradi
 - **Identity.** Map-feed stations carry the `agm-` prefix, and every station in the API states its route in a `feed` field (§10.3). A station never changes route.
 - **Only AirGradient's own outdoor units are taken.** AirGradient's map also displays other networks, OpenAQ among them, which reach this archive by their own routes; indoor units sit on separate endpoints that are not read.
 
-Every other rule applies unchanged: the 300 m rule against other networks (§7), the relay fold above (Community park's OpenAQ relay now folds under its map-feed pin on the map; the History page lists the relay, which holds the longer record), and the six-hour staleness limit (§8.1).
+Every other rule applies unchanged: the 50 m rule against other networks (§7), the relay fold above (Community park's OpenAQ relay now folds under its map-feed pin on the map; the History page lists the relay, which holds the longer record), and the six-hour staleness limit (§8.1).
 
 ---
 
@@ -287,14 +287,33 @@ Every other rule applies unchanged: the 300 m rule against other networks (§7),
 |---|---|---|
 | **AirGradient ↔ OpenAQ relay pairing** | 1 m | Exact-coordinate identity; direct feed always wins (§6) |
 | **AirGradient map feed vs. AirGradient public API** | 100 m | A unit's map record is used only while no public-API unit is within 100 m of it; the public API wins as soon as one is (§6.5) |
-| **AirGradient vs. other networks** | 300 m | An AirGradient pin is dropped if a *different* network already holds that location, so established station identities and their longer histories win. OpenAQ is exempt from this rule, for the reason in §6 |
-| **Airly vs. Nafas** | 300 m | Airly is dropped near a *live* Nafas station. If Nafas is not reporting, Airly is retained as failover |
-| **Smart Citizen vs. other networks** | 300 m | A Smart Citizen pin is dropped if a *different* network already holds that location, as for AirGradient |
+| **AirGradient vs. other networks** | 50 m | An AirGradient pin is dropped if a *different* network already holds that location, so established station identities and their longer histories win. OpenAQ is exempt from this rule, for the reason in §6, and so is a Smart Citizen kit that is itself hidden |
+| **Airly vs. Nafas** | 50 m | Airly is dropped near a *live* Nafas station. If Nafas is not reporting, Airly is retained as failover. The two Bali Airly units are 12 m and 18 m from their Nafas stations |
+| **Smart Citizen vs. other networks** | 50 m | A Smart Citizen pin is hidden if a PurpleAir, AQICN, Airly, Nafas or OpenAQ station is *live* at that location: reporting, not stale. A silent station does not hold the spot. A hidden kit is still archived under its own id, and the History page lists it under "Co-located · not on map". Since 10 November 2026; before then a hidden kit was not archived at all (§7.1) |
 | **Smart Citizen kits at one site** | 120 m | Kits within 120 m of each other — Fab Lab Bali's test benches — are one site on the map: the kit with the best PM2.5 sensor is shown — Sensirion SEN5X, then Seeed HM-3301, then anything else, Fab Lab Bali's own ranking — and among equals the lowest-numbered (the oldest, with the longest record), so a bench of several kits is not counted as several neighbourhoods. Every kit is archived under its own id, and the History page lists the others under "Co-located · not on map". Since 2 October 2026; before then the other kits were not archived at all |
-| **IQAir vs. other networks** | 300 m | A captured IQAir pin is dropped if a *different* network already holds that location, as for AirGradient. Discovery applies the same radius before admitting a station (§8.6), so nothing it adds is then hidden here |
+| **IQAir vs. other networks** | 50 m | A captured IQAir pin is dropped if a *different* network already holds that location, as for AirGradient. Discovery applies the same radius before admitting a station, and holds one 50–300 m from a station for review (§8.6), so nothing it adds is then hidden here |
 | **IQAir mirrors** | — | Where IQAir republishes a sensor already ingested directly (e.g. a PurpleAir unit), both copies are flagged together so a filtered analysis cannot lose one and keep the other |
 
-The tightest rule is deliberately the 1 m relay rule. A wider radius is unsafe for identity matching: anyone can register a device on a public network and enter arbitrary coordinates, and a 300 m rule could allow an unrelated registration to suppress a genuine station. At 1 m, with the relay reporting the device's own coordinates unchanged, nothing unrelated can qualify.
+The tightest rule is deliberately the 1 m relay rule. A wider radius is unsafe for identity matching: anyone can register a device on a public network and enter arbitrary coordinates, and a wide rule can let an unrelated registration suppress a genuine station. At 1 m, with the relay reporting the device's own coordinates unchanged, nothing unrelated can qualify.
+
+### 7.1 Why the cross-network radius is 50 m
+
+Until 10 November 2026 the four rules against other networks used 300 m. On that date every station they were holding off the map was checked:
+
+| Hidden station | Held off by | Distance | Same device? |
+|---|---|---|---|
+| AirGradient "Tonja - Nafas" (`ag-77247`) | Nafas Tonja | 0 m | Yes: the same unit, published by both |
+| IQAir Jimbaran | PurpleAir Jimbaran by Lumi Clinic | 0 m | Yes: IQAir republishes it ("IQAir mirrors" above) |
+| IQAir Kabupaten Badung Sempidi | AQICN Sempidi | 0 m | Yes: the government station, on both |
+| Airly Mas, Ubud; Airly Sanur | Nafas Ubud; Nafas Sanur | 12 m; 18 m | Yes: Nafas-sponsored Airly hardware, same readings |
+| Smart Citizen Langudu (`sc-20087`) | AirGradient Cafe Laut, through its OpenAQ relay | 100 m | No: a Bayu node beside an AirGradient unit that is itself flagged suspected indoor (§8.3) |
+| IQAir Bali Umalas (Villa Fusion) | AirGradient Bumbak Dauh | 145 m | No: 17 µg/m³ against 4 at the same hours. Off the map 27 October – 10 November 2026; its record is complete, as IQAir's own hourly series is archived separately |
+| Smart Citizen Kul Kul Farm (`sc-20167`) | AirGradient Sibang Kaja - Sogil Brew, through its OpenAQ relay | 184 m | No: a Bayu node |
+| Smart Citizen Kopernik (`sc-20073`) | Nafas Ubud | 21 m | No: a Seeed HM-3301 kit, moved to this spot on 20 October 2026. Nafas Ubud has not reported since 8 October 2026 but is still listed by Nafas, and was holding the spot |
+
+Every copy of one device was within 18 m; nothing between 50 and 300 m was a copy. The radius is set in that gap. The Kopernik case is why a Smart Citizen kit now gives way only to a *live* station: no Smart Citizen kit is another network's device under a different name, so a live kit beside a silent station is never one device shown twice. That exception is not extended to AirGradient or IQAir, because there the 0 m pairs above *are* one device, and a silent copy would otherwise let the other reappear.
+
+The rule also used to stop a hidden Smart Citizen kit from being archived, not only from being shown. Between Langudu coming online on 19 October and the change, the archive caught two of its readings, and none from Kopernik at its new position. From 10 November 2026 a hidden kit is archived like any other. The hours missed before that are being restored from Smart Citizen's own hourly history, one row per hour, each station's restoration recorded in `archive_corrections` (kind `proximity_hidden_backfill`).
 
 ---
 
@@ -359,7 +378,7 @@ Until October 2026 the IQAir stations we captured were a hand-kept list, so a de
 
 - **It is one device.** A station page reads "Station from *contributor*" and links to one map position, its own. Any page reading "*N* station(s) from …" is an area value, even when *N* is 1: a town with one station reads "1 station from …", a single character from a station page. Where the page carries IQAir's own description, its type must be `station`, with no more than one active station. Area values are refused at capture as well, so a station address that ever starts serving one stops updating rather than publishing it.
 - **The data is IQAir's.** A page with a "Data sources" line, such as "AirGradient via OpenAQ", is republishing another network's device. Every such page in Bali today is a device we already read at source.
-- **It is not already on the map.** It must be more than 300 m from every station, on any network, that has reported in the past 30 days. A dead station does not hold its spot against a new device there. IQAir keeps its own copy of a relayed device's coordinates, and they can drift: one sits 194 m from the AirGradient unit it relays.
+- **It is not already on the map.** It must be more than 50 m from every station, on any network, that has reported in the past 30 days (300 m until 10 November 2026, §7.1). A dead station does not hold its spot against a new device there. A station between 50 and 300 m from one is held for review, not admitted automatically: IQAir keeps its own copy of a relayed device's coordinates, and they can drift. One sits 194 m from the AirGradient unit it relays; the data-sources test above caught it, and the review band is there for a relay page that does not say so.
 - **It has a position inside Bali, and is reporting,** with a reading less than 24 hours old.
 
 A station that passes is captured from that tick on, under its own `iqs-` id. Every candidate and the reason for each decision is recorded in the database (`iq_discovery`, `schema-v12-iqair-discovery.sql`). Stations refused for a reason that can change, such as not reporting, are looked at again a week later. An operator can block a station permanently, admit one by hand, or switch discovery to a review mode in which admissible stations wait for a person.

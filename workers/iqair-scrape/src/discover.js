@@ -20,12 +20,18 @@ import { extractStation, pageKind, dataSources, contributorName } from './extrac
 export const BALI = { latMin: -9.2, latMax: -8.0, lonMin: 114.4, lonMax: 115.8 };
 
 // A candidate within this distance of a station we already publish is not
-// added: either it is the same device relayed under another name (IQAir keeps
-// its own copy of the coordinates — Seaside Tribe sits 194 m from the
-// AirGradient unit it relays), or a second device on the same spot, which the
-// map would fold away anyway. Same radius as scrapedIQAirFromD1()'s DEDUP_M in
-// functions/api/live.js, so nothing admitted here is then hidden there.
-export const COLOCATED_M = 300;
+// added: it is either the same device relayed under another name, or a second
+// device on the same spot, which the map would fold away anyway. Same radius
+// as CROSS_NETWORK_M in functions/api/live.js (300 m until 2026-11-10), so
+// nothing admitted here is then hidden there.
+export const COLOCATED_M = 50;
+// Between COLOCATED_M and this, a candidate is admissible but not admitted
+// automatically: it goes to 'review' for a person to promote. IQAir keeps its
+// own copy of a relayed device's coordinates, and they can drift — Seaside
+// Tribe sits 194 m from the AirGradient unit it relays. The relay test above
+// the distance test catches every such page seen so far (all 41 relays on
+// 10 Nov 2026); this is the backstop for one that does not name its source.
+export const NEAR_REVIEW_M = 300;
 
 // A device whose newest reading is older than this is not admitted yet; it is
 // rechecked later rather than rejected for good.
@@ -138,7 +144,8 @@ function newestReadingMs(ex) {
 
 // Decide one candidate from its rendered page. `known` = every station we
 // already publish, any network: [{ id, lat, lon }]. Returns
-//   { verdict: 'admit', ex, contributor }  or  { verdict: 'reject', reason, detail }
+//   { verdict: 'admit', ex, contributor, nearest, review }  or  { verdict: 'reject', reason, detail }
+// review = admissible, but too near a station we publish to admit unseen.
 // In order: is it a page at all; is it ONE device; is it someone else's data;
 // does it have its own position, inside Bali; is it reporting; is it already
 // on our map under another network or name.
@@ -171,5 +178,6 @@ export function classifyCandidate(html, known, nowMs = Date.now()) {
     return { verdict: 'reject', reason: 'colocated', detail: `${nearest.id} ${Math.round(nearest.d)} m` };
   }
   return { verdict: 'admit', ex, contributor: ex.contributor || contributorName(html),
-           nearest: nearest ? `${nearest.id} ${Math.round(nearest.d)} m` : null };
+           nearest: nearest ? `${nearest.id} ${Math.round(nearest.d)} m` : null,
+           review: !!(nearest && nearest.d < NEAR_REVIEW_M) };
 }

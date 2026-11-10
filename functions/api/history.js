@@ -349,8 +349,8 @@ async function handleHistory(context) {
     const HIDDEN_STATION_IDS = [
       // "Tonja - Nafas" — an AirGradient unit that appeared on 27 Jul at the
       // EXACT coordinates of the long-running Nafas Tonja station. The map
-      // already collapses it (dedupAirGradient drops an AG pin within 300 m of
-      // another source), but the history picker lists straight from this
+      // already collapses it (dedupAirGradient drops an AG pin within 50 m of
+      // another source; it is at 0 m), but the history picker lists straight from this
       // catalog, so it surfaced there as a near-empty duplicate of a station we
       // have months of record for. Hidden from the listing only — its archived
       // rows are untouched and still reachable by id.
