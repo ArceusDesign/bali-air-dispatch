@@ -1526,6 +1526,7 @@
   "roll.uncorrected": "· mentah",
   "roll.uncorrectedTip": "Direlai oleh OpenAQ tanpa data kelembapan untuk pembacaan ini, jadi tidak dikoreksi dan terbaca tinggi dalam kelembapan Bali. Ditampilkan hanya karena tidak ada umpan langsung di sini.",
   "panel.uncorrected": "· mentah, tanpa koreksi",
+  "panel.avg15": "· rata-rata 15 menit",
   "nav.report": "Laporkan pembakaran",
   "foot.report": "Laporkan pembakaran",
   "nav.alerts": "Dapatkan notifikasi kualitas udara (Telegram)",

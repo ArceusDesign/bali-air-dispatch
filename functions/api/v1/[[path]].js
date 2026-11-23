@@ -369,7 +369,10 @@ function routeIndex(origin) {
       },
     },
     intervals: {
-      raw: '15-minute snapshots as fetched. Not available for iqs-* (IQAir publishes hourly).',
+      raw: '15-minute snapshots as fetched. Not available for iqs-* (IQAir publishes hourly). ' +
+           'sc-* (Smart Citizen) snapshots since 2026-11-23 are each the mean of the kit\'s ' +
+           'minute readings over the 15 minutes up to its latest reading, which is at or ' +
+           'shortly before observed_at; earlier sc-* snapshots are single minutes.',
       hourly: 'Hourly means. Native for nafas-* and iqs-*; bucketed from raw snapshots otherwise.',
       daily: 'Daily means, with min/max/sample count where available.',
     },

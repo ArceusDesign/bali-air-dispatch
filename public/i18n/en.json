@@ -912,6 +912,7 @@
   "roll.uncorrected": "· raw",
   "roll.uncorrectedTip": "Relayed by OpenAQ without humidity for this reading, so it is not corrected and reads high in Bali’s humidity. Shown only because no direct feed exists here.",
   "panel.uncorrected": "· raw, not corrected",
+  "panel.avg15": "· 15-min average",
   "nav.report": "Submit a burn report",
   "foot.report": "Submit a burn report",
   "nav.alerts": "Get air quality notifications (Telegram)",
