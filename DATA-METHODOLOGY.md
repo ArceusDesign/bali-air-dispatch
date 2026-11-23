@@ -47,7 +47,7 @@ Each network is polled independently. A network that fails or times out is simpl
 | **OpenAQ** | Aggregator. **In Bali, every OpenAQ station is an AirGradient unit relayed onward** — see §6; relays with no direct feed are published, corrected from OpenAQ's own humidity for the device (§5.7) | (relayed) | Public API, key | 22 |
 | **IQAir** | Commercial network; mixture of private hosts and contributors | Various | Public station pages, one device each — town-level values are not used (§8.5); stations IQAir adds are found automatically (§8.6) | 11 |
 | **PurpleAir** | Open community network | PurpleAir (Plantower PM module) | Public API, key | 2 |
-| **Smart Citizen** | Open citizen-science platform (Fab Lab Barcelona) | SmartCitizen Kit 2.3 (Sensirion SEN5X); also Fab Lab Bali's own "Bayu" and DIY nodes (Seeed HM-3301). Each station's `type` names its hardware and PM sensor. A Plantower PMS5003 declared on the platform is named only on an old SCK 2.1: no current kit in Bali carries one, and the declaration comes from a planned version (Fab Lab Bali, 9 October 2026) | Public API | 11 |
+| **Smart Citizen** | Open citizen-science platform (Fab Lab Barcelona) | SmartCitizen Kit 2.3 (Sensirion SEN5X); also Fab Lab Bali's own "Bayu" and DIY nodes (Seeed HM-3301). Each station's `type` names its hardware and PM sensor. A Plantower PMS5003 declared on the platform is named only on an old SCK 2.1: no current kit in Bali carries one, and the declaration comes from a planned version (Fab Lab Bali, 9 October 2026). Values are 15-minute means of the kit's minute readings since 23 November 2026 (§10.1) | Public API | 11 |
 | **Nafas** | Indonesian commercial network | Nafas Foundation sensor | Public JSON feed | 7 |
 | **AQICN / WAQI** | Aggregator; carries the **KLHK government reference station** | Reference-grade (government); GAIA (community) | Public API, token. The feed carries AQI sub-indices, converted to µg/m³ (§10.2) | 2 |
 | **Airly** | Commercial network | Airly sensor | Public API, key | 2 |
@@ -412,9 +412,13 @@ Stated plainly, because a reference document that omits them is not usable for p
 
 | Interval | Definition |
 |---|---|
-| **Raw** | 15-minute snapshots exactly as fetched. Not available for IQAir stations, which publish hourly |
+| **Raw** | 15-minute snapshots exactly as fetched. Not available for IQAir stations, which publish hourly. For Smart Citizen since 23 November 2026, each snapshot is the mean of the kit's minute readings over the 15 minutes up to its reading time (see below) |
 | **Hourly** | Hourly means. Native for Nafas and IQAir; bucketed from raw snapshots for all other networks |
 | **Daily** | Daily means, with minimum, maximum and sample count |
+
+**Smart Citizen values are 15-minute means.** Smart Citizen kits report about once a minute. Until 23 November 2026, each 15-minute snapshot, and the map, took the latest of those minutes. In steady air, one minute stands for fifteen well enough; where smoke drifts past in puffs, it does not. On 23 November Fab Lab Bali asked why Kul Kul Farm (`sc-20167`) and TPA Kutuh (`sc-20138`) read so differently here and on Smart Citizen. That morning TPA Kutuh went from 4 to 589 µg/m³ in two minutes. At 11:15 WITA the map showed Kul Kul Farm at 157, a single minute in a quarter-hour that averaged 15. Over the preceding week, one Kul Kul Farm snapshot in ten, and one TPA Kutuh snapshot in twenty, was under half or over double its 15-minute mean and more than 10 µg/m³ from it. For every other kit it was one in forty-five or fewer.
+
+Since then, a kit's PM2.5, PM10 and PM1 are each the mean of its minute readings in the 15 minutes up to its latest reading: the minutes the snapshot covers. Hourly and daily means therefore draw on every minute rather than one in fifteen. If a kit's PM2.5 mean cannot be read from Smart Citizen in an update, the kit is left out of that update rather than shown with its single minute. A PM10 or PM1 mean that cannot be read is stored as empty. Snapshots before 23 November 2026 remain single minutes. The map can still differ from the figure on a kit's own Smart Citizen page, which shows the latest minute.
 
 **Time basis.** All instants are UTC, ISO-8601. **Daily aggregates are WITA (UTC+8) calendar days**, not UTC days — the local day is the meaningful unit for a Bali reader, and each response states which basis applies.
 

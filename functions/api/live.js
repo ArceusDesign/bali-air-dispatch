@@ -372,6 +372,12 @@ function stationFromSnapshotRow(r) {
     // network's AQI sub-index, never measured in µg/m³ (pm25FromAqicnIndex),
     // and the UI marks it "est." whichever path served the request.
     pm25_estimated: String(r.station_id).startsWith('aq-'),
+    // And sc-* (Smart Citizen) values are 15-minute means (scApplyWindowMeans),
+    // so the panel's "15-min average" holds whichever path served it. Rows
+    // stored before 23 Nov 2026 were single minutes; the fast path shows a
+    // kit's newest row, so that only touches a kit paused since then, for
+    // the 24 h it stays on the map.
+    ...(String(r.station_id).startsWith('sc-') ? { avg_minutes: SC_MEAN_MINUTES } : {}),
     pm10: r.pm10 != null ? +(+r.pm10).toFixed(1) : null,
     pm1:  r.pm1  != null ? +(+r.pm1).toFixed(1)  : null,
     aqi: r.aqi != null ? +r.aqi : null,
@@ -936,11 +942,13 @@ async function fetchNafas() {
 // carry a PM2.5 sensor. Indoor devices are NEVER surfaced — this map is outdoor
 // ambient air; an indoor reading is not comparable and must not appear.
 //
-// One request does it all: /v0/devices?near=<lat,lon>&distance=<m> returns the
-// device list WITH inline sensor values (.data.sensors[].value), so there is no
-// N+1 detail fetch (unlike Nafas). The filter is dynamic — any NEW outdoor SC
-// device that comes online in Bali appears automatically; there is no hardcoded
-// device list to maintain. Indoor devices can never slip in.
+// One request finds every kit: /v0/devices?near=<lat,lon>&distance=<m> returns
+// the device list WITH inline sensor values (.data.sensors[].value). Those
+// values are each kit's latest single minute, so since 23 Nov 2026 the PM
+// values are then replaced by 15-minute means, read per kit and per sensor
+// (scApplyWindowMeans, three requests a kit). The filter is dynamic — any NEW
+// outdoor SC device that comes online in Bali appears automatically; there is
+// no hardcoded device list to maintain. Indoor devices can never slip in.
 //
 // De-dup happens later, in two places, both on visitor-served paths only, so
 // the archive worker still receives, and archives, every kit. Cross-source
@@ -1008,7 +1016,144 @@ function scSensorRank(type) {
   const i = SC_SENSOR_RANK.findIndex(re => re.test(t));
   return i < 0 ? SC_SENSOR_RANK.length : i;
 }
-async function fetchSmartCitizen() {
+
+// ── The mean of the last 15 minutes, not the last minute ──
+// The device list carries each kit's LATEST reading, and kits report about
+// once a minute, so until 23 Nov 2026 the map showed, and the archive stored,
+// one minute in fifteen. In steady air that is harmless. Where smoke arrives
+// in puffs it is not: on 23 Nov 2026 Fab Lab Bali (Tomas) asked why Kul Kul
+// Farm (sc-20167) and TPA Kutuh (sc-20138) read so differently here and on
+// Smart Citizen. TPA Kutuh went from 4 to 589 µg/m³ in two minutes that
+// morning. At 11:15 WITA this map showed Kul Kul Farm at 157, a single minute
+// whose 15-minute mean was 15; at 11:30 it showed 63 against a mean of 188.
+// Over 16–23 Nov, one reading in ten at Kul Kul Farm and one in twenty at TPA
+// Kutuh was under half or over double its 15-minute mean (and more than
+// 10 µg/m³ from it); for every other kit, one in forty-five or fewer.
+//
+// So a kit's PM2.5, PM10 and PM1 are each the mean of its readings in the
+// 15 minutes up to and including its latest one, (last − 15 min, last]. Each
+// 15-minute archive row then stands for the 15 minutes it covers, and hourly
+// and daily means are built from every minute rather than a sample of them.
+// The readings endpoint takes one sensor per request, so this is three
+// requests per kit; all three are averaged over the same minutes because a
+// single PM10 minute beside a PM2.5 mean can read below it.
+//
+// A kit whose PM2.5 mean cannot be had is WITHHELD from this update, not shown
+// with its single minute: the map keeps its last stored mean (fastPathFromD1,
+// scPausedFromD1) and the archive keeps one meaning for every Smart Citizen
+// row from here on. A failed PM10 or PM1 mean is published as null for the
+// same reason. Both are noted in `errors`, which the archive worker logs.
+const SC_MEAN_WINDOW_MS = 15 * 60 * 1000;
+const SC_MEAN_MINUTES = SC_MEAN_WINDOW_MS / 60000;
+// Workers open at most six connections at once and queue the rest, and the
+// 8-second fetch timeout starts when fetch() is called, so ~30 requests fired
+// together could time out while still queued. Six at a time keeps each
+// request's timeout its own.
+const SC_MEAN_CONCURRENCY = 6;
+
+function scSensorId(sensors, re) {
+  if (!Array.isArray(sensors)) return null;
+  const s = sensors.find(x => re.test(String(x?.name || '')));
+  const id = s ? Number(s.id) : NaN;
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+// fn over items, at most `limit` in flight. A rejection becomes null.
+async function scMapPool(items, limit, fn) {
+  const out = new Array(items.length).fill(null);
+  let next = 0;
+  const lane = async () => {
+    while (next < items.length) {
+      const i = next++;
+      try { out[i] = await fn(items[i]); } catch (_) { out[i] = null; }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
+  return out;
+}
+
+// Mean of one sensor's minute readings in (lastIso − 15 min, lastIso], with
+// the number of minutes it covers; null when there is none.
+async function scWindowMean(devId, sensorId, lastIso) {
+  const lastMs = Date.parse(lastIso);
+  if (!Number.isFinite(lastMs)) return null;
+  const startMs = lastMs - SC_MEAN_WINDOW_MS;
+  const iso = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  // Both ends are inclusive upstream; the start is excluded below.
+  const r = await fetch(
+    `https://api.smartcitizen.me/v0/devices/${devId}/readings?sensor_id=${sensorId}` +
+    `&rollup=1m&from=${iso(startMs)}&to=${iso(lastMs)}`,
+    { headers: { Accept: 'application/json' } }
+  );
+  if (!r.ok) return null;
+  const d = await r.json();
+  if (Number(d?.sensor_id) !== sensorId || !Array.isArray(d?.readings)) return null;
+  let sum = 0, n = 0;
+  for (const row of d.readings) {
+    if (!Array.isArray(row)) continue;
+    const t = Date.parse(row[0]);
+    if (!Number.isFinite(t) || t <= startMs || t > lastMs) continue;
+    // Same null rule as scPickSensor: +null would be a phantom 0.
+    const v = (row[1] != null && row[1] !== '') ? +row[1] : NaN;
+    if (!Number.isFinite(v)) continue;
+    sum += v; n++;
+  }
+  return n ? { mean: +(sum / n).toFixed(1), n } : null;
+}
+
+// kits: [{ station, devId, sensorIds: { pm25, pm10, pm1 } }] from
+// fetchSmartCitizen. Returns the stations with their PM values replaced by
+// 15-minute means; kits without a PM2.5 mean are left out.
+async function scApplyWindowMeans(kits, errors) {
+  // Every kit's PM2.5 first: Smart Citizen answered in 0.3–6.4 s in testing; if it is
+  // slow, the value that decides whether a kit is shown should not wait
+  // behind PM10 and PM1.
+  const keys = ['pm25', 'pm10', 'pm1'];
+  const jobs = [];
+  for (const key of keys) {
+    for (const k of kits) {
+      if (k.sensorIds[key] != null) jobs.push({ k, key });
+    }
+  }
+  const means = await scMapPool(jobs, SC_MEAN_CONCURRENCY,
+    (j) => scWindowMean(j.k.devId, j.k.sensorIds[j.key], j.k.station.lastSeen));
+  const got = new Map();
+  jobs.forEach((j, i) => got.set(`${j.k.station.id} ${j.key}`, means[i]));
+
+  const out = [], withheld = [], partial = [];
+  for (const k of kits) {
+    const s = k.station;
+    const m25 = got.get(`${s.id} pm25`);
+    if (!m25) { withheld.push(s.id); continue; }
+    const m10 = got.get(`${s.id} pm10`) || null;
+    const m1 = got.get(`${s.id} pm1`) || null;
+    if ((k.sensorIds.pm10 != null && !m10) || (k.sensorIds.pm1 != null && !m1)) partial.push(s.id);
+    const { cat, cls } = pm25Category(m25.mean);
+    out.push({
+      ...s,
+      pm25: m25.mean,
+      pm10: m10 ? m10.mean : null,
+      pm1: m1 ? m1.mean : null,
+      category: cat,
+      cls,
+      avg_minutes: SC_MEAN_MINUTES,
+      avg_samples: m25.n,
+    });
+  }
+  if (Array.isArray(errors)) {
+    if (withheld.length) {
+      errors.push({ source: 'Smart Citizen',
+        error: `no ${SC_MEAN_MINUTES}-min PM2.5 mean, withheld this update: ${withheld.join(', ')}` });
+    }
+    if (partial.length) {
+      errors.push({ source: 'Smart Citizen',
+        error: `no ${SC_MEAN_MINUTES}-min PM10/PM1 mean, published as null: ${partial.join(', ')}` });
+    }
+  }
+  return out;
+}
+
+async function fetchSmartCitizen(errors) {
   // Bali centre + 80 km radius covers the whole island in a single request.
   const r = await fetch(
     'https://api.smartcitizen.me/v0/devices?near=-8.65,115.20&distance=80000&per_page=200',
@@ -1017,7 +1162,7 @@ async function fetchSmartCitizen() {
   if (!r.ok) return [];
   const list = await r.json();
   if (!Array.isArray(list)) return [];
-  const out = [];
+  const kits = [];
   for (const d of list) {
     // HARD RULE #1: outdoor only. Never surface indoor devices.
     if (d?.location?.exposure !== 'outdoor') continue;
@@ -1054,8 +1199,14 @@ async function fetchSmartCitizen() {
     // it; under 6 h it is live. Three honest states instead of visible/vanished.
     const lastMs = d.last_reading_at ? Date.parse(d.last_reading_at) : NaN;
     if (!Number.isFinite(lastMs) || (Date.now() - lastMs) > 24 * 60 * 60 * 1000) continue;
+    const sensorIds = {
+      pm25: scSensorId(sensors, /PM2\.5/i),
+      pm10: scSensorId(sensors, /PM10/i),
+      pm1:  scSensorId(sensors, /PM1\b/i),
+    };
+    if (sensorIds.pm25 == null) continue;  // no way to read its PM2.5 history
     const { cat, cls } = pm25Category(pm25);
-    out.push({
+    kits.push({ devId, sensorIds, station: {
       id: `sc-${devId}`,
       name: scClean(d.name) || `Smart Citizen #${devId}`,
       source: 'Smart Citizen',
@@ -1070,13 +1221,13 @@ async function fetchSmartCitizen() {
       category: cat,
       cls,
       lastSeen: d.last_reading_at || null,
-    });
+    } });
   }
   // Every kit that passed the gates above is returned, co-located ones
   // included: the one-pin-per-site fold now runs on visitor-served paths only
   // (foldSmartCitizenSites), so the archive worker's ?fresh=1 read archives
-  // each kit under its own id.
-  return out;
+  // each kit under its own id. Its PM values become 15-minute means here.
+  return scApplyWindowMeans(kits, errors);
 }
 
 // The networks a Smart Citizen pin gives way to: the ones the upstream path
@@ -2790,7 +2941,7 @@ async function handleLive(context) {
   // the kits that rule hides too (scHidden), so they are archived; a visitor
   // never does.
   try {
-    const sc = markHiddenSmartCitizen((await fetchSmartCitizen()).map(st => flagStale(st)), results.stations);
+    const sc = markHiddenSmartCitizen((await fetchSmartCitizen(results.errors)).map(st => flagStale(st)), results.stations);
     const scOut = noFast ? sc : sc.filter(s => !s.scHidden);
     if (scOut.length) {
       results.sources++;
